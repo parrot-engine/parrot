@@ -1,0 +1,7 @@
+**/config.mk
+build/
+
+.cache/
+compile_commands.json
+
+offline/
