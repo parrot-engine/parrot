@@ -1,33 +1,13 @@
-include $(PLATFORM_DIR)/default_config.mk
--include $(PLATFORM_DIR)/config.mk
+export CC=mips64-elf-gcc
+export AR=mips64-elf-ar
+export STRIP=mips64-elf-strip
 
-CFLAGS += $(PUBLIC_CFLAGS) $(PRIVATE_CFLAGS)
-CFLAGS += -DPARROT_PLATFORM_N64
-CFLAGS += $(SLOW_MEMORY_CFLAGS)
-
-CFLAGS += -march=vr4300
-CFLAGS += -mhard-float -mfp64
-
-ifeq ($(DEBUG_INFO),1)
-CFLAGS += -g
-endif
+export CFLAGS += -march=vr4300 -mhard-float -mfp64
 
 ifeq ($(OPTIMIZE),1)
-CFLAGS += $(OPTIMIZER)
+export CFLAGS += -Os
 endif
 
-OUTPUT_STATIC=$(BUILD_DIR)/$(OUTPUT_NAME).a
-
-OUTPUT_MODULE_NAME=module.txt
-OUTPUT_MODULE=$(BUILD_DIR)/$(OUTPUT_MODULE_NAME)
-
-ifeq ($(BUILD_SHARED),1)
-$(error Cannot build shared N64 libraries)
-endif
-
-ifeq ($(MODULE),)
-ifeq ($(BUILD_N64_OS),1)
-SRCS += $(shell find $(PLATFORM_DIR)/src/os -name "*.c")
-SRCS += $(shell find $(PLATFORM_DIR)/src/os -name "*.s")
-endif
+ifeq ($(DEBUG_INFO),1)
+export CFLAGS += -g
 endif

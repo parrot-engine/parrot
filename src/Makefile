@@ -1,57 +1,65 @@
-OUTPUT_NAME=parrot
+export CFLAGS += -std=c99 -Wall -Wextra -pedantic-errors -MMD -MP -I$(ROOT_DIR)
+export ASFLAGS += rcs
 
-include $(UTIL_MAKE)
-include $(PLATFORM_MAKE)
+CONFIG_HEADER=$(BUILD_INCLUDE_DIR)/parrot/config.h
+CONFIG_HEADER_GUARD_NAME := _$(shell openssl rand -hex 32)_PARROT_CONFIG_H_
 
-TARGETS=
-MODULES=core
+MODULE_BUILD_DIRS=
+MODULE_TARGETS=
 
-ifeq ($(MODULE_SCENE_ENABLE),1)
-MODULES += scene
-endif
+OUTPUT_STATIC=$(BUILD_DIR)/libparrot.a
 
-ifeq ($(MODULE_VIDEO_ENABLE),1)
-MODULES += video
-endif
-
-MODULE_TARGETS=$(patsubst %, module_%, $(MODULES))
-
-SRCS += $(shell echo *.c)
-
+SRCS=$(shell echo *.c)
 OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
-DEPS=$(patsubst %.o, %.d, $(OBJS))
-
-ifeq ($(BUILD_SHARED),1)
-TARGETS += $(OUTPUT_SHARED)
-endif
-
-ifeq ($(BUILD_STATIC),1)
-TARGETS += $(OUTPUT_STATIC)
-endif
 
 .PHONY: all
 
-all: $(TARGETS)
+all: $(OUTPUT_STATIC)
+	@echo $(shell find $(MODULE_BUILD_DIRS) -name "*.o")
 
-$(OUTPUT_SHARED): $(BUILD_DIR) $(MODULE_TARGETS) $(OBJS)
-	$(CC) $(LDFLAGS) -shared -o $@ $(OBJS) $(shell cat $(patsubst %, $(BUILD_DIR)/%/$(OUTPUT_MODULE_NAME), $(MODULES)))
+define ADD_MODULE
+.PHONY: $(1)_module
+$(1)_module: $(CONFIG_HEADER)
+	$(MAKE) -C $(1) BUILD_DIR=$(BUILD_DIR)/$(1)
 
-$(OUTPUT_STATIC): $(BUILD_DIR) $(MODULE_TARGETS) $(OBJS)
-	$(AR) $(ARFLAGS) $@ $(OBJS) $(shell cat $(patsubst %, $(BUILD_DIR)/%/$(OUTPUT_MODULE_NAME), $(MODULES)))
+MODULE_BUILD_DIRS += $(BUILD_DIR)/$(1)
+MODULE_TARGETS += $(1)_module
+endef
 
-$(BUILD_DIR)/src/%.c.o: %.c
-	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c -o $@ $<
-ifeq ($(DEBUG),0)
-	$(STRIP) $@
+$(eval $(call ADD_MODULE,core))
+$(eval $(call ADD_MODULE,scene))
+
+ifeq ($(VIDEO_MODULE_ENABLE),1)
+$(eval $(call ADD_MODULE,video))
 endif
 
-$(BUILD_DIR)/src/%.s.o: %.s
+$(OUTPUT_STATIC): $(CONFIG_HEADER) $(MODULE_TARGETS) $(OBJS)
+	$(AR) $(ASFLAGS) $@ $(OBJS) $(shell find $(MODULES) -name '*.o')
+
+$(CONFIG_HEADER):
 	mkdir -p $(dir $@)
-	$(CC) $(ASFLAGS) -c -o $@ $<
 
-module_%:
-	$(MAKE) -C $(patsubst module_%, %, $@)
+	echo "#ifndef $(CONFIG_HEADER_GUARD_NAME)" > $(CONFIG_HEADER)
+	echo "#define $(CONFIG_HEADER_GUARD_NAME)" >> $(CONFIG_HEADER)
 
-$(BUILD_DIR):
-	mkdir -p $@
+	echo "#define PARROT_PLATFORM_$(shell echo "$(PLATFORM)" | tr 'a-z' 'A-Z')" >> $(CONFIG_HEADER)
+
+ifeq ($(DEBUG),1)
+	echo "#define PARROT_DEBUG" >> $(CONFIG_HEADER)
+endif
+
+ifeq ($(DOUBLE_PRECISION),0)
+	echo "#define ParrotReal float" >> $(CONFIG_HEADER)
+endif
+ifeq ($(DOUBLE_PRECISION),1)
+	echo "#define ParrotReal double" >> $(CONFIG_HEADER)
+endif
+
+ifeq ($(AVOID_MEMORY),1)
+	echo "#define PARROT_AVOID_MEMORY" >> $(CONFIG_HEADER)
+endif
+
+	echo "#endif // $(CONFIG_HEADER_GUARD_NAME)" >> $(CONFIG_HEADER)
+
+include $(ROOT_DIR)/make/cc-deps.mk
+include $(ROOT_DIR)/make/basic-targets.mk

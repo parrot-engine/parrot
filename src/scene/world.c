@@ -20,14 +20,7 @@
 typedef struct {
     char *key;
 
-    bool *arr_component_exists;
-
-    size_t component_size;
-    uint8_t *arr_component_data;
-
-    ParrotSceneWorldComponentConstructor constructor;
-    ParrotSceneWorldComponentDestructor destructor;
-    void *user_data;
+    ParrotSceneWorldComponentDescription description;
 } ParrotSceneWorldRegisteredComponent;
 
 typedef struct {
@@ -48,12 +41,8 @@ struct ParrotSceneWorld {
 };
 
 void ParrotSceneWorldRegisteredComponent_min_size(ParrotSceneWorldRegisteredComponent *self, size_t size) {
-    MIN_ARR_SIZE_VALUE(self->arr_component_exists, size, false);
-
-    size_t min_data_size = size * self->component_size;
-    if (min_data_size > arrlen(self->arr_component_data)) {
-        arrsetlen(self->arr_component_data, min_data_size);
-    }
+    (void)self;
+    (void)size;
 }
 
 ParrotSceneWorld *ParrotSceneWorld_new(void) {
@@ -74,9 +63,6 @@ void ParrotSceneWorld_delete(ParrotSceneWorld *self) {
     }
 
     for (size_t i = 0; i < shlen(self->sh_registered_components); i++) {
-        arrfree(self->sh_registered_components[i].arr_component_exists);
-
-        arrfree(self->sh_registered_components[i].arr_component_data);
     }
     shfree(self->sh_registered_components);
 
@@ -129,11 +115,7 @@ void ParrotSceneWorld_delete_entity(ParrotSceneWorld *self, ParrotSceneWorldEnti
 
     for (size_t i = 0; i < shlen(self->sh_registered_components); i++) {
         ParrotSceneWorldRegisteredComponent *component = &self->sh_registered_components[i];
-        if (!component->arr_component_exists[ENTITY_INDEX(entity)]) {
-            continue;
-        }
-
-        ParrotSceneWorld_delete_entity_component_name(self, entity, component->key);
+        (void)component;
     }
 
     ParrotSceneWorld_set_entity_parent(self, entity, ParrotSceneWorldEntity_NULL);
@@ -199,86 +181,4 @@ ParrotSceneWorld_get_entity_child(ParrotSceneWorld *self, ParrotSceneWorldEntity
 
     return parent_exists ? self->arr_hm_entity_children[ENTITY_INDEX(entity)][index].key :
                            MAKE_ENTITY(index, self->arr_entity_gens[index]);
-}
-
-void ParrotSceneWorld_register_component_manual(ParrotSceneWorld *self,
-                                                ParrotSceneWorldComponentRegisterInfo register_info) {
-    PARROT_FAIL_NULL(self);
-    PARROT_FAIL_COND_MSG(ParrotSceneWorld_is_component_registered(self, register_info.name),
-                         "Attempt to register already registered component");
-
-    ParrotSceneWorldRegisteredComponent registered_component = {0};
-
-    PARROT_FAIL_NULL(register_info.name);
-    registered_component.key = register_info.name;
-
-    registered_component.component_size = register_info.size;
-
-    registered_component.constructor = register_info.constructor;
-    registered_component.destructor = register_info.destructor;
-    registered_component.user_data = register_info.user_data;
-
-    ParrotSceneWorldRegisteredComponent_min_size(&registered_component, self->next_new_index);
-
-    shputs(self->sh_registered_components, registered_component);
-}
-
-bool ParrotSceneWorld_is_component_registered(ParrotSceneWorld *self, const char *name) {
-    PARROT_FAIL_NULL(self);
-
-    return shgeti(self->sh_registered_components, name) >= 0;
-}
-
-void ParrotSceneWorld_add_entity_component_name(ParrotSceneWorld *self,
-                                                ParrotSceneWorldEntity entity,
-                                                const char *name) {
-    PARROT_RET_COND(!ParrotSceneWorld_does_entity_exist(self, entity));
-    PARROT_FAIL_NULL(name);
-
-    ParrotSceneWorldRegisteredComponent *component = shgetp_null(self->sh_registered_components, name);
-    PARROT_FAIL_NULL_MSG(component, "Attempt to add unregistered component");
-
-    PARROT_RET_COND(component->arr_component_exists[ENTITY_INDEX(entity)]);
-
-    uint8_t *component_data = &component->arr_component_data[ENTITY_INDEX(entity) * component->component_size];
-    memset(component_data, 0, component->component_size);
-    component->arr_component_exists[ENTITY_INDEX(entity)] = true;
-
-    if (component->constructor) {
-        component->constructor(component_data, component->user_data);
-    }
-}
-
-void *
-ParrotSceneWorld_get_entity_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name) {
-    PARROT_RET_COND_V(!ParrotSceneWorld_does_entity_exist(self, entity), NULL);
-    PARROT_FAIL_NULL(name);
-
-    ParrotSceneWorldRegisteredComponent *component = shgetp_null(self->sh_registered_components, name);
-    PARROT_RET_COND_V(!component, NULL);
-
-    PARROT_RET_COND_V(!component->arr_component_exists[ENTITY_INDEX(entity)], NULL);
-
-    uint8_t *component_data = &component->arr_component_data[ENTITY_INDEX(entity) * component->component_size];
-    return component_data;
-}
-
-void ParrotSceneWorld_delete_entity_component_name(ParrotSceneWorld *self,
-                                                   ParrotSceneWorldEntity entity,
-                                                   const char *name) {
-    PARROT_RET_COND(!ParrotSceneWorld_does_entity_exist(self, entity));
-    PARROT_FAIL_NULL(name);
-
-    ParrotSceneWorldRegisteredComponent *component = shgetp_null(self->sh_registered_components, name);
-    PARROT_RET_COND(!component);
-
-    PARROT_RET_COND(!component->arr_component_exists[ENTITY_INDEX(entity)]);
-
-    uint8_t *component_data = &component->arr_component_data[ENTITY_INDEX(entity) * component->component_size];
-
-    if (component->destructor) {
-        component->destructor(component_data, component->user_data);
-    }
-
-    component->arr_component_exists[ENTITY_INDEX(entity)] = false;
 }

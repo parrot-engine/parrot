@@ -1,6 +1,7 @@
 #ifndef __SRC_PARROT_INCLUDE_PARROT_CORE_MATH_H_
 #define __SRC_PARROT_INCLUDE_PARROT_CORE_MATH_H_
 
+#include "parrot/config.h"
 #include "parrot/core/api.h"
 
 typedef struct {

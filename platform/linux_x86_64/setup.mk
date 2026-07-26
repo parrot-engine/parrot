@@ -1,1 +1,0 @@
-include $(PLATFORM_ROOT_DIR)/_linux/setup.mk
