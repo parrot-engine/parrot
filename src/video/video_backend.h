@@ -1,26 +1,20 @@
 #ifndef __SRC_PARROT_SRC_VIDEO_VIDEO_BACKEND_H_
 #define __SRC_PARROT_SRC_VIDEO_VIDEO_BACKEND_H_
 
+#include "src/video/platform.h"
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef struct {
-    uint32_t handle;
-} ParrotVideoBackendWindow;
-
-typedef struct {
-    uint32_t handle;
-} ParrotVideoBackendViewport;
+    uint32_t index;
+} ParrotVideoBackendViewportHandle;
 
 void ParrotVideoBackend_init(void);
 void ParrotVideoBackend_shutdown(void);
+bool ParrotVideoBackend_is_initialized(void);
 
-ParrotVideoBackendViewport ParrotVideoBackend_create_viewport(void);
-void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewport viewport);
-
-ParrotVideoBackendWindow ParrotVideoBackend_create_window(void);
-void ParrotVideoBackend_delete_window(ParrotVideoBackendWindow window);
-void ParrotVideoBackend_set_title(ParrotVideoBackendWindow window, const char *title);
-void ParrotVideoBackend_set_size(ParrotVideoBackendWindow window, int width, int height);
-void ParrotVideoBackend_render(ParrotVideoBackendWindow window, ParrotVideoBackendViewport viewport);
+ParrotVideoBackendViewportHandle ParrotVideoBackend_create_viewport(int width, int height);
+void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle);
+void ParrotVideoBackend_read_viewport(ParrotVideoBackendViewportHandle handle, uint32_t *bgra);
 
 #endif // __SRC_PARROT_SRC_VIDEO_VIDEO_BACKEND_H_

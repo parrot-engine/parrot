@@ -20,14 +20,21 @@ export BUILD_INCLUDE_DIR=$(BUILD_DIR)/include
 
 export CFLAGS += -I$(INCLUDE_DIR) -I$(BUILD_INCLUDE_DIR)
 
+export LIB_OUTPUT_STATIC=$(BUILD_DIR)/libparrot.a
+
 include platform/$(PLATFORM)/setup.mk
 
-.PHONY: all src clean clean-all
+.PHONY: all src test clean clean-all
 
 all: src
 
 src:
-	$(MAKE) -C src
+	$(MAKE) -C src BUILD_DIR=$(BUILD_DIR)/lib
+
+test: $(LIB_OUTPUT_STATIC)
+	$(MAKE) -C test BUILD_DIR=$(BUILD_DIR)/test run
+
+$(LIB_OUTPUT_STATIC): src
 
 clean:
 	rm -r $(BUILD_DIR)

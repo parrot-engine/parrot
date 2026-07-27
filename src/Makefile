@@ -1,5 +1,4 @@
-export CFLAGS += -std=c99 -Wall -Wextra -pedantic-errors -MMD -MP -I$(ROOT_DIR)
-export ASFLAGS += rcs
+export CFLAGS += -std=c99 -Wall -Wextra -pedantic-errors -MMD -MP -I$(ROOT_DIR) -I$(shell pwd)/include
 
 CONFIG_HEADER=$(BUILD_INCLUDE_DIR)/parrot/config.h
 CONFIG_HEADER_GUARD_NAME := _$(shell openssl rand -hex 32)_PARROT_CONFIG_H_
@@ -7,15 +6,12 @@ CONFIG_HEADER_GUARD_NAME := _$(shell openssl rand -hex 32)_PARROT_CONFIG_H_
 MODULE_BUILD_DIRS=
 MODULE_TARGETS=
 
-OUTPUT_STATIC=$(BUILD_DIR)/libparrot.a
-
 SRCS=$(shell echo *.c)
 OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
 
 .PHONY: all
 
-all: $(OUTPUT_STATIC)
-	@echo $(shell find $(MODULE_BUILD_DIRS) -name "*.o")
+all: $(LIB_OUTPUT_STATIC)
 
 define ADD_MODULE
 .PHONY: $(1)_module
@@ -33,14 +29,24 @@ ifeq ($(VIDEO_MODULE_ENABLE),1)
 $(eval $(call ADD_MODULE,video))
 endif
 
-$(OUTPUT_STATIC): $(CONFIG_HEADER) $(MODULE_TARGETS) $(OBJS)
-	$(AR) $(ASFLAGS) $@ $(OBJS) $(shell find $(MODULES) -name '*.o')
+$(eval $(call ADD_MODULE,platform))
+
+$(LIB_OUTPUT_STATIC): $(CONFIG_HEADER) $(MODULE_TARGETS) $(OBJS)
+	$(AR) $(ARFLAGS) $@ $(OBJS) $(shell find $(MODULE_BUILD_DIRS) -name '*.o' || true)
 
 $(CONFIG_HEADER):
 	mkdir -p $(dir $@)
 
 	echo "#ifndef $(CONFIG_HEADER_GUARD_NAME)" > $(CONFIG_HEADER)
 	echo "#define $(CONFIG_HEADER_GUARD_NAME)" >> $(CONFIG_HEADER)
+
+ifeq ($(PLATFORM_HAS_OS),1)
+	echo "#define PARROT_PLATFORM_HAS_OS" >> $(CONFIG_HEADER)
+endif
+
+ifeq ($(PLATFORM_UNIX),1)
+	echo "#define PARROT_PLATFORM_UNIX" >> $(CONFIG_HEADER)
+endif
 
 	echo "#define PARROT_PLATFORM_$(shell echo "$(PLATFORM)" | tr 'a-z' 'A-Z')" >> $(CONFIG_HEADER)
 

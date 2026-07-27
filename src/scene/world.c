@@ -1,6 +1,6 @@
 #include "parrot/scene/world.h"
 #include "parrot/core/util.h"
-#include "src/stb_ds.h"
+#include "stb_ds.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
