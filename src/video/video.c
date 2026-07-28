@@ -26,11 +26,11 @@ typedef struct {
 } ParrotVideoObjectWindow;
 
 typedef struct {
-    ParrotVideoObject *key;
+    ParrotVideoObjectHandle key;
 } ParrotVideoObjectChild;
 
 struct ParrotVideoObject {
-    ParrotVideoObject *parent;
+    ParrotVideoObjectHandle parent;
     ParrotVideoObjectChild *shm_children;
 
     ParrotVec3f position;
@@ -94,7 +94,6 @@ ParrotVideoObjectHandle ParrotVideo_create_object(void) {
     ParrotVideoObject *object = malloc(sizeof(ParrotVideoObject));
     memset(object, 0, sizeof(ParrotVideoObject));
 
-    object->parent = self->root_object;
     object->scale = ParrotVec3f_n(1);
 
     uint32_t index = self->next_pointer_id++;
@@ -103,6 +102,11 @@ ParrotVideoObjectHandle ParrotVideo_create_object(void) {
     ParrotVideoObjectHandle handle = (ParrotVideoObjectHandle){
         .index = index,
     };
+
+    object->parent = self->root_object_handle;
+    if (self->root_object) {
+        hmputs(self->root_object->shm_children, (ParrotVideoObjectChild){handle});
+    }
 
     if (!self->root_object) {
         self->root_object = object;
@@ -118,14 +122,11 @@ void ParrotVideo_delete_object(ParrotVideoObjectHandle handle) {
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
     for (size_t i = 0; i < hmlen(object->shm_children); i++) {
-        ParrotVideo_delete_object((ParrotVideoObjectHandle){
-            .index = i,
-        });
+        ParrotVideo_delete_object(object->shm_children[i].key);
     }
 
-    if (object->parent) {
-        hmdel(object->parent->shm_children, object);
-    }
+    ParrotVideoObject *parent_object = hmget(self->hm_pointers, object->parent);
+    hmdel(parent_object->shm_children, object);
 
     if (ParrotVideo_object_has_window(handle)) {
         ParrotVideo_object_remove_window(handle);
@@ -146,9 +147,14 @@ void ParrotVideo_set_object_parent(ParrotVideoObjectHandle handle, ParrotVideoOb
 
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
-    if (object->parent) {
-        hmdel(object->parent->shm_children, object);
-    }
+    ParrotVideoObject *new_parent = hmget(self->hm_pointers, parent);
+    ParrotVideoObject *old_parent = hmget(self->hm_pointers, object->parent);
+
+    PARROT_FAIL_NULL(new_parent);
+    PARROT_FAIL_NULL(old_parent);
+
+    hmdel(old_parent->shm_children, object);
+    hmputs(new_parent->shm_children, (ParrotVideoObjectChild){handle});
 }
 
 void ParrotVideo_object_add_window(ParrotVideoObjectHandle handle, int width, int height) {
@@ -197,10 +203,12 @@ void ParrotVideo_object_set_window_size(ParrotVideoObjectHandle handle, int widt
 
 int ParrotVideo_object_get_window_width(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
+    return ParrotVideoWindow_get_width(hmget(self->hm_pointers, handle.index)->window->window);
 }
 
 int ParrotVideo_object_get_window_height(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
+    return ParrotVideoWindow_get_height(hmget(self->hm_pointers, handle.index)->window->window);
 }
 
 void ParrotVideo_object_add_viewport(ParrotVideoObjectHandle handle, int width, int height) {
@@ -234,10 +242,16 @@ bool ParrotVideo_object_has_viewport(ParrotVideoObjectHandle handle) {
 
 void ParrotVideo_object_set_viewport_size(ParrotVideoObjectHandle handle, int width, int height) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
+    (void)width;
+    (void)height;
 }
 
 static void ParrotVideo_render_object(ParrotVideoObjectHandle handle) {
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    for (size_t i = 0; i < hmlen(object->shm_children); i++) {
+        ParrotVideo_render_object(object->shm_children[i].key);
+    }
 
     if (ParrotVideo_object_has_window(handle)) {
         ParrotVideoWindow_poll_events(object->window->window);

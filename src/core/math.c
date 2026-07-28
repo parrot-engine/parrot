@@ -126,3 +126,9 @@ ParrotReal ParrotVec4f_length(ParrotVec4f self) {
 ParrotReal ParrotVec4f_dot(ParrotVec4f self, ParrotVec4f other) {
     return self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w;
 }
+
+ParrotTransform ParrotTransform_create_default(void) {
+    return (ParrotTransform){
+        .scale = ParrotVec3f_n(1),
+    };
+}

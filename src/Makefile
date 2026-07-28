@@ -67,5 +67,5 @@ endif
 
 	echo "#endif // $(CONFIG_HEADER_GUARD_NAME)" >> $(CONFIG_HEADER)
 
-include $(ROOT_DIR)/make/cc-deps.mk
 include $(ROOT_DIR)/make/basic-targets.mk
+include $(ROOT_DIR)/make/cc-deps.mk

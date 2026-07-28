@@ -2,7 +2,6 @@
 #include "GL/gl3w.h"
 #include "GL/glcorearb.h"
 #include "parrot/core/util.h"
-#include "src/video/platform.h"
 #include "stb_ds.h"
 #include <GL/glx.h>
 #include <X11/Xlib.h>
@@ -133,9 +132,9 @@ static void ParrotVideoBackend_use_gl_context(ParrotVideoBackendViewportHandle h
 }
 
 void ParrotVideoBackend_read_viewport(ParrotVideoBackendViewportHandle handle, uint32_t *bgra) {
-    PARROT_FAIL_COND(!ParrotVideoBackend_is_initialized());
-
     ParrotVideoBackendViewport *viewport = hmgetp_null(self->hm_viewports, handle.index);
+    ParrotVideoBackend_use_gl_context(handle);
+
     PARROT_FAIL_NULL(viewport);
 
     glReadPixels(0, 0, viewport->width, viewport->height, GL_BGRA, GL_UNSIGNED_BYTE, bgra);

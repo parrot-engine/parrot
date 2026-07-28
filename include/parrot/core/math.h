@@ -61,4 +61,12 @@ PARROT_API ParrotVec4f ParrotVec4f_normalize(ParrotVec4f self);
 PARROT_API ParrotReal ParrotVec4f_length(ParrotVec4f self);
 PARROT_API ParrotReal ParrotVec4f_dot(ParrotVec4f self, ParrotVec4f other);
 
+typedef struct {
+    ParrotVec3f position;
+    ParrotVec3f rotation;
+    ParrotVec3f scale;
+} ParrotTransform;
+
+PARROT_API ParrotTransform ParrotTransform_create_default(void);
+
 #endif // __SRC_PARROT_INCLUDE_PARROT_CORE_MATH_H_

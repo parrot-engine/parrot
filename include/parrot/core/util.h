@@ -4,6 +4,8 @@
 #include <stdio.h>  // IWYU pragma: keep
 #include <stdlib.h> // IWYU pragma: keep
 
+#define PARROT_TYPE_STRING(type) ((void)sizeof(*(type *)NULL), #type)
+
 #define PARROT_FAIL_FMT(fmt, ...)                                                                                       \
     do {                                                                                                                \
         fprintf(stderr, "(%s:%d) ERROR: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                 \

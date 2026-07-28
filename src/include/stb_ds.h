@@ -644,9 +644,9 @@ extern void *stbds_shmode_func(size_t elemsize, int mode);
 #define stbds_pshget(t, k) ((void)stbds_pshgeti(t, k), (t)[stbds_temp((t) - 1)])
 
 #define stbds_shdel(t, k)                                                                                               \
-    (((t) = stbds_hmdel_key_wrapper(                                                                                    \
-          (t), sizeof *(t), (void *)(k), sizeof(t)->key, STBDS_OFFSETOF((t), key), STBDS_HM_STRING)),                   \
-     (t) ? stbds_temp((t) - 1) : 0)
+    ((void)(((t) = stbds_hmdel_key_wrapper(                                                                             \
+                 (t), sizeof *(t), (void *)(k), sizeof(t)->key, STBDS_OFFSETOF((t), key), STBDS_HM_STRING)),            \
+            (t) ? stbds_temp((t) - 1) : 0))
 #define stbds_pshdel(t, k)                                                                                              \
     (((t) = stbds_hmdel_key_wrapper(                                                                                    \
           (t), sizeof *(t), (void *)(k), sizeof(*(t))->key, STBDS_OFFSETOF(*(t), key), STBDS_HM_PTR_TO_STRING)),        \
