@@ -5,7 +5,7 @@ export STRIP=strip
 export PLATFORM_HAS_OS ?= 1
 export PLATFORM_UNIX ?= 1
 
-export LDFLAGS += -lX11 -lGL
+export LDFLAGS += -lX11 -lXext -lGL
 
 include $(ROOT_DIR)/make/platform_base/modern/setup.mk
 include $(ROOT_DIR)/make/platform_base/os/setup.mk

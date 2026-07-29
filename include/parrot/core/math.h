@@ -1,72 +1,105 @@
 #ifndef __SRC_PARROT_INCLUDE_PARROT_CORE_MATH_H_
 #define __SRC_PARROT_INCLUDE_PARROT_CORE_MATH_H_
 
-#include "parrot/config.h"
+#include "parrot/config.h" // IWYU pragma: keep
 #include "parrot/core/api.h"
+#include <stddef.h>
+
+#ifndef PARROT_DOUBLE_PRECISION
+typedef float ParrotReal;
+#define ParrotReal_sqrt sqrtf
+#define ParrotReal_sin sinf
+#define ParrotReal_cos cosf
+#define ParrotReal_atan2 atan2f
+#else
+typedef double ParrotReal;
+#define ParrotReal_sqrt sqrt
+#define ParrotReal_sin sin
+#define ParrotReal_cos cos
+#define ParrotReal_atan2 atan2
+#endif
+
+PARROT_API void ParrotReal_to_float_array(const ParrotReal *src, float *dest, size_t count);
 
 typedef struct {
     ParrotReal x;
     ParrotReal y;
-} ParrotVec2f;
+} ParrotVec2;
 
-PARROT_API ParrotVec2f ParrotVec2f_n(ParrotReal n);
+PARROT_API ParrotVec2 ParrotVec2_n(ParrotReal n);
 
-PARROT_API ParrotVec2f ParrotVec2f_add(ParrotVec2f a, ParrotVec2f b);
-PARROT_API ParrotVec2f ParrotVec2f_sub(ParrotVec2f a, ParrotVec2f b);
-PARROT_API ParrotVec2f ParrotVec2f_mul(ParrotVec2f a, ParrotVec2f b);
-PARROT_API ParrotVec2f ParrotVec2f_div(ParrotVec2f a, ParrotVec2f b);
-PARROT_API ParrotVec2f ParrotVec2f_scale(ParrotVec2f a, ParrotReal b);
+PARROT_API ParrotVec2 ParrotVec2_add(ParrotVec2 a, ParrotVec2 b);
+PARROT_API ParrotVec2 ParrotVec2_sub(ParrotVec2 a, ParrotVec2 b);
+PARROT_API ParrotVec2 ParrotVec2_mul(ParrotVec2 a, ParrotVec2 b);
+PARROT_API ParrotVec2 ParrotVec2_div(ParrotVec2 a, ParrotVec2 b);
+PARROT_API ParrotVec2 ParrotVec2_scale(ParrotVec2 a, ParrotReal b);
 
-PARROT_API ParrotVec2f ParrotVec2f_normalize(ParrotVec2f self);
+PARROT_API ParrotVec2 ParrotVec2_normalize(ParrotVec2 self);
 
-PARROT_API ParrotReal ParrotVec2f_length(ParrotVec2f self);
-PARROT_API ParrotReal ParrotVec2f_dot(ParrotVec2f self, ParrotVec2f other);
+PARROT_API ParrotReal ParrotVec2_length(ParrotVec2 self);
+PARROT_API ParrotReal ParrotVec2_dot(ParrotVec2 self, ParrotVec2 other);
 
 typedef struct {
     ParrotReal x;
     ParrotReal y;
     ParrotReal z;
-} ParrotVec3f;
+} ParrotVec3;
 
-PARROT_API ParrotVec3f ParrotVec3f_n(ParrotReal n);
+PARROT_API ParrotVec3 ParrotVec3_n(ParrotReal n);
 
-PARROT_API ParrotVec3f ParrotVec3f_add(ParrotVec3f a, ParrotVec3f b);
-PARROT_API ParrotVec3f ParrotVec3f_sub(ParrotVec3f a, ParrotVec3f b);
-PARROT_API ParrotVec3f ParrotVec3f_mul(ParrotVec3f a, ParrotVec3f b);
-PARROT_API ParrotVec3f ParrotVec3f_div(ParrotVec3f a, ParrotVec3f b);
-PARROT_API ParrotVec3f ParrotVec3f_scale(ParrotVec3f a, ParrotReal b);
+PARROT_API ParrotVec3 ParrotVec3_add(ParrotVec3 a, ParrotVec3 b);
+PARROT_API ParrotVec3 ParrotVec3_sub(ParrotVec3 a, ParrotVec3 b);
+PARROT_API ParrotVec3 ParrotVec3_mul(ParrotVec3 a, ParrotVec3 b);
+PARROT_API ParrotVec3 ParrotVec3_div(ParrotVec3 a, ParrotVec3 b);
+PARROT_API ParrotVec3 ParrotVec3_scale(ParrotVec3 a, ParrotReal b);
 
-PARROT_API ParrotVec3f ParrotVec3f_normalize(ParrotVec3f self);
+PARROT_API ParrotVec3 ParrotVec3_normalize(ParrotVec3 self);
 
-PARROT_API ParrotReal ParrotVec3f_length(ParrotVec3f self);
-PARROT_API ParrotReal ParrotVec3f_dot(ParrotVec3f self, ParrotVec3f other);
+PARROT_API ParrotReal ParrotVec3_length(ParrotVec3 self);
+PARROT_API ParrotReal ParrotVec3_dot(ParrotVec3 self, ParrotVec3 other);
 
 typedef struct {
     ParrotReal x;
     ParrotReal y;
     ParrotReal z;
     ParrotReal w;
-} ParrotVec4f;
+} ParrotVec4;
 
-PARROT_API ParrotVec4f ParrotVec4f_n(ParrotReal n);
+PARROT_API ParrotVec4 ParrotVec4_n(ParrotReal n);
 
-PARROT_API ParrotVec4f ParrotVec4f_add(ParrotVec4f a, ParrotVec4f b);
-PARROT_API ParrotVec4f ParrotVec4f_sub(ParrotVec4f a, ParrotVec4f b);
-PARROT_API ParrotVec4f ParrotVec4f_mul(ParrotVec4f a, ParrotVec4f b);
-PARROT_API ParrotVec4f ParrotVec4f_div(ParrotVec4f a, ParrotVec4f b);
-PARROT_API ParrotVec4f ParrotVec4f_scale(ParrotVec4f a, ParrotReal b);
+PARROT_API ParrotVec4 ParrotVec4_add(ParrotVec4 a, ParrotVec4 b);
+PARROT_API ParrotVec4 ParrotVec4_sub(ParrotVec4 a, ParrotVec4 b);
+PARROT_API ParrotVec4 ParrotVec4_mul(ParrotVec4 a, ParrotVec4 b);
+PARROT_API ParrotVec4 ParrotVec4_div(ParrotVec4 a, ParrotVec4 b);
+PARROT_API ParrotVec4 ParrotVec4_scale(ParrotVec4 a, ParrotReal b);
 
-PARROT_API ParrotVec4f ParrotVec4f_normalize(ParrotVec4f self);
+PARROT_API ParrotVec4 ParrotVec4_normalize(ParrotVec4 self);
 
-PARROT_API ParrotReal ParrotVec4f_length(ParrotVec4f self);
-PARROT_API ParrotReal ParrotVec4f_dot(ParrotVec4f self, ParrotVec4f other);
+PARROT_API ParrotReal ParrotVec4_length(ParrotVec4 self);
+PARROT_API ParrotReal ParrotVec4_dot(ParrotVec4 self, ParrotVec4 other);
 
 typedef struct {
-    ParrotVec3f position;
-    ParrotVec3f rotation;
-    ParrotVec3f scale;
-} ParrotTransform;
+    // Column-major (accessed like data[x][y])
+    ParrotReal data[4][4];
+} ParrotMat;
 
-PARROT_API ParrotTransform ParrotTransform_create_default(void);
+PARROT_API ParrotMat ParrotMat_identity(void);
+
+PARROT_API ParrotMat ParrotMat_inverse(ParrotMat matrix);
+PARROT_API ParrotMat ParrotMat_transpose(ParrotMat matrix);
+
+PARROT_API ParrotMat ParrotMat_add(ParrotMat a, ParrotMat b);
+PARROT_API ParrotMat ParrotMat_mul(ParrotMat a, ParrotMat b);
+
+PARROT_API ParrotMat
+ParrotMat_ortho(ParrotReal left, ParrotReal right, ParrotReal down, ParrotReal up, ParrotReal near, ParrotReal far);
+
+PARROT_API ParrotMat ParrotMat_set_position(ParrotMat matrix, ParrotVec3 position);
+PARROT_API ParrotMat ParrotMat_set_rotation(ParrotMat matrix, ParrotVec3 rotation);
+PARROT_API ParrotMat ParrotMat_set_scale(ParrotMat matrix, ParrotVec3 scale);
+
+PARROT_API ParrotVec3 ParrotMat_get_position(ParrotMat matrix);
+PARROT_API ParrotVec3 ParrotMat_get_rotation(ParrotMat matrix);
+PARROT_API ParrotVec3 ParrotMat_get_scale(ParrotMat matrix);
 
 #endif // __SRC_PARROT_INCLUDE_PARROT_CORE_MATH_H_

@@ -1,18 +1,20 @@
 #include "parrot/video/scene.h"
+#include "parrot/core/math.h"
 #include "parrot/core/util.h"
+#include "parrot/scene/matrix.h"
 #include "parrot/scene/world.h"
 #include "parrot/video/video.h"
 
-static void ParrotVideoSceneWindowComponent_constructor(ParrotSceneWorldEntity entity, void *self_ptr, void *user_data) {
+static void ParrotVideoSceneCameraComponent_constructor(ParrotSceneWorldEntity entity, void *self_ptr, void *user_data) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
 
     (void)entity;
     (void)user_data;
 
-    ParrotVideoSceneWindowComponent *self = (ParrotVideoSceneWindowComponent *)self_ptr;
+    ParrotVideoSceneCameraComponent *self = (ParrotVideoSceneCameraComponent *)self_ptr;
 
-    self->width = 1;
-    self->height = 1;
+    self->use_clear_color = true;
+    self->clear_color = ParrotVec3_n(0.3);
 }
 
 static void
@@ -27,23 +29,24 @@ ParrotVideoSceneRenderableComponent_constructor(ParrotSceneWorldEntity entity, v
     self->object_handle = ParrotVideo_create_object();
 
     self->visible = true;
+    self->tint = ParrotVec4_n(1);
 }
 
 void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
-    ParrotSceneWorld_register_component(world,
-                                        PARROT_TYPE_STRING(ParrotVideoSceneWindowComponent),
-                                        (ParrotSceneWorldComponentDescription){
-                                            .size = sizeof(ParrotVideoSceneWindowComponent),
-
-                                            .constructor = ParrotVideoSceneWindowComponent_constructor,
-                                        });
-
     ParrotSceneWorld_register_component(world,
                                         PARROT_TYPE_STRING(ParrotVideoSceneRenderableComponent),
                                         (ParrotSceneWorldComponentDescription){
                                             .size = sizeof(ParrotVideoSceneRenderableComponent),
 
                                             .constructor = ParrotVideoSceneRenderableComponent_constructor,
+                                        });
+
+    ParrotSceneWorld_register_component(world,
+                                        PARROT_TYPE_STRING(ParrotVideoSceneCameraComponent),
+                                        (ParrotSceneWorldComponentDescription){
+                                            .size = sizeof(ParrotVideoSceneCameraComponent),
+
+                                            .constructor = ParrotVideoSceneCameraComponent_constructor,
                                         });
 }
 
@@ -84,6 +87,9 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
         ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRenderableComponent);
     PARROT_FAIL_NULL(renderable);
 
+    ParrotVideo_set_object_matrix(renderable->object_handle, ParrotMat_get_entity_global_matrix(world, entity));
+    ParrotVideo_set_object_tint(renderable->object_handle, renderable->tint);
+
     ParrotVideoSceneWindowComponent *window =
         ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneWindowComponent);
     if (window) {
@@ -104,6 +110,49 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
     } else {
         if (ParrotVideo_object_has_window(renderable->object_handle)) {
             ParrotVideo_object_remove_window(renderable->object_handle);
+        }
+    }
+
+    ParrotVideoSceneViewportComponent *viewport =
+        ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneViewportComponent);
+    if (viewport) {
+        if (!ParrotVideo_object_has_viewport(renderable->object_handle)) {
+            ParrotVideo_object_add_viewport(renderable->object_handle, viewport->width, viewport->height);
+        }
+    } else {
+        if (ParrotVideo_object_has_viewport(renderable->object_handle)) {
+            ParrotVideo_object_remove_viewport(renderable->object_handle);
+        }
+    }
+
+    ParrotVideoSceneCameraComponent *camera =
+        ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneCameraComponent);
+    if (camera) {
+        if (!ParrotVideo_object_has_camera(renderable->object_handle)) {
+            ParrotVideo_object_add_camera(renderable->object_handle);
+        }
+
+        if (camera->use_clear_color) {
+            ParrotVideo_object_set_camera_clear_color(renderable->object_handle, camera->clear_color);
+        } else {
+            ParrotVideo_object_clear_camera_clear_color(renderable->object_handle);
+        }
+    } else {
+        if (ParrotVideo_object_has_camera(renderable->object_handle)) {
+            ParrotVideo_object_remove_camera(renderable->object_handle);
+        }
+    }
+
+    ParrotVideoSceneRectComponent *rect = ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRectComponent);
+    if (rect) {
+        if (!ParrotVideo_object_has_rect(renderable->object_handle)) {
+            ParrotVideo_object_add_rect(renderable->object_handle);
+        }
+
+        ParrotVideo_object_set_rect_size(renderable->object_handle, rect->width, rect->height);
+    } else {
+        if (ParrotVideo_object_has_rect(renderable->object_handle)) {
+            ParrotVideo_object_remove_rect(renderable->object_handle);
         }
     }
 }

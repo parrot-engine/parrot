@@ -261,8 +261,8 @@ void ParrotSceneWorld_register_component(ParrotSceneWorld *self,
     ParrotSceneWorldInitialCachedQueries *initial_cached_query = hmgetp_null(self->sh_initial_cached_queries, name);
     if (initial_cached_query) {
         component.shm_queries = initial_cached_query->value;
+        hmdel(self->sh_initial_cached_queries, initial_cached_query->key);
     }
-    hmdel(self->sh_initial_cached_queries, initial_cached_query->key);
 
     shputs(self->sh_registered_components, component);
 }
@@ -325,7 +325,9 @@ void *ParrotSceneWorld_get_component_name(ParrotSceneWorld *self, ParrotSceneWor
     ParrotSceneWorldRegisteredComponent *component = shgetp_null(self->sh_registered_components, name);
     PARROT_FAIL_NULL(component);
 
-    return &component->arr_data[component->description.size * ENTITY_INDEX(entity)];
+    return component->arr_exists[ENTITY_INDEX(entity)] ?
+               &component->arr_data[component->description.size * ENTITY_INDEX(entity)] :
+               NULL;
 }
 
 void ParrotSceneWorld_delete_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name) {
@@ -382,7 +384,7 @@ static ParrotCRC32 ParrotSceneWorld_query(ParrotSceneWorld *self, const ParrotSc
             ParrotCRC32Set *cache = NULL;
 
             if (!component) {
-                if (hmgeti(self->sh_initial_cached_queries, filter->data.component.name) == 0) {
+                if (hmgeti(self->sh_initial_cached_queries, filter->data.component.name) < 0) {
                     hmput(self->sh_initial_cached_queries, filter->data.component.name, NULL);
                 }
                 cache = shgetp(self->sh_initial_cached_queries, filter->data.component.name)->value;

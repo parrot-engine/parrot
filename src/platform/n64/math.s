@@ -1,19 +1,19 @@
-.global _sqrt
-_sqrt:
+.global sqrt
+sqrt:
     sqrt.d $f0, $f12
     jr $ra
 
-.global _sqrtf
-_sqrtf:
+.global sqrtf
+sqrtf:
     sqrt.s $f0, $f12
     jr $ra
 
-.global _fabs
-_fabs:
+.global fabs
+fabs:
     abs.d $f0, $f12
     jr $ra
 
-.global _fabsf
-_fabsf:
+.global fabsf
+fabsf:
     abs.s $f0, $f12
     jr $ra

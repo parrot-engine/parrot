@@ -4,17 +4,11 @@
 #include "src/video/platform.h"
 #include "src/video/video_backend.h"
 #include "stb_ds.h"
+#include <complex.h>
 #include <stdlib.h>
 #include <string.h>
 
 typedef struct ParrotVideoObject ParrotVideoObject;
-
-typedef struct {
-    ParrotVideoBackendViewportHandle viewport;
-
-    int width;
-    int height;
-} ParrotVideoObjectViewport;
 
 typedef struct {
     ParrotVideoWindow *window;
@@ -26,6 +20,23 @@ typedef struct {
 } ParrotVideoObjectWindow;
 
 typedef struct {
+    ParrotVideoBackendViewportHandle viewport;
+
+    int width;
+    int height;
+} ParrotVideoObjectViewport;
+
+typedef struct {
+    bool use_clear_color;
+    ParrotVec3 clear_color;
+} ParrotVideoObjectCamera;
+
+typedef struct {
+    ParrotReal width;
+    ParrotReal height;
+} ParrotVideoObjectRect;
+
+typedef struct {
     ParrotVideoObjectHandle key;
 } ParrotVideoObjectChild;
 
@@ -33,12 +44,17 @@ struct ParrotVideoObject {
     ParrotVideoObjectHandle parent;
     ParrotVideoObjectChild *shm_children;
 
-    ParrotVec3f position;
-    ParrotVec3f rotation;
-    ParrotVec3f scale;
+    ParrotMat matrix;
+
+    bool visible;
+    ParrotVec4 tint;
 
     ParrotVideoObjectWindow *window;
     ParrotVideoObjectViewport *viewport;
+
+    ParrotVideoObjectCamera *camera;
+
+    ParrotVideoObjectRect *rect;
 };
 
 typedef struct ParrotVideoObjectPointer {
@@ -94,7 +110,10 @@ ParrotVideoObjectHandle ParrotVideo_create_object(void) {
     ParrotVideoObject *object = malloc(sizeof(ParrotVideoObject));
     memset(object, 0, sizeof(ParrotVideoObject));
 
-    object->scale = ParrotVec3f_n(1);
+    object->matrix = ParrotMat_identity();
+
+    object->visible = true;
+    object->tint = ParrotVec4_n(1);
 
     uint32_t index = self->next_pointer_id++;
     hmput(self->hm_pointers, index, object);
@@ -121,16 +140,24 @@ void ParrotVideo_delete_object(ParrotVideoObjectHandle handle) {
 
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
-    for (size_t i = 0; i < hmlen(object->shm_children); i++) {
-        ParrotVideo_delete_object(object->shm_children[i].key);
+    while (hmlen(object->shm_children) > 0) {
+        ParrotVideo_delete_object(object->shm_children[0].key);
     }
-
-    ParrotVideoObject *parent_object = hmget(self->hm_pointers, object->parent);
-    hmdel(parent_object->shm_children, object);
 
     if (ParrotVideo_object_has_window(handle)) {
         ParrotVideo_object_remove_window(handle);
     }
+
+    if (ParrotVideo_object_has_viewport(handle)) {
+        ParrotVideo_object_remove_viewport(handle);
+    }
+
+    if (ParrotVideo_object_has_camera(handle)) {
+        ParrotVideo_object_remove_camera(handle);
+    }
+
+    ParrotVideoObject *parent_object = hmget(self->hm_pointers, object->parent);
+    hmdel(parent_object->shm_children, handle.index);
 
     hmdel(self->hm_pointers, handle.index);
 
@@ -153,15 +180,37 @@ void ParrotVideo_set_object_parent(ParrotVideoObjectHandle handle, ParrotVideoOb
     PARROT_FAIL_NULL(new_parent);
     PARROT_FAIL_NULL(old_parent);
 
-    hmdel(old_parent->shm_children, object);
+    hmdel(old_parent->shm_children, handle);
     hmputs(new_parent->shm_children, (ParrotVideoObjectChild){handle});
+    object->parent = parent;
+}
+
+void ParrotVideo_set_object_visible(ParrotVideoObjectHandle handle, bool visible) {
+    PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
+
+    hmget(self->hm_pointers, handle.index)->visible = visible;
+}
+
+void ParrotVideo_set_object_tint(ParrotVideoObjectHandle handle, ParrotVec4 tint) {
+    PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
+
+    hmget(self->hm_pointers, handle.index)->tint = tint;
+}
+
+void ParrotVideo_set_object_matrix(ParrotVideoObjectHandle handle, ParrotMat matrix) {
+    PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
+
+    hmget(self->hm_pointers, handle.index)->matrix = matrix;
 }
 
 void ParrotVideo_object_add_window(ParrotVideoObjectHandle handle, int width, int height) {
     PARROT_FAIL_COND(ParrotVideo_object_has_window(handle));
 
+    PARROT_FAIL_COND(width == 0);
+    PARROT_FAIL_COND(height == 0);
+
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
-    object->window = malloc(sizeof(ParrotVideoObject));
+    object->window = malloc(sizeof(ParrotVideoObjectWindow));
     memset(object->window, 0, sizeof(ParrotVideoObjectWindow));
 
     object->window->window = ParrotVideoWindow_new(width, height);
@@ -198,6 +247,10 @@ void ParrotVideo_object_set_window_title(ParrotVideoObjectHandle handle, const c
 
 void ParrotVideo_object_set_window_size(ParrotVideoObjectHandle handle, int width, int height) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
+
+    PARROT_FAIL_COND(width == 0);
+    PARROT_FAIL_COND(height == 0);
+
     ParrotVideoWindow_set_size(hmget(self->hm_pointers, handle.index)->window->window, width, height);
 }
 
@@ -215,8 +268,11 @@ void ParrotVideo_object_add_viewport(ParrotVideoObjectHandle handle, int width, 
     PARROT_FAIL_COND(ParrotVideo_object_has_viewport(handle));
 
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
-    object->viewport = malloc(sizeof(ParrotVideoObject));
+    object->viewport = malloc(sizeof(ParrotVideoObjectViewport));
     memset(object->viewport, 0, sizeof(ParrotVideoObjectViewport));
+
+    PARROT_FAIL_COND(width == 0);
+    PARROT_FAIL_COND(height == 0);
 
     object->viewport->viewport = ParrotVideoBackend_create_viewport(width, height);
     object->viewport->width = width;
@@ -242,33 +298,171 @@ bool ParrotVideo_object_has_viewport(ParrotVideoObjectHandle handle) {
 
 void ParrotVideo_object_set_viewport_size(ParrotVideoObjectHandle handle, int width, int height) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
-    (void)width;
-    (void)height;
+
+    PARROT_FAIL_COND(width == 0);
+    PARROT_FAIL_COND(height == 0);
 }
 
-static void ParrotVideo_render_object(ParrotVideoObjectHandle handle) {
+void ParrotVideo_object_add_camera(ParrotVideoObjectHandle handle) {
+    PARROT_FAIL_COND(ParrotVideo_object_has_camera(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    object->camera = malloc(sizeof(ParrotVideoObjectCamera));
+    memset(object->camera, 0, sizeof(ParrotVideoObjectCamera));
+
+    object->camera->use_clear_color = true;
+}
+
+void ParrotVideo_object_remove_camera(ParrotVideoObjectHandle handle) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_camera(handle));
+
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
-    for (size_t i = 0; i < hmlen(object->shm_children); i++) {
-        ParrotVideo_render_object(object->shm_children[i].key);
+    free(object->camera);
+    object->camera = NULL;
+}
+
+bool ParrotVideo_object_has_camera(ParrotVideoObjectHandle handle) {
+    PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
+
+    return hmget(self->hm_pointers, handle.index)->camera;
+}
+
+void ParrotVideo_object_set_camera_clear_color(ParrotVideoObjectHandle handle, ParrotVec3 color) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_camera(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    object->camera->clear_color = color;
+    object->camera->use_clear_color = true;
+}
+
+void ParrotVideo_object_clear_camera_clear_color(ParrotVideoObjectHandle handle) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_camera(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    object->camera->use_clear_color = false;
+}
+
+static bool ParrotVideo_find_camera(ParrotVideoObjectHandle handle,
+                                    ParrotVideoObjectHandle *out_handle,
+                                    ParrotVideoObjectCamera **out_camera) {
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    if (object->camera) {
+        *out_handle = handle;
+        *out_camera = object->camera;
+        return true;
     }
+
+    for (size_t i = 0; i < hmlen(object->shm_children); i++) {
+        if (ParrotVideo_find_camera(object->shm_children[i].key, out_handle, out_camera)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
+                                      ParrotVideoBackendViewportHandle *viewport,
+                                      ParrotMat projection_view_matrix,
+                                      ParrotVec4 tint) {
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    tint = ParrotVec4_mul(tint, object->tint);
 
     if (ParrotVideo_object_has_window(handle)) {
         ParrotVideoWindow_poll_events(object->window->window);
     }
 
     if (ParrotVideo_object_has_viewport(handle)) {
-        if (ParrotVideo_object_has_window(handle)) {
-            uint32_t *bgra = calloc(object->viewport->width * object->viewport->height, sizeof(uint32_t));
-            ParrotVideoBackend_read_viewport(object->viewport->viewport, bgra);
-            ParrotVideoWindow_draw(object->window->window, bgra, object->viewport->width, object->viewport->height);
-            free(bgra);
+        viewport = &object->viewport->viewport;
+        ParrotVideoObjectHandle camera_handle;
+        ParrotVideoObjectCamera *camera;
+
+        if (ParrotVideo_find_camera(handle, &camera_handle, &camera)) {
+            ParrotVideoObject *camera_object = hmget(self->hm_pointers, camera_handle.index);
+
+            if (camera->use_clear_color) {
+                ParrotVideoBackend_clear_viewport(object->viewport->viewport, camera->clear_color);
+            }
+
+            ParrotMat projection_matrix =
+                ParrotMat_ortho(0, object->viewport->width, 0, object->viewport->height, 0, 1000000);
+
+            projection_view_matrix = ParrotMat_mul(projection_matrix, ParrotMat_inverse(camera_object->matrix));
         }
     }
+
+    for (size_t i = 0; i < hmlen(object->shm_children); i++) {
+        ParrotVideo_render_object(object->shm_children[i].key, viewport, projection_view_matrix, tint);
+    }
+
+    if (ParrotVideo_object_has_viewport(handle) && ParrotVideo_object_has_window(handle)) {
+        uint32_t *bgra = calloc(object->viewport->width * object->viewport->height, sizeof(uint32_t));
+        ParrotVideoBackend_read_viewport(object->viewport->viewport, bgra);
+        ParrotVideoWindow_draw(object->window->window, bgra, object->viewport->width, object->viewport->height);
+        free(bgra);
+    }
+
+    PARROT_RET_COND(!viewport);
+
+    ParrotMat matrix = ParrotMat_mul(projection_view_matrix, object->matrix);
+
+    if (ParrotVideo_object_has_rect(handle)) {
+        ParrotReal width = object->rect->width;
+        ParrotReal height = object->rect->height;
+
+        ParrotVideoBackendVertex vertices[] = {
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, 0, 0}},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, 0, 0}},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, height, 0}},
+
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, height, 0}},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, height, 0}},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, 0, 0}},
+        };
+
+        ParrotVideoBackend_draw_viewport_vertices(*viewport, tint, matrix, vertices, 6);
+    }
+}
+
+void ParrotVideo_object_add_rect(ParrotVideoObjectHandle handle) {
+    PARROT_FAIL_COND(ParrotVideo_object_has_rect(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    object->rect = malloc(sizeof(ParrotVideoObjectRect));
+    memset(object->rect, 0, sizeof(ParrotVideoObjectRect));
+}
+
+void ParrotVideo_object_remove_rect(ParrotVideoObjectHandle handle) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    free(object->rect);
+    object->rect = NULL;
+}
+
+bool ParrotVideo_object_has_rect(ParrotVideoObjectHandle handle) {
+    PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
+
+    return hmget(self->hm_pointers, handle.index)->rect;
+}
+
+void ParrotVideo_object_set_rect_size(ParrotVideoObjectHandle handle, ParrotReal width, ParrotReal height) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    object->rect->width = width;
+    object->rect->height = height;
 }
 
 void ParrotVideo_render(void) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
 
-    ParrotVideo_render_object(self->root_object_handle);
+    ParrotVideo_render_object(self->root_object_handle, NULL, ParrotMat_identity(), ParrotVec4_n(1));
 }

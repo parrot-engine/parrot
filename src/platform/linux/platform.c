@@ -3,6 +3,8 @@
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/extensions/Xdbe.h>
+#include <X11/extensions/dbe.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +23,7 @@ struct ParrotVideoWindow {
     bool close_requested;
 
     GC gc;
+    XdbeBackBuffer back_buffer;
 
     uint32_t *image_data;
     XImage *image;
@@ -56,6 +59,7 @@ ParrotVideoWindow *ParrotVideoWindow_new(int width, int height) {
     XSetWMProtocols(self->display, self->window, &self->wm_delete, 1);
 
     self->gc = XCreateGC(self->display, self->window, 0, NULL);
+    self->back_buffer = XdbeAllocateBackBufferName(self->display, self->window, XdbeBackground);
 
     self->image_data = calloc(width * height, sizeof(uint32_t));
     self->image = XCreateImage(self->display,
@@ -77,6 +81,8 @@ ParrotVideoWindow *ParrotVideoWindow_new(int width, int height) {
 
 void ParrotVideoWindow_delete(ParrotVideoWindow *self) {
     XDestroyImage(self->image);
+
+    XdbeDeallocateBackBufferName(self->display, self->back_buffer);
     XFreeGC(self->display, self->gc);
 
     XDestroyWindow(self->display, self->window);
@@ -165,5 +171,8 @@ void ParrotVideoWindow_draw(ParrotVideoWindow *self, uint32_t *brga, int width, 
     PARROT_FAIL_COND(height != ParrotVideoWindow_get_height(self));
 
     memcpy(self->image_data, brga, width * height * sizeof(uint32_t));
-    XPutImage(self->display, self->window, self->gc, self->image, 0, 0, 0, 0, width, height);
+    XPutImage(self->display, self->back_buffer, self->gc, self->image, 0, 0, 0, 0, width, height);
+
+    XdbeSwapInfo swap_info = {self->window, XdbeBackground};
+    XdbeSwapBuffers(self->display, &swap_info, 1);
 }

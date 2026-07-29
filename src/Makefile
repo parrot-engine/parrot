@@ -54,11 +54,8 @@ ifeq ($(DEBUG),1)
 	echo "#define PARROT_DEBUG" >> $(CONFIG_HEADER)
 endif
 
-ifeq ($(DOUBLE_PRECISION),0)
-	echo "#define ParrotReal float" >> $(CONFIG_HEADER)
-endif
 ifeq ($(DOUBLE_PRECISION),1)
-	echo "#define ParrotReal double" >> $(CONFIG_HEADER)
+	echo "#define PARROT_DOUBLE_PRECISION" >> $(CONFIG_HEADER)
 endif
 
 ifeq ($(AVOID_MEMORY),1)

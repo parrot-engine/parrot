@@ -1,26 +1,12 @@
-SRCS=dummy.s
-SRC_DIRS=
+.PHONY: all
 
+all:
 ifneq ($(wildcard $(PLATFORM)),)
-SRC_DIRS += $(PLATFORM)
+	$(MAKE) -C $(PLATFORM) BUILD_DIR=$(BUILD_DIR)/$(PLATFORM)
 endif
-
 ifeq ($(PLATFORM_UNIX),1)
-SRC_DIRS += unix
+	$(MAKE) -C unix BUILD_DIR=$(BUILD_DIR)/unix
 endif
-
 ifeq ($(PLATFORM_HAS_OS),1)
-SRC_DIRS += os
+	$(MAKE) -C os BUILD_DIR=$(BUILD_DIR)/os
 endif
-
-ifneq ($(SRC_DIRS),)
-SRCS=$(shell find $(SRC_DIRS) -name "*.c") $(shell find $(SRC_DIRS) -name "*.s")
-endif
-
-OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
-
-all: $(OBJS)
-
-include $(ROOT_DIR)/make/basic-targets.mk
-include $(ROOT_DIR)/make/cc-deps.mk
-
