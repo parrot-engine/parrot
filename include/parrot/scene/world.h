@@ -83,6 +83,13 @@ PARROT_API ParrotSceneWorldEntity ParrotSceneWorld_get_entity_child(ParrotSceneW
                                                                     /* NULL = list all */ ParrotSceneWorldEntity entity,
                                                                     size_t index);
 
+#define ParrotSceneWorld_simple_register_component(self, type)                                                          \
+    ParrotSceneWorld_register_component(self,                                                                           \
+                                        PARROT_TYPE_STRING(type),                                                       \
+                                        (ParrotSceneWorldComponentDescription){                                         \
+                                            .size = sizeof(type),                                                       \
+                                        })
+
 PARROT_API void ParrotSceneWorld_register_component(ParrotSceneWorld *self,
                                                     const char *name,
                                                     ParrotSceneWorldComponentDescription description);
@@ -92,11 +99,7 @@ PARROT_API bool ParrotSceneWorld_is_component_registered(ParrotSceneWorld *self,
 #define ParrotSceneWorld_add_component(self, entity, type)                                                              \
     do {                                                                                                                \
         if (!ParrotSceneWorld_is_component_registered(self, #type)) {                                                   \
-            ParrotSceneWorld_register_component(self,                                                                   \
-                                                #type,                                                                  \
-                                                (ParrotSceneWorldComponentDescription){                                 \
-                                                    .size = sizeof(type),                                               \
-                                                });                                                                     \
+            ParrotSceneWorld_simple_register_component(self, type);                                                     \
         }                                                                                                               \
         ParrotSceneWorld_add_component_name(self, entity, #type);                                                       \
     } while (0)
@@ -110,7 +113,7 @@ PARROT_API bool ParrotSceneWorld_is_component_registered(ParrotSceneWorld *self,
 #define ParrotSceneWorld_delete_component(self, entity, type)                                                           \
     do {                                                                                                                \
         if (ParrotSceneWorld_is_component_registered(self, PARROT_TYPE_STRING(type))) {                                 \
-            ParrotSceneWorld_add_component_name(self, entity, PARROT_TYPE_STRING(type));                                \
+            ParrotSceneWorld_delete_component_name(self, entity, PARROT_TYPE_STRING(type));                             \
         }                                                                                                               \
     } while (0)
 
