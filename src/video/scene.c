@@ -88,6 +88,8 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
     PARROT_FAIL_NULL(renderable);
 
     ParrotVideo_set_object_matrix(renderable->object_handle, ParrotMat_get_entity_global_matrix(world, entity));
+
+    ParrotVideo_set_object_visible(renderable->object_handle, renderable->visible);
     ParrotVideo_set_object_tint(renderable->object_handle, renderable->tint);
 
     ParrotVideoSceneWindowComponent *window =

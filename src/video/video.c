@@ -350,6 +350,10 @@ static bool ParrotVideo_find_camera(ParrotVideoObjectHandle handle,
                                     ParrotVideoObjectCamera **out_camera) {
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
+    if (!object->visible) {
+        return false;
+    }
+
     if (object->camera) {
         *out_handle = handle;
         *out_camera = object->camera;
@@ -395,8 +399,10 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
         }
     }
 
-    for (size_t i = 0; i < hmlen(object->shm_children); i++) {
-        ParrotVideo_render_object(object->shm_children[i].key, viewport, projection_view_matrix, tint);
+    if (object->visible) {
+        for (size_t i = 0; i < hmlen(object->shm_children); i++) {
+            ParrotVideo_render_object(object->shm_children[i].key, viewport, projection_view_matrix, tint);
+        }
     }
 
     if (ParrotVideo_object_has_viewport(handle) && ParrotVideo_object_has_window(handle)) {
@@ -407,6 +413,7 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
     }
 
     PARROT_RET_COND(!viewport);
+    PARROT_RET_COND(!object->visible);
 
     ParrotMat matrix = ParrotMat_mul(projection_view_matrix, object->matrix);
 

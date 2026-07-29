@@ -53,6 +53,7 @@ int main(void) {
         ParrotVideoSceneRenderableComponent *renderable =
             ParrotSceneWorld_get_component(world, object, ParrotVideoSceneRenderableComponent);
         renderable->tint = ParrotVec4_n(0);
+        renderable->tint.x = 1;
         renderable->tint.w = 1;
 
         ParrotVideoSceneRectComponent *rect =
