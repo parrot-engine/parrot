@@ -4,7 +4,6 @@
 #include "src/video/platform.h"
 #include "src/video/video_backend.h"
 #include "stb_ds.h"
-#include <complex.h>
 #include <stdlib.h>
 #include <string.h>
 

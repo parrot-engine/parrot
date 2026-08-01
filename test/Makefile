@@ -1,17 +1,27 @@
-SRCS=$(shell find . -name "*.c")
+SRCS=$(shell find . -name "*.c") $(shell find . -name "*.s")
 OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
 
+RUNNER=exec
 OUTPUT=$(BUILD_DIR)/test
+
+ifeq ($(PLATFORM),n64)
+RUNNER=ares
+OUTPUT := $(OUTPUT).z64
+endif
 
 .PHONY: all run $(OUTPUT)
 
 all: $(OUTPUT)
 
 $(OUTPUT): $(OBJS)
-	$(CC) $(LDFLAGS) -o $(OUTPUT) $(OBJS) $(LIB_OUTPUT_STATIC)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIB_OUTPUT_STATIC)
+ifeq ($(PLATFORM),n64)
+	cp $@ $@.elf
+	cat ipl3_dev.z64 $@.elf > $@
+endif
 
 run: $(OUTPUT)
-	$(OUTPUT)
+	$(RUNNER) $(OUTPUT)
 
 include $(ROOT_DIR)/make/cc-deps.mk
 include $(ROOT_DIR)/make/basic-targets.mk

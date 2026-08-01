@@ -131,6 +131,7 @@ void ParrotSceneWorld_delete(ParrotSceneWorld *self) {
 
     while (shlen(self->sh_initial_cached_queries) > 0) {
         hmfree(self->sh_initial_cached_queries[0].value);
+        shdel(self->sh_initial_cached_queries, self->sh_initial_cached_queries[0].key);
     }
     shfree(self->sh_initial_cached_queries);
 
@@ -154,13 +155,13 @@ ParrotSceneWorldEntity ParrotSceneWorld_create_entity(ParrotSceneWorld *self) {
     MIN_ARR_SIZE_VALUE(self->arr_entity_exists, index + 1, false);
     MIN_ARR_SIZE_VALUE(self->arr_entity_gens, index + 1, 0);
 
-    self->arr_entity_exists[index] = true;
-
     for (size_t i = 0; i < shlen(self->sh_registered_components); i++) {
         ParrotSceneWorldRegisteredComponent_min_size(&self->sh_registered_components[i], index + 1);
 
         self->sh_registered_components[i].arr_exists[index] = false;
     }
+
+    self->arr_entity_exists[index] = true;
 
     return MAKE_ENTITY(index, self->arr_entity_gens[index]);
 }
@@ -287,6 +288,8 @@ void ParrotSceneWorld_unregister_component(ParrotSceneWorld *self, const char *n
 
     hmfree(component->shm_queries);
 
+    free(component->key);
+
     shdel(self->sh_registered_components, component->key);
 }
 
@@ -408,6 +411,7 @@ static ParrotCRC32 ParrotSceneWorld_query(ParrotSceneWorld *self, const ParrotSc
 
     hmputs(self->hm_queries, cached_query);
 
+    hmfree(shm_entity_indices);
     return query_crc32;
 }
 

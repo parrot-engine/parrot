@@ -4,12 +4,17 @@
 #include <stdio.h>  // IWYU pragma: keep
 #include <stdlib.h> // IWYU pragma: keep
 
+/// Handles crashing the program and sometimes collecting extra info
+typedef void (*ParrotCrashHandlerFunc)(const char *cause);
+
+extern ParrotCrashHandlerFunc Parrot_crash_handler;
+
 #define PARROT_TYPE_STRING(type) ((void)sizeof(*(type *)NULL), #type)
 
 #define PARROT_FAIL_FMT(fmt, ...)                                                                                       \
     do {                                                                                                                \
         fprintf(stderr, "(%s:%d) ERROR: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                 \
-        abort();                                                                                                        \
+        Parrot_crash_handler("Assertion Failed");                                                                       \
     } while (0)
 #define PARROT_FAIL_MSG(msg) PARROT_FAIL_FMT("%s", msg)
 

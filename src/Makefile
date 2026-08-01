@@ -62,6 +62,8 @@ ifeq ($(AVOID_MEMORY),1)
 	echo "#define PARROT_AVOID_MEMORY" >> $(CONFIG_HEADER)
 endif
 
+	echo "#define PARROT_PACKED __attribute__((packed))" >> $(CONFIG_HEADER)
+
 	echo "#endif // $(CONFIG_HEADER_GUARD_NAME)" >> $(CONFIG_HEADER)
 
 include $(ROOT_DIR)/make/basic-targets.mk

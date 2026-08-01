@@ -1,7 +1,15 @@
-SRCS=$(shell find . -name "*.c") $(shell find . -name "*.s")
-OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
+TARGETS=lib
 
-all: $(OBJS)
+ifeq ($(N64_PROVIDE_OS),1)
+TARGETS += os
+endif
 
-include $(ROOT_DIR)/make/basic-targets.mk
-include $(ROOT_DIR)/make/cc-deps.mk
+.PHONY: lib os
+
+all: $(TARGETS)
+
+lib:
+	$(MAKE) -C lib BUILD_DIR=$(BUILD_DIR)/lib
+
+os:
+	$(MAKE) -C os BUILD_DIR=$(BUILD_DIR)/os
