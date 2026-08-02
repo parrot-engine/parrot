@@ -1,12 +1,12 @@
 #include "parrot/core/math.h"
 #include "parrot/scene/matrix.h"
 #include "parrot/scene/world.h"
-#include "parrot/video/scene.h"
-#include "parrot/video/video.h"
 #include <stdio.h>
 
 int main(void) {
     // ParrotVideo_init();
+
+    printf("Test 123\n");
 
     ParrotSceneWorld *world = ParrotSceneWorld_new();
 
@@ -48,9 +48,17 @@ int main(void) {
     /*ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRenderableComponent);
      ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRectComponent);*/
 
+    ParrotSceneWorld_create_entity(world);
+    ParrotSceneWorld_create_entity(world);
+    ParrotSceneWorld_create_entity(world);
+    ParrotSceneWorld_create_entity(world);
+    ParrotSceneWorld_create_entity(world);
+    ParrotSceneWorld_create_entity(world);
+
     {
         ParrotMat *matrix = ParrotSceneWorld_get_component(world, object, ParrotMat);
         *matrix = ParrotMat_set_position(*matrix, (ParrotVec3){50, 50, 0});
+        *matrix = ParrotMat_set_rotation(*matrix, (ParrotVec3){0, 0, 300});
 
         for (int y = 0; y < 4; y++) {
             printf("%.02f %.02f %.02f %.02f\n",

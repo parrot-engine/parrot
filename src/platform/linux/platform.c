@@ -31,6 +31,7 @@ struct ParrotVideoWindow {
 
 ParrotVideoWindow *ParrotVideoWindow_new(int width, int height) {
     ParrotVideoWindow *self = malloc(sizeof(ParrotVideoWindow));
+    PARROT_RET_COND_V(!self, NULL);
     memset(self, 0, sizeof(ParrotVideoWindow));
 
     self->old_width = width;

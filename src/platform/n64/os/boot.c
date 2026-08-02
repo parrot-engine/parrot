@@ -1,5 +1,5 @@
-#include "platform/n64/stdlib/stdlib.h"
 #include "src/platform/n64/os/boot_data.h"
+#include "src/platform/n64/os/libc/stdlib.malloc.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -24,7 +24,7 @@ void Parrot_n64_main(void) {
     LibdragonBootData boot_data;
     memcpy(&boot_data, (void *)0xA4000000, sizeof(LibdragonBootData));
 
-    Parrot_libc_stdlib_init(boot_data.random_seed, boot_data.avaliable_memory_bytes);
+    Parrot_os_heap_init(boot_data.avaliable_memory_bytes);
 
     uint16_t *fb = (uint16_t *)0xA0100000;
 

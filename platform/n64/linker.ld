@@ -21,6 +21,20 @@ SECTIONS {
     }
     Parrot_bss_end = .;
 
+    . = ALIGN(16);
+    _gp = . + 0x7FF0;
+
+    .sdata : {
+        *(.sdata*)
+        *(.lit8)
+        *(.lit4)
+    }
+
+    .sbss : {
+        *(.sbss*)
+        *(.scommon)
+    }
+
     .stack (NOLOAD) : {
         . = ALIGN(8);
         Parrot_stack_bottom = .;

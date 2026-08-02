@@ -1,0 +1,8 @@
+#ifndef __SRC_PARROT_SRC_PLATFORM_N64_OS_LIBC_STDLIB_MALLOC_H_
+#define __SRC_PARROT_SRC_PLATFORM_N64_OS_LIBC_STDLIB_MALLOC_H_
+
+#include <stddef.h>
+
+void Parrot_os_heap_init(size_t memory_size);
+
+#endif // __SRC_PARROT_SRC_PLATFORM_N64_OS_LIBC_STDLIB_MALLOC_H_

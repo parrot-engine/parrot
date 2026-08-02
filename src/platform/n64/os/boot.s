@@ -4,6 +4,8 @@
 _start:
     la $sp, Parrot_stack_top
 
+    la $gp, _gp
+
     la      $t0, Parrot_bss_start
     la      $t1, Parrot_bss_end
 bss_clear:

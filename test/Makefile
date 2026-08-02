@@ -14,7 +14,7 @@ endif
 all: $(OUTPUT)
 
 $(OUTPUT): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIB_OUTPUT_STATIC)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIB_OUTPUT_STATIC) $(LDLIBS)
 ifeq ($(PLATFORM),n64)
 	cp $@ $@.elf
 	cat ipl3_dev.z64 $@.elf > $@

@@ -75,6 +75,7 @@ void ParrotVideo_init(void) {
     PARROT_FAIL_COND(ParrotVideo_is_initialized());
 
     self = malloc(sizeof(ParrotVideo));
+    PARROT_FAIL_COND(!self);
     memset(self, 0, sizeof(ParrotVideo));
 
     ParrotVideoBackend_init();

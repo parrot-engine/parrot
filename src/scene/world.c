@@ -92,6 +92,7 @@ void ParrotSceneWorldRegisteredComponent_min_size(ParrotSceneWorldRegisteredComp
 
 ParrotSceneWorld *ParrotSceneWorld_new(void) {
     ParrotSceneWorld *self = malloc(sizeof(ParrotSceneWorld));
+    PARROT_RET_COND_V(!self, NULL);
     memset(self, 0, sizeof(ParrotSceneWorld));
 
     self->next_new_index = 1;
@@ -175,7 +176,7 @@ void ParrotSceneWorld_delete_entity(ParrotSceneWorld *self, ParrotSceneWorldEnti
 
     for (size_t i = 0; i < shlen(self->sh_registered_components); i++) {
         ParrotSceneWorldRegisteredComponent *component = &self->sh_registered_components[i];
-        if (component->arr_exists[ENTITY_INDEX(entity)]) {
+        if (component->arr_exists && component->arr_exists[ENTITY_INDEX(entity)]) {
             ParrotSceneWorld_delete_component_name(self, entity, component->key);
         }
     }
@@ -288,9 +289,11 @@ void ParrotSceneWorld_unregister_component(ParrotSceneWorld *self, const char *n
 
     hmfree(component->shm_queries);
 
-    free(component->key);
+    char *key = component->key;
 
     shdel(self->sh_registered_components, component->key);
+
+    free(key);
 }
 
 bool ParrotSceneWorld_is_component_registered(ParrotSceneWorld *self, const char *name) {

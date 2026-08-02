@@ -1,3 +1,5 @@
+-include $(ROOT_DIR)/platform/$(PLATFORM)/src/setup.mk
+
 export CFLAGS += -std=c99 -Wall -Wextra -pedantic-errors -MMD -MP -I$(ROOT_DIR) -I$(shell pwd)/include
 
 CONFIG_HEADER=$(BUILD_INCLUDE_DIR)/parrot/config.h

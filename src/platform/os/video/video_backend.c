@@ -55,6 +55,7 @@ void ParrotVideoBackend_init(void) {
     PARROT_FAIL_COND(ParrotVideoBackend_is_initialized());
 
     self = malloc(sizeof(ParrotVideoBackend));
+    PARROT_FAIL_COND(!self);
     memset(self, 0, sizeof(ParrotVideoBackend));
 
     PARROT_FAIL_COND(!gl3wInit());

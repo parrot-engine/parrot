@@ -19,6 +19,9 @@ typedef double ParrotReal;
 #define ParrotReal_atan2 atan2
 #endif
 
+#define PARROT_MIN(a, b) ((a) > (b) ? (b) : (a))
+#define PARROT_MAX(a, b) ((a) > (b) ? (a) : (b))
+
 PARROT_API void ParrotReal_to_float_array(const ParrotReal *src, float *dest, size_t count);
 
 typedef struct {
