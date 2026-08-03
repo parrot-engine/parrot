@@ -15,9 +15,5 @@ bss_clear:
     j       bss_clear
 bss_done:
 
-    jal Parrot_n64_main
-    nop
-
-    # Return from main hang
-    j .
+    jal Parrot_os
     nop

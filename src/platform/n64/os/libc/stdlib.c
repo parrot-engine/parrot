@@ -156,17 +156,6 @@ void abort(void) {
         ;
 }
 
-int atexit(void (*func)(void)) {
-    (void)func;
-    return 0;
-}
-
-void exit(int status) {
-    (void)status;
-    for (;;)
-        ;
-}
-
 char *getenv(const char *name) {
     (void)name;
     return NULL;

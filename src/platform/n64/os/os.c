@@ -1,6 +1,8 @@
 #include "src/platform/n64/os/boot_data.h"
 #include "src/platform/n64/os/libc/stdlib.malloc.h"
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define VI_BASE 0xA4400000
@@ -18,9 +20,21 @@
 #define VI_X_SCALE (*(volatile uint32_t *)(VI_BASE + 0x30))
 #define VI_Y_SCALE (*(volatile uint32_t *)(VI_BASE + 0x34))
 
+static void success_fb(void) {
+    uint16_t *fb = (uint16_t *)0xA0100000;
+
+    for (int i = 0; i < 320 * 240; i++) {
+        fb[i] = 0xFFFF;
+    }
+}
+
+static void success_message(void) {
+    printf("Finished!\n");
+}
+
 int main(int argc, char *argv[]);
 
-void Parrot_n64_main(void) {
+void Parrot_os(void) {
     LibdragonBootData boot_data;
     memcpy(&boot_data, (void *)0xA4000000, sizeof(LibdragonBootData));
 
@@ -42,6 +56,9 @@ void Parrot_n64_main(void) {
     VI_X_SCALE = 0x00000200;
     VI_Y_SCALE = 0x00000400;
 
+    atexit(success_message);
+    atexit(success_fb);
+
     for (int i = 0; i < 320 * 240; i++) {
         fb[i] = 0xF800;
     }
@@ -49,9 +66,9 @@ void Parrot_n64_main(void) {
     char *argv[] = {
         "game",
     };
-    main(1, argv);
+    int status = main(1, argv);
 
-    for (int i = 0; i < 320 * 240; i++) {
-        fb[i] = 0xFFFF;
-    }
+    exit(status);
+    for (;;)
+        ;
 }

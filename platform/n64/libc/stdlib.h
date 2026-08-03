@@ -9,6 +9,9 @@
 
 #define RAND_MAX 2147483647
 
+// POSIX extension, still helpful
+#define ATEXIT_MAX 48
+
 PARROT_API double atof(const char *nptr);
 PARROT_API int atoi(const char *nptr);
 PARROT_API long int atol(const char *nptr);
