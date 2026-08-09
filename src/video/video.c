@@ -405,10 +405,10 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
     }
 
     if (ParrotVideo_object_has_viewport(handle) && ParrotVideo_object_has_window(handle)) {
-        uint32_t *rgba = calloc(object->viewport->width * object->viewport->height, sizeof(uint32_t));
-        ParrotVideoBackend_read_viewport(object->viewport->viewport, rgba);
-        ParrotVideoWindow_draw(object->window->window, rgba, object->viewport->width, object->viewport->height);
-        free(rgba);
+        ParrotVideoWindow_draw(object->window->window,
+                               ParrotVideoBackend_get_viewport_pixels(object->viewport->viewport),
+                               object->viewport->width,
+                               object->viewport->height);
     }
 
     PARROT_RET_COND(!viewport);

@@ -156,10 +156,9 @@ void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle)
     hmdel(self->hm_viewports, handle.index);
 }
 
-void ParrotVideoBackend_read_viewport(ParrotVideoBackendViewportHandle handle, uint32_t *rgba) {
+uint32_t *ParrotVideoBackend_get_viewport_pixels(ParrotVideoBackendViewportHandle handle) {
     ParrotVideoBackendViewport *viewport = ParrotVideoBackend_use_viewport(handle);
-
-    memcpy(rgba, viewport->framebuffer, viewport->raw_width * viewport->raw_height * sizeof(uint32_t));
+    return viewport->framebuffer;
 }
 
 void ParrotVideoBackend_clear_viewport(ParrotVideoBackendViewportHandle handle, ParrotColor clear_color) {
@@ -194,47 +193,51 @@ void ParrotVideoBackend_draw_viewport_vertices(ParrotVideoBackendViewportHandle 
         ParrotVideoBackendVertex b = vertices[i * 3 + 1];
         ParrotVideoBackendVertex c = vertices[i * 3 + 2];
 
-        /*a.position = ParrotMat_transform3(matrix, a.position);
-        b.position = ParrotMat_transform3(matrix, b.position);
-        c.position = ParrotMat_transform3(matrix, c.position);*/
+        ParrotVideoBackendVertex *v[3] = {&a, &b, &c};
+        for (size_t i = 0; i < 3; i++) {
+            v[i]->position = ParrotMat_transform3(matrix, v[i]->position);
+            v[i]->position = ParrotVec3_add(v[i]->position, (ParrotVec3){1, 1, 1});
+            v[i]->position = ParrotVec3_scale(v[i]->position, 1.0 / 2);
+            v[i]->position.y = v[i]->position.y * 0.75;
+            v[i]->position.x *= viewport->width - 1;
+            v[i]->position.y *= get_height(viewport->width) - 1;
+        }
 
-        ParrotVideoBackendVertex v[3] = {a, b, c};
-
-        if (v[0].position.y > v[1].position.y) {
-            ParrotVideoBackendVertex tmp = v[0];
+        if (v[0]->position.y > v[1]->position.y) {
+            ParrotVideoBackendVertex *tmp = v[0];
             v[0] = v[1];
             v[1] = tmp;
         }
-        if (v[1].position.y > v[2].position.y) {
-            ParrotVideoBackendVertex tmp = v[1];
+        if (v[1]->position.y > v[2]->position.y) {
+            ParrotVideoBackendVertex *tmp = v[1];
             v[1] = v[2];
             v[2] = tmp;
         }
-        if (v[0].position.y > v[1].position.y) {
-            ParrotVideoBackendVertex tmp = v[0];
+        if (v[0]->position.y > v[1]->position.y) {
+            ParrotVideoBackendVertex *tmp = v[0];
             v[0] = v[1];
             v[1] = tmp;
         }
 
-        int32_t yh = (int32_t)(v[0].position.y * 4.0f);
-        int32_t ym = (int32_t)(v[1].position.y * 4.0f);
-        int32_t yl = (int32_t)(v[2].position.y * 4.0f);
+        int32_t yh = (int32_t)(v[0]->position.y * 4.0f);
+        int32_t ym = (int32_t)(v[1]->position.y * 4.0f);
+        int32_t yl = (int32_t)(v[2]->position.y * 4.0f);
 
-        float dx1 = v[1].position.x - v[0].position.x;
-        float dy1 = v[1].position.y - v[0].position.y;
-        float dx2 = v[2].position.x - v[0].position.x;
-        float dy2 = v[2].position.y - v[0].position.y;
-        bool lmajor = (dx1 * dy2 - dx2 * dy1) < 0.0f;
+        float dx1 = v[1]->position.x - v[0]->position.x;
+        float dy1 = v[1]->position.y - v[0]->position.y;
+        float dx2 = v[2]->position.x - v[0]->position.x;
+        float dy2 = v[2]->position.y - v[0]->position.y;
+        bool lmajor = (dx1 * dy2 - dx2 * dy1) > 0.0f;
 
         int level = 0;
         int tile = 0;
 
-        float x0 = v[0].position.x;
-        float y0 = v[0].position.y;
-        float x1 = v[1].position.x;
-        float y1 = v[1].position.y;
-        float x2 = v[2].position.x;
-        float y2 = v[2].position.y;
+        float x0 = v[0]->position.x;
+        float y0 = v[0]->position.y;
+        float x1 = v[1]->position.x;
+        float y1 = v[1]->position.y;
+        float x2 = v[2]->position.x;
+        float y2 = v[2]->position.y;
 
         float dy_h = y2 - y0;
         float dy_m = y1 - y0;

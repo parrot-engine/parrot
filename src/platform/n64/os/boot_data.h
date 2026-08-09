@@ -19,8 +19,8 @@ typedef uint8_t LibdragonBootDataConsoleType;
 #define LibdragonBootData_avaliable_memory_bytes (*(volatile uint32_t *)0xA4000000)
 #define LibdragonBootData_avaliable_random (*(volatile uint32_t *)0xA4000004)
 
-#define LibdragonBootData_rom_type (*(LibdragonBootDataROMType *)0xA4000005)
-#define LibdragonBootData_tv_type (*(LibdragonBootDataTVType *)0xA4000006)
-#define LibdragonBootData_console_type (*(LibdragonBootDataConsoleType *)0xA4000007)
+#define LibdragonBootData_rom_type (*(LibdragonBootDataROMType *)0xA4000008)
+#define LibdragonBootData_tv_type (*(LibdragonBootDataTVType *)0xA4000009)
+#define LibdragonBootData_console_type (*(LibdragonBootDataConsoleType *)0xA400000B)
 
 #endif // __SRC_PARROT_SRC_PLATFORM_N64_OS_BOOT_DATA_H_

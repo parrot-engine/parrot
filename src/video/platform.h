@@ -19,6 +19,6 @@ void ParrotVideoWindow_set_size(ParrotVideoWindow *self, int width, int height);
 int ParrotVideoWindow_get_width(ParrotVideoWindow *self);
 int ParrotVideoWindow_get_height(ParrotVideoWindow *self);
 
-void ParrotVideoWindow_draw(ParrotVideoWindow *self, uint32_t *rgba8888, int width, int height);
+void ParrotVideoWindow_draw(ParrotVideoWindow *self, uint32_t *rgbx8888, int width, int height);
 
 #endif // __SRC_PARROT_SRC_VIDEO_PLATFORM_H_

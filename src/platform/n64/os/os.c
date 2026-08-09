@@ -28,7 +28,7 @@ int main(int argc, char *argv[]);
 void Parrot_os(void) {
     memcpy((void *)0x80000180, &Parrot_os_interrupt_handler_entry, Parrot_os_interrupt_handler_entry_size);
 
-    ParrotVideoWindow_set_tv_type(LibdragonBootData_tv_type);
+    // ParrotVideoWindow_set_tv_type(LibdragonBootData_tv_type);
     Parrot_os_heap_init(LibdragonBootData_avaliable_memory_bytes);
 
     char *argv[] = {

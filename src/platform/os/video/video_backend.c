@@ -42,6 +42,8 @@ typedef struct {
     GLuint vbo;
 
     GLuint white_texture;
+
+    uint32_t *framebuffer;
 } ParrotVideoBackendViewport;
 
 typedef struct {
@@ -205,6 +207,8 @@ ParrotVideoBackendViewportHandle ParrotVideoBackend_create_viewport(int width, i
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    viewport.framebuffer = calloc(width * height, sizeof(uint32_t));
+
     hmputs(self->hm_viewports, viewport);
     return (ParrotVideoBackendViewportHandle){
         .index = viewport.key,
@@ -215,6 +219,8 @@ void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle)
     PARROT_FAIL_COND(!ParrotVideoBackend_is_initialized());
 
     ParrotVideoBackendViewport *viewport = ParrotVideoBackend_use_viewport(handle);
+
+    free(viewport->framebuffer);
 
     glDeleteTextures(1, &viewport->white_texture);
 
@@ -229,10 +235,10 @@ void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle)
     hmdel(self->hm_viewports, handle.index);
 }
 
-void ParrotVideoBackend_read_viewport(ParrotVideoBackendViewportHandle handle, uint32_t *rgba) {
+uint32_t *ParrotVideoBackend_get_viewport_pixels(ParrotVideoBackendViewportHandle handle) {
     ParrotVideoBackendViewport *viewport = ParrotVideoBackend_use_viewport(handle);
-
-    glReadPixels(0, 0, viewport->width, viewport->height, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+    glReadPixels(0, 0, viewport->width, viewport->height, GL_RGBA, GL_UNSIGNED_BYTE, viewport->framebuffer);
+    return viewport->framebuffer;
 }
 
 void ParrotVideoBackend_clear_viewport(ParrotVideoBackendViewportHandle handle, ParrotColor clear_color) {
