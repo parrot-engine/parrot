@@ -23,10 +23,10 @@ bool ParrotVideoBackend_is_initialized(void);
 ParrotVideoBackendViewportHandle ParrotVideoBackend_create_viewport(int width, int height);
 void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle);
 /**
- * Return value is RGBA8888 and guarnteed to live at least as long as the viewport which is guarnteed to update at
- * least every call to this function.
+ * Return value is RGBA8888 and guarnteed to live at least as long as the viewport which updates every call to this
+ * function.
  */
-uint32_t *ParrotVideoBackend_get_viewport_pixels(ParrotVideoBackendViewportHandle handle);
+const uint32_t *ParrotVideoBackend_get_viewport_pixels(ParrotVideoBackendViewportHandle handle);
 void ParrotVideoBackend_clear_viewport(ParrotVideoBackendViewportHandle handle, ParrotColor clear_color);
 void ParrotVideoBackend_draw_viewport_vertices(ParrotVideoBackendViewportHandle handle,
                                                ParrotColor color,

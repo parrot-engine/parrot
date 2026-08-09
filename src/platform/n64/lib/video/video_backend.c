@@ -11,19 +11,25 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define FRAMEBUFFER_COUNT 2
+
 extern uint8_t ParrotVideoBackend_rsp_ucode[];
 extern uint32_t ParrotVideoBackend_rsp_ucode_size;
 
 typedef struct {
     uint32_t key;
 
-    int raw_width;
-    int raw_height;
-
     int width;
 
-    uint32_t *framebuffer;
-    uint16_t *zbuffer;
+    bool framebuffer_dirty;
+
+    uint32_t *heap_framebuffer[FRAMEBUFFER_COUNT];
+    uint32_t *heap_zbuffer;
+
+    uint32_t *framebuffer[FRAMEBUFFER_COUNT];
+    uint32_t *zbuffer;
+
+    size_t framebuffer_index;
 } ParrotVideoBackendViewport;
 
 typedef struct {
@@ -36,7 +42,7 @@ typedef struct {
 static ParrotVideoBackend *self = NULL;
 
 static int get_height(int width) {
-    return width / (4 / 3);
+    return width / (4.0 / 3.0);
 }
 
 static ParrotRDPCommand *ParrotVideoBackendViewport_new_dl(ParrotVideoBackendViewport *self) {
@@ -46,17 +52,14 @@ static ParrotRDPCommand *ParrotVideoBackendViewport_new_dl(ParrotVideoBackendVie
 
     arrpush(arr_dl, ParrotRDPCommand_pipe_sync());
     arrpush(arr_dl,
-            ParrotRDPCommand_set_color_image(ParrotRDPCommand_FORMAT_RGBA,
-                                             ParrotRDPCommand_SIZE_32BPP,
-                                             self->width - 1,
-                                             PARROT_N64_PHYSICAL_ADDRESS(self->framebuffer)));
+            ParrotRDPCommand_set_color_image(
+                ParrotRDPCommand_FORMAT_RGBA,
+                ParrotRDPCommand_SIZE_32BPP,
+                self->width - 1,
+                PARROT_N64_PHYSICAL_ADDRESS(self->framebuffer[self->framebuffer_index % FRAMEBUFFER_COUNT])));
     arrpush(arr_dl, ParrotRDPCommand_set_depth_image(PARROT_N64_PHYSICAL_ADDRESS(self->zbuffer)));
     arrpush(arr_dl,
             ParrotRDPCommand_set_scissor(0, 0, false, false, (self->width - 1) * 4, (get_height(self->width) - 1) * 4));
-
-    Parrot_n64_writeback_invalidiate_data_cache(self->framebuffer,
-                                                self->width * get_height(self->width) * sizeof(uint32_t));
-    Parrot_n64_writeback_invalidiate_data_cache(self->zbuffer, self->width * get_height(self->width) * sizeof(uint16_t));
 
     return arr_dl;
 }
@@ -67,9 +70,6 @@ static void ParrotVideoBackendViewport_finish_dl(ParrotVideoBackendViewport *sel
     arrpush(arr_dl, ParrotRDPCommand_sync_full());
 
     ParrotRDP_send_dl(arr_dl, arrlen(arr_dl));
-
-    Parrot_n64_invalidiate_data_cache(self->framebuffer, self->width * get_height(self->width) * sizeof(uint32_t));
-    Parrot_n64_invalidiate_data_cache(self->zbuffer, self->width * get_height(self->width) * sizeof(uint16_t));
 
     arrfree(arr_dl);
 }
@@ -129,15 +129,15 @@ ParrotVideoBackendViewportHandle ParrotVideoBackend_create_viewport(int width, i
 
     viewport.key = self->next_viewport_id++;
 
-    viewport.raw_width = width;
-    viewport.raw_height = height;
-
     viewport.width = PARROT_ALIGN_UP(width, 64);
 
-    viewport.framebuffer = calloc(width * get_height(width), sizeof(uint32_t));
-    viewport.zbuffer = calloc(width * get_height(width), sizeof(uint16_t));
+    for (size_t i = 0; i < FRAMEBUFFER_COUNT; i++) {
+        viewport.heap_framebuffer[i] = calloc(width * get_height(width), sizeof(uint32_t));
+        viewport.framebuffer[i] = PARROT_N64_UNCACHED_ADDRESS(viewport.heap_framebuffer[i]);
+    }
 
-    ParrotVideoBackendViewport_new_dl(&viewport);
+    viewport.heap_zbuffer = calloc(width * get_height(width), sizeof(uint16_t));
+    viewport.zbuffer = PARROT_N64_UNCACHED_ADDRESS(viewport.heap_zbuffer);
 
     hmputs(self->hm_viewports, viewport);
     return (ParrotVideoBackendViewportHandle){
@@ -150,15 +150,17 @@ void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle)
 
     ParrotVideoBackendViewport *viewport = ParrotVideoBackend_use_viewport(handle);
 
-    free(viewport->zbuffer);
-    free(viewport->framebuffer);
+    free(viewport->heap_zbuffer);
+    for (size_t i = 0; i < FRAMEBUFFER_COUNT; i++) {
+        free(viewport->heap_framebuffer[i]);
+    }
 
     hmdel(self->hm_viewports, handle.index);
 }
 
-uint32_t *ParrotVideoBackend_get_viewport_pixels(ParrotVideoBackendViewportHandle handle) {
+const uint32_t *ParrotVideoBackend_get_viewport_pixels(ParrotVideoBackendViewportHandle handle) {
     ParrotVideoBackendViewport *viewport = ParrotVideoBackend_use_viewport(handle);
-    return viewport->framebuffer;
+    return viewport->framebuffer[viewport->framebuffer_index++ % FRAMEBUFFER_COUNT];
 }
 
 void ParrotVideoBackend_clear_viewport(ParrotVideoBackendViewportHandle handle, ParrotColor clear_color) {

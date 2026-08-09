@@ -284,6 +284,10 @@ void ParrotVideo_object_remove_viewport(ParrotVideoObjectHandle handle) {
 
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
+    if (ParrotVideo_object_has_window(handle)) {
+        ParrotVideoWindow_set_image(object->window->window, NULL);
+    }
+
     ParrotVideoBackend_delete_viewport(object->viewport->viewport);
 
     free(object->viewport);
@@ -405,10 +409,8 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
     }
 
     if (ParrotVideo_object_has_viewport(handle) && ParrotVideo_object_has_window(handle)) {
-        ParrotVideoWindow_draw(object->window->window,
-                               ParrotVideoBackend_get_viewport_pixels(object->viewport->viewport),
-                               object->viewport->width,
-                               object->viewport->height);
+        ParrotVideoWindow_set_image(object->window->window,
+                                    ParrotVideoBackend_get_viewport_pixels(object->viewport->viewport));
     }
 
     PARROT_RET_COND(!viewport);

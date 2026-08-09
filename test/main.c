@@ -79,7 +79,7 @@ int main(void) {
         {
             ParrotMat *matrix = ParrotSceneWorld_get_component(world, object, ParrotMat);
             ParrotVec3 position = ParrotMat_get_position(*matrix);
-            // position.x += 1;
+            position.x += 1;
             *matrix = ParrotMat_set_position(*matrix, position);
         }
 

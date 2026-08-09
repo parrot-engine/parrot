@@ -26,14 +26,14 @@
         PARROT_N64_MSYNC();                                                                                             \
     } while (0)
 
-void Parrot_n64_invalidiate_instruction_cache(void *addr, size_t size) {
+void Parrot_n64_invalidiate_instruction_cache(const void *addr, size_t size) {
     ICACHE_OP(/* Hit_Invalidate */ 4, (uint32_t)(uintptr_t)addr, size);
 }
 
-void Parrot_n64_invalidiate_data_cache(void *addr, size_t size) {
+void Parrot_n64_invalidiate_data_cache(const void *addr, size_t size) {
     DCACHE_OP(/* Hit_Invalidate */ 0x11, (uint32_t)(uintptr_t)addr, size);
 }
 
-void Parrot_n64_writeback_invalidiate_data_cache(void *addr, size_t size) {
+void Parrot_n64_writeback_invalidiate_data_cache(const void *addr, size_t size) {
     DCACHE_OP(/* Hit_Write_Back_Invalidate */ 0x15, (uint32_t)(uintptr_t)addr, size);
 }

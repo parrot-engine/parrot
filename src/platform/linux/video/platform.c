@@ -166,10 +166,11 @@ int ParrotVideoWindow_get_height(ParrotVideoWindow *self) {
     return attrs.height;
 }
 
-void ParrotVideoWindow_draw(ParrotVideoWindow *self, uint32_t *rgbx8888, int width, int height) {
+void ParrotVideoWindow_set_image(ParrotVideoWindow *self, const uint32_t *rgbx8888) {
     PARROT_FAIL_NULL(self);
-    PARROT_FAIL_COND(width != ParrotVideoWindow_get_width(self));
-    PARROT_FAIL_COND(height != ParrotVideoWindow_get_height(self));
+
+    int width = ParrotVideoWindow_get_width(self);
+    int height = ParrotVideoWindow_get_height(self);
 
     memcpy(self->image_data, rgbx8888, width * height * sizeof(uint32_t));
     XPutImage(self->display, self->back_buffer, self->gc, self->image, 0, 0, 0, 0, width, height);

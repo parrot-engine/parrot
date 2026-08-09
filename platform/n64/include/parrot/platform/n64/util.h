@@ -19,11 +19,14 @@
 #define PARROT_N64_UNCACHED_ADDRESS(addr) ((void *)(PARROT_N64_PHYSICAL_ADDRESS(addr) + 0xA0000000))
 #define PARROT_N64_CACHED_ADDRESS(addr) ((void *)(PARROT_N64_PHYSICAL_ADDRESS(addr) + 0x80000000))
 
+#define PARROT_N64_IS_UNCACHED(addr) (((uintptr_t)(addr) >> 29) == 0x5)
+#define PARROT_N64_IS_CACHED(addr) (((uintptr_t)(addr) >> 29) == 0x4)
+
 #define PARROT_N64_CACHE()
 
-PARROT_API void Parrot_n64_invalidiate_instruction_cache(void *addr, size_t size);
-PARROT_API void Parrot_n64_invalidiate_data_cache(void *addr, size_t size);
+PARROT_API void Parrot_n64_invalidiate_instruction_cache(const void *addr, size_t size);
+PARROT_API void Parrot_n64_invalidiate_data_cache(const void *addr, size_t size);
 
-PARROT_API void Parrot_n64_writeback_invalidiate_data_cache(void *addr, size_t size);
+PARROT_API void Parrot_n64_writeback_invalidiate_data_cache(const void *addr, size_t size);
 
 #endif // PARROT_PLATFORM_N64_INCLUDE_PARROT_PLATFORM_N64_UTIL_H_
