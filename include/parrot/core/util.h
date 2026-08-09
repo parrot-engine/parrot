@@ -9,6 +9,8 @@ typedef void (*ParrotCrashHandlerFunc)(const char *cause);
 
 extern ParrotCrashHandlerFunc Parrot_crash_handler;
 
+#define PARROT_DEPEND(...) __asm__ volatile("" ::__VA_ARGS__)
+
 #define PARROT_TYPE_STRING(type) ((void)sizeof(*(type *)NULL), #type)
 
 #define PARROT_FAIL_FMT(fmt, ...)                                                                                       \
@@ -39,5 +41,8 @@ extern ParrotCrashHandlerFunc Parrot_crash_handler;
     } while (0)
 
 #define PARROT_RET_COND(cond) PARROT_RET_COND_V(cond, )
+
+#define PARROT_ALIGN_UP(n, align) (((n) + (align) - 1) & ~((align) - 1))
+#define PARROT_ALIGN_DOWN(n, align) ((n) & ~((align) - 1))
 
 #endif // __SRC_PARROT_INCLUDE_PARROT_CORE_UTIL_H_

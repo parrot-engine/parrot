@@ -10,7 +10,7 @@ typedef struct {
     ParrotVideoObjectHandle object_handle;
 
     bool visible;
-    ParrotVec4 tint;
+    ParrotColor tint;
 } ParrotVideoSceneRenderableComponent;
 
 typedef struct {
@@ -18,6 +18,7 @@ typedef struct {
 
     int width;
     int height;
+    bool resize;
 
     bool close_requested;
 } ParrotVideoSceneWindowComponent;
@@ -29,7 +30,7 @@ typedef struct {
 
 typedef struct {
     bool use_clear_color;
-    ParrotVec3 clear_color;
+    ParrotColor clear_color;
 } ParrotVideoSceneCameraComponent;
 
 typedef struct {

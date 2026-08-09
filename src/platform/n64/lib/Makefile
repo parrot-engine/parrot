@@ -1,7 +1,6 @@
-SRCS=$(shell find . -name "*.c") $(shell find . -name "*.s")
-OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
+all:
+	$(MAKE) -C n64 BUILD_DIR=$(BUILD_DIR)/n64
 
-all: $(OBJS)
-
-include $(ROOT_DIR)/make/basic-targets.mk
-include $(ROOT_DIR)/make/cc-deps.mk
+ifeq ($(VIDEO_MODULE_ENABLE),1)
+	$(MAKE) -C video BUILD_DIR=$(BUILD_DIR)/video
+endif

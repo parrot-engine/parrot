@@ -4,34 +4,42 @@ SECTIONS {
     . = 0x80000400;
 
     .text : {
+        . = ALIGN(8);
         *(.text)
     }
 
     .data : {
+        . = ALIGN(8);
         *(.data)
     }
 
     .rodata : {
+        . = ALIGN(8);
         *(.rodata)
     }
 
     Parrot_bss_start = .;
     .bss : {
+        . = ALIGN(16);
         *(.bss)
     }
     Parrot_bss_end = .;
 
-    . = ALIGN(16);
     _gp = . + 0x7FF0;
 
     .sdata : {
+        . = ALIGN(8);
         *(.sdata*)
+        . = ALIGN(8);
         *(.lit8)
+        . = ALIGN(8);
         *(.lit4)
     }
 
     .sbss : {
+        . = ALIGN(8);
         *(.sbss*)
+        . = ALIGN(8);
         *(.scommon)
     }
 

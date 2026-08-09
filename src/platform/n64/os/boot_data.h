@@ -16,13 +16,11 @@ typedef uint8_t LibdragonBootDataConsoleType;
 #define LibdragonBootDataConsoleType_N64 ((LibdragonBootDataConsolType)0)
 #define LibdragonBootDataConsoleType_IQUE ((LibdragonBootDataConsoleType)1)
 
-typedef struct PARROT_PACKED {
-    uint32_t avaliable_memory_bytes;
-    uint32_t random_seed;
+#define LibdragonBootData_avaliable_memory_bytes (*(volatile uint32_t *)0xA4000000)
+#define LibdragonBootData_avaliable_random (*(volatile uint32_t *)0xA4000004)
 
-    LibdragonBootDataROMType rom_type;
-    LibdragonBootDataTVType tv_type;
-    LibdragonBootDataConsoleType console_type;
-} LibdragonBootData;
+#define LibdragonBootData_rom_type (*(LibdragonBootDataROMType *)0xA4000005)
+#define LibdragonBootData_tv_type (*(LibdragonBootDataTVType *)0xA4000006)
+#define LibdragonBootData_console_type (*(LibdragonBootDataConsoleType *)0xA4000007)
 
 #endif // __SRC_PARROT_SRC_PLATFORM_N64_OS_BOOT_DATA_H_

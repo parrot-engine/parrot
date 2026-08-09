@@ -1884,7 +1884,9 @@ int npf_vpprintf(npf_putc pc, void *pc_ctx, char const *format, va_list args) {
         if (sval < 0) { val = 0 - val; }
       } else {
         if (fs.conv_spec == NPF_FMT_SPEC_CONV_POINTER) {
-          val = (npf_uint_t)(uintptr_t)va_arg(args, void *);
+		  union { void *p; uintptr_t u; } conv;
+		  conv.p = va_arg(args, void *);
+		  val = (npf_uint_t)conv.u;
           base = 16u;
         } else {
 #if !NPF_LONG_IS_INT || NANOPRINTF_USE_LARGE_FORMAT_SPECIFIERS == 1

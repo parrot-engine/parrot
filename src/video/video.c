@@ -27,7 +27,7 @@ typedef struct {
 
 typedef struct {
     bool use_clear_color;
-    ParrotVec3 clear_color;
+    ParrotColor clear_color;
 } ParrotVideoObjectCamera;
 
 typedef struct {
@@ -46,7 +46,7 @@ struct ParrotVideoObject {
     ParrotMat matrix;
 
     bool visible;
-    ParrotVec4 tint;
+    ParrotColor tint;
 
     ParrotVideoObjectWindow *window;
     ParrotVideoObjectViewport *viewport;
@@ -75,7 +75,7 @@ void ParrotVideo_init(void) {
     PARROT_FAIL_COND(ParrotVideo_is_initialized());
 
     self = malloc(sizeof(ParrotVideo));
-    PARROT_FAIL_COND(!self);
+    PARROT_FAIL_NULL(self);
     memset(self, 0, sizeof(ParrotVideo));
 
     ParrotVideoBackend_init();
@@ -113,7 +113,7 @@ ParrotVideoObjectHandle ParrotVideo_create_object(void) {
     object->matrix = ParrotMat_identity();
 
     object->visible = true;
-    object->tint = ParrotVec4_n(1);
+    object->tint = ParrotColor_WHITE;
 
     uint32_t index = self->next_pointer_id++;
     hmput(self->hm_pointers, index, object);
@@ -191,7 +191,7 @@ void ParrotVideo_set_object_visible(ParrotVideoObjectHandle handle, bool visible
     hmget(self->hm_pointers, handle.index)->visible = visible;
 }
 
-void ParrotVideo_set_object_tint(ParrotVideoObjectHandle handle, ParrotVec4 tint) {
+void ParrotVideo_set_object_tint(ParrotVideoObjectHandle handle, ParrotColor tint) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
     hmget(self->hm_pointers, handle.index)->tint = tint;
@@ -328,7 +328,7 @@ bool ParrotVideo_object_has_camera(ParrotVideoObjectHandle handle) {
     return hmget(self->hm_pointers, handle.index)->camera;
 }
 
-void ParrotVideo_object_set_camera_clear_color(ParrotVideoObjectHandle handle, ParrotVec3 color) {
+void ParrotVideo_object_set_camera_clear_color(ParrotVideoObjectHandle handle, ParrotColor color) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_camera(handle));
 
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
@@ -370,11 +370,12 @@ static bool ParrotVideo_find_camera(ParrotVideoObjectHandle handle,
 
 static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
                                       ParrotVideoBackendViewportHandle *viewport,
-                                      ParrotMat projection_view_matrix,
-                                      ParrotVec4 tint) {
+                                      ParrotMat view_matrix,
+                                      ParrotMat projection_matrix,
+                                      ParrotColor tint) {
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
-    tint = ParrotVec4_mul(tint, object->tint);
+    tint = ParrotColor_mul(tint, object->tint);
 
     if (ParrotVideo_object_has_window(handle)) {
         ParrotVideoWindow_poll_events(object->window->window);
@@ -392,30 +393,26 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
                 ParrotVideoBackend_clear_viewport(object->viewport->viewport, camera->clear_color);
             }
 
-            ParrotMat projection_matrix =
-                ParrotMat_ortho(0, object->viewport->width, 0, object->viewport->height, 0, 1000000);
-
-            projection_view_matrix = ParrotMat_mul(projection_matrix, ParrotMat_inverse(camera_object->matrix));
+            view_matrix = ParrotMat_inverse(camera_object->matrix);
+            projection_matrix = ParrotMat_ortho(0, object->viewport->width, 0, object->viewport->height, 0, 1000000);
         }
     }
 
     if (object->visible) {
         for (size_t i = 0; i < hmlen(object->shm_children); i++) {
-            ParrotVideo_render_object(object->shm_children[i].key, viewport, projection_view_matrix, tint);
+            ParrotVideo_render_object(object->shm_children[i].key, viewport, view_matrix, projection_matrix, tint);
         }
     }
 
     if (ParrotVideo_object_has_viewport(handle) && ParrotVideo_object_has_window(handle)) {
-        uint32_t *bgra = calloc(object->viewport->width * object->viewport->height, sizeof(uint32_t));
-        ParrotVideoBackend_read_viewport(object->viewport->viewport, bgra);
-        ParrotVideoWindow_draw(object->window->window, bgra, object->viewport->width, object->viewport->height);
-        free(bgra);
+        uint32_t *rgba = calloc(object->viewport->width * object->viewport->height, sizeof(uint32_t));
+        ParrotVideoBackend_read_viewport(object->viewport->viewport, rgba);
+        ParrotVideoWindow_draw(object->window->window, rgba, object->viewport->width, object->viewport->height);
+        free(rgba);
     }
 
     PARROT_RET_COND(!viewport);
     PARROT_RET_COND(!object->visible);
-
-    ParrotMat matrix = ParrotMat_mul(projection_view_matrix, object->matrix);
 
     if (ParrotVideo_object_has_rect(handle)) {
         ParrotReal width = object->rect->width;
@@ -431,7 +428,15 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
             (ParrotVideoBackendVertex){.position = (ParrotVec3){width, 0, 0}},
         };
 
-        ParrotVideoBackend_draw_viewport_vertices(*viewport, tint, matrix, vertices, 6);
+        ParrotVideoBackend_draw_viewport_vertices(*viewport,
+                                                  tint,
+                                                  (ParrotGMatSet){
+                                                      .model = object->matrix,
+                                                      .view = view_matrix,
+                                                      .projection = projection_matrix,
+                                                  },
+                                                  vertices,
+                                                  6);
     }
 }
 
@@ -471,5 +476,6 @@ void ParrotVideo_object_set_rect_size(ParrotVideoObjectHandle handle, ParrotReal
 void ParrotVideo_render(void) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
 
-    ParrotVideo_render_object(self->root_object_handle, NULL, ParrotMat_identity(), ParrotVec4_n(1));
+    ParrotVideo_render_object(
+        self->root_object_handle, NULL, ParrotMat_identity(), ParrotMat_identity(), ParrotColor_WHITE);
 }

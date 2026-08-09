@@ -1,6 +1,18 @@
 -include $(ROOT_DIR)/platform/$(PLATFORM)/src/setup.mk
 
+export PACK_BEGIN = _Pragma(\"pack(push, 1)\")
+export PACK_END = _Pragma(\"pack(pop)\")
+
 export CFLAGS += -std=c99 -Wall -Wextra -pedantic-errors -MMD -MP -I$(ROOT_DIR) -I$(shell pwd)/include
+
+ifeq ($(DEBUG),1)
+export CFLAGS += -g
+export ASFLAGS += -g
+endif
+
+ifeq ($(DEBUG),0)
+export CFLAGS += $(OPTIMIZER)
+endif
 
 CONFIG_HEADER=$(BUILD_INCLUDE_DIR)/parrot/config.h
 CONFIG_HEADER_GUARD_NAME := _$(shell openssl rand -hex 32)_PARROT_CONFIG_H_
@@ -42,6 +54,9 @@ $(CONFIG_HEADER):
 	echo "#ifndef $(CONFIG_HEADER_GUARD_NAME)" > $(CONFIG_HEADER)
 	echo "#define $(CONFIG_HEADER_GUARD_NAME)" >> $(CONFIG_HEADER)
 
+	echo "#define PARROT_PACK_BEGIN() $(PACK_BEGIN)" >> $(CONFIG_HEADER)
+	echo "#define PARROT_PACK_END() $(PACK_END)" >> $(CONFIG_HEADER)
+
 ifeq ($(PLATFORM_HAS_OS),1)
 	echo "#define PARROT_PLATFORM_HAS_OS" >> $(CONFIG_HEADER)
 endif
@@ -63,8 +78,6 @@ endif
 ifeq ($(AVOID_MEMORY),1)
 	echo "#define PARROT_AVOID_MEMORY" >> $(CONFIG_HEADER)
 endif
-
-	echo "#define PARROT_PACKED __attribute__((packed))" >> $(CONFIG_HEADER)
 
 	echo "#endif // $(CONFIG_HEADER_GUARD_NAME)" >> $(CONFIG_HEADER)
 

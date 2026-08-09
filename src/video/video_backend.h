@@ -22,11 +22,11 @@ bool ParrotVideoBackend_is_initialized(void);
 
 ParrotVideoBackendViewportHandle ParrotVideoBackend_create_viewport(int width, int height);
 void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle);
-void ParrotVideoBackend_read_viewport(ParrotVideoBackendViewportHandle handle, uint32_t *bgra);
-void ParrotVideoBackend_clear_viewport(ParrotVideoBackendViewportHandle handle, ParrotVec3 clear_color);
+void ParrotVideoBackend_read_viewport(ParrotVideoBackendViewportHandle handle, uint32_t *rgba);
+void ParrotVideoBackend_clear_viewport(ParrotVideoBackendViewportHandle handle, ParrotColor clear_color);
 void ParrotVideoBackend_draw_viewport_vertices(ParrotVideoBackendViewportHandle handle,
-                                               ParrotVec4 color,
-                                               ParrotMat matrix,
+                                               ParrotColor color,
+                                               ParrotGMatSet matrix_set,
                                                const ParrotVideoBackendVertex *vertices,
                                                size_t count);
 

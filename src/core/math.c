@@ -1,5 +1,18 @@
 #include "parrot/core/math.h"
 #include <math.h> // IWYU pragma: keep
+#include <stdbool.h>
+
+ParrotReal Parrot_lerp(ParrotReal a, ParrotReal b, ParrotReal t) {
+    return (1 - t) * a + t * b;
+}
+
+float Parrot_lerpf(float a, float b, float t) {
+    return (1 - t) * a + t * b;
+}
+
+double Parrot_lerpd(double a, double b, double t) {
+    return (1 - t) * a + t * b;
+}
 
 void ParrotReal_to_float_array(const ParrotReal *src, ParrotReal *dest, size_t count) {
     for (size_t i = 0; i < count; i++) {
@@ -173,19 +186,22 @@ ParrotMat ParrotMat_inverse(ParrotMat matrix) {
             }
         }
 
-        if (fabsf(aug[col][col]) < 1e-6f)
+        if (fabsf(aug[col][col]) < 1e-6f) {
             return result;
+        }
 
         float scale = aug[col][col];
         for (int k = 0; k < 8; k++)
             aug[col][k] /= scale;
 
         for (int row = 0; row < 4; row++) {
-            if (row == col)
+            if (row == col) {
                 continue;
+            }
             float factor = aug[row][col];
-            for (int k = 0; k < 8; k++)
+            for (int k = 0; k < 8; k++) {
                 aug[row][k] -= factor * aug[col][k];
+            }
         }
     }
 
@@ -234,6 +250,21 @@ ParrotMat ParrotMat_mul(ParrotMat a, ParrotMat b) {
     }
 
     return result;
+}
+
+ParrotVec3 ParrotMat_transform3(ParrotMat matrix, ParrotVec3 vec) {
+    return (ParrotVec3){
+        .x = matrix.data[0][0] * vec.x + matrix.data[1][0] * vec.y + matrix.data[2][0] * vec.z + matrix.data[3][0],
+        .y = matrix.data[0][1] * vec.x + matrix.data[1][1] * vec.y + matrix.data[2][1] * vec.z + matrix.data[3][1],
+        .z = matrix.data[0][2] * vec.x + matrix.data[1][2] * vec.y + matrix.data[2][2] * vec.z + matrix.data[3][2],
+    };
+}
+
+ParrotVec2 ParrotMat_transform2(ParrotMat matrix, ParrotVec2 vec) {
+    return (ParrotVec2){
+        .x = matrix.data[0][0] * vec.x + matrix.data[1][0] * vec.y + matrix.data[2][0],
+        .y = matrix.data[0][1] * vec.x + matrix.data[1][1] * vec.y + matrix.data[2][1],
+    };
 }
 
 ParrotMat
@@ -366,4 +397,80 @@ ParrotVec3 ParrotMat_get_scale(ParrotMat matrix) {
     result.z = ParrotReal_sqrt(matrix.data[2][0] * matrix.data[2][0] + matrix.data[2][1] * matrix.data[2][1] +
                                matrix.data[2][2] * matrix.data[2][2]);
     return result;
+}
+
+ParrotMat ParrotGMatSet_combine(const ParrotGMatSet *self) {
+    return ParrotMat_mul(ParrotMat_mul(self->projection, self->view), self->model);
+}
+
+ParrotColor ParrotColor_new(uint8_t r, uint8_t g, uint8_t b) {
+    return ParrotColor_newa(r, g, b, 255);
+}
+
+ParrotColor ParrotColor_newf(float r, float g, float b) {
+    return ParrotColor_newaf(r, g, b, 1);
+}
+
+ParrotColor ParrotColor_newa(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    return ParrotColor_newaf((float)r / 255, (float)g / 255, (float)b / 255, (float)a / 255);
+}
+
+ParrotColor ParrotColor_newaf(float r, float g, float b, float a) {
+    return (ParrotColor){
+        .r = PARROT_CLAMP(0.0, r, 1.0),
+        .g = PARROT_CLAMP(0.0, g, 1.0),
+        .b = PARROT_CLAMP(0.0, b, 1.0),
+        .a = PARROT_CLAMP(0.0, a, 1.0),
+    };
+}
+
+ParrotColor ParrotColor_from_rgba8888(uint32_t color) {
+    return ParrotColor_newa(color >> 24, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+}
+
+ParrotColor ParrotColor_from_rgba5551(uint16_t color) {
+    return ParrotColor_newaf((float)(color >> 11) / 31,
+                             (float)((color >> 6) & 0x1F) / 31,
+                             (float)((color >> 1) & 0x1F) / 31,
+                             (color & 1) ? 255 : 0);
+}
+
+ParrotColor ParrotColor_from_rgba565(uint16_t color) {
+    return ParrotColor_newaf(
+        (float)(color >> 11) / 31, (float)((color >> 5) & 0x3F) / 63, (float)(color & 0x1F) / 31, 255);
+}
+
+uint32_t ParrotColor_to_rgba8888(ParrotColor self) {
+    uint8_t r = PARROT_CLAMP(0.0, self.r, 1.0) * 255;
+    uint8_t g = PARROT_CLAMP(0.0, self.g, 1.0) * 255;
+    uint8_t b = PARROT_CLAMP(0.0, self.b, 1.0) * 255;
+    uint8_t a = PARROT_CLAMP(0.0, self.a, 1.0) * 255;
+    return (r << 24) | (g << 16) | (b << 8) | a;
+}
+
+uint16_t ParrotColor_to_rgba5551(ParrotColor self) {
+    uint8_t r = (uint8_t)(PARROT_CLAMP(0.0, self.r, 1.0) * 31) & 0x1F;
+    uint8_t g = (uint8_t)(PARROT_CLAMP(0.0, self.g, 1.0) * 31) & 0x1F;
+    uint8_t b = (uint8_t)(PARROT_CLAMP(0.0, self.b, 1.0) * 31) & 0x1F;
+    return (r << 8) | (g << 3) | (b << 1) | (self.a > 0);
+}
+
+uint16_t ParrotColor_to_rgb565(ParrotColor self) {
+    uint8_t r = (uint8_t)(PARROT_CLAMP(0.0, self.r, 1.0) * 31) & 0x1F;
+    uint8_t g = (uint8_t)(PARROT_CLAMP(0.0, self.g, 1.0) * 63) & 0x3F;
+    uint8_t b = (uint8_t)(PARROT_CLAMP(0.0, self.b, 1.0) * 31) & 0x1F;
+    return (r << 11) | (g << 5) | b;
+}
+
+ParrotColor ParrotColor_mul(ParrotColor a, ParrotColor b) {
+    return ParrotColor_newaf(a.r * b.r, a.g * b.g, a.b * b.b, a.a * b.a);
+}
+
+ParrotColor ParrotColor_blend(ParrotColor a, ParrotColor b) {
+    return ParrotColor_lerp(a, b, 0.5);
+}
+
+ParrotColor ParrotColor_lerp(ParrotColor a, ParrotColor b, float t) {
+    return ParrotColor_newaf(
+        Parrot_lerpf(a.r, b.r, t), Parrot_lerpf(a.g, b.g, t), Parrot_lerpf(a.b, b.b, t), Parrot_lerpf(a.a, b.a, t));
 }

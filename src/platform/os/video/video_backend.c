@@ -229,22 +229,22 @@ void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle)
     hmdel(self->hm_viewports, handle.index);
 }
 
-void ParrotVideoBackend_read_viewport(ParrotVideoBackendViewportHandle handle, uint32_t *bgra) {
+void ParrotVideoBackend_read_viewport(ParrotVideoBackendViewportHandle handle, uint32_t *rgba) {
     ParrotVideoBackendViewport *viewport = ParrotVideoBackend_use_viewport(handle);
 
-    glReadPixels(0, 0, viewport->width, viewport->height, GL_BGRA, GL_UNSIGNED_BYTE, bgra);
+    glReadPixels(0, 0, viewport->width, viewport->height, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
 }
 
-void ParrotVideoBackend_clear_viewport(ParrotVideoBackendViewportHandle handle, ParrotVec3 clear_color) {
+void ParrotVideoBackend_clear_viewport(ParrotVideoBackendViewportHandle handle, ParrotColor clear_color) {
     ParrotVideoBackend_use_viewport(handle);
 
-    glClearColor(clear_color.x, clear_color.y, clear_color.z, 1);
+    glClearColor(clear_color.r, clear_color.g, clear_color.b, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 void ParrotVideoBackend_draw_viewport_vertices(ParrotVideoBackendViewportHandle handle,
-                                               ParrotVec4 color,
-                                               ParrotMat matrix,
+                                               ParrotColor color,
+                                               ParrotGMatSet matrix_set,
                                                const ParrotVideoBackendVertex *vertices,
                                                size_t count) {
     ParrotVideoBackendViewport *viewport = ParrotVideoBackend_use_viewport(handle);
@@ -255,12 +255,13 @@ void ParrotVideoBackend_draw_viewport_vertices(ParrotVideoBackendViewportHandle 
     glBufferData(GL_ARRAY_BUFFER, count * sizeof(ParrotVideoBackendVertex), vertices, GL_DYNAMIC_DRAW);
 
     float gl_matrix[4][4];
+    ParrotMat matrix = ParrotMat_mul(ParrotMat_mul(matrix_set.projection, matrix_set.view), matrix_set.model);
     ParrotReal_to_float_array(matrix.data[0], gl_matrix[0], 4 * 4);
 
     glUseProgram(viewport->shader);
     glUniformMatrix4fv(viewport->shader_matrix_loc, 1, GL_FALSE, gl_matrix[0]);
     glUniform1i(viewport->shader_texture_loc, 0);
-    glUniform4f(viewport->shader_color_loc, color.x, color.y, color.z, color.w);
+    glUniform4f(viewport->shader_color_loc, color.r, color.g, color.b, color.a);
 
     glDrawArrays(GL_TRIANGLES, 0, count);
 }

@@ -18,7 +18,7 @@ export BUILD_DIR=$(ROOT_BUILD_DIR)/$(BUILD_DIR_NAME)
 export INCLUDE_DIR=$(ROOT_DIR)/include
 export BUILD_INCLUDE_DIR=$(BUILD_DIR)/include
 
-export CFLAGS += -I$(INCLUDE_DIR) -I$(BUILD_INCLUDE_DIR)
+export CFLAGS += -I$(INCLUDE_DIR) -I$(BUILD_INCLUDE_DIR) -I$(ROOT_DIR)/platform/$(PLATFORM)/include
 
 export LIB_OUTPUT_STATIC=$(BUILD_DIR)/libparrot.a
 
@@ -26,7 +26,7 @@ BEAR=bear
 
 include platform/$(PLATFORM)/setup.mk
 
-.PHONY: all src compile-db test clean clean-all
+.PHONY: all src compile-db test test-build clean clean-all
 
 all: src
 
@@ -35,6 +35,9 @@ src:
 
 test: $(LIB_OUTPUT_STATIC)
 	$(BEAR) -a -- $(MAKE) -C test BUILD_DIR=$(BUILD_DIR)/test run
+
+test-build: $(LIB_OUTPUT_STATIC)
+	$(BEAR) -a -- $(MAKE) -C test BUILD_DIR=$(BUILD_DIR)/test
 
 $(LIB_OUTPUT_STATIC): src
 

@@ -2,6 +2,6 @@
 
 .section .rodata
 ParrotVideoBackend_fragment_shader:
-    .incbin "video/fragment.frag"
+    .incbin "fragment.frag"
     .byte 0
 

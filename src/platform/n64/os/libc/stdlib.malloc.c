@@ -6,13 +6,13 @@
 #include <string.h>
 
 #define MAGIC 0x6064454E
-#define ALIGNMENT 8
+#define ALIGNMENT 16
 
 #define PARROT_CHECK_HEAP() PARROT_FAIL_NULL_MSG(heap, "Attempt to use uninitialized heap")
 
 extern uint8_t Parrot_heap_start_addr;
 
-typedef struct AllocBlock {
+typedef struct {
     uint32_t magic;
 
     struct AllocBlock *prev;
@@ -21,16 +21,17 @@ typedef struct AllocBlock {
     bool free;
 
     size_t size;
+} AllocBlockMeta;
+
+typedef struct AllocBlock {
+    AllocBlockMeta meta;
+    uint8_t padding[PARROT_ALIGN_UP(sizeof(AllocBlockMeta), ALIGNMENT) - sizeof(AllocBlockMeta)];
     uint8_t data[];
 } AllocBlock;
 
-#define AllocBlock_size(x) (sizeof(AllocBlock) + ((AllocBlock *)x)->size)
+#define AllocBlock_size(x) (sizeof(AllocBlock) + ((AllocBlock *)x)->meta.size)
 
 static AllocBlock *heap = NULL;
-
-static size_t alloc_align_up(size_t n) {
-    return (n + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
-}
 
 void *calloc(size_t nmemb, size_t size) {
     PARROT_CHECK_HEAP();
@@ -46,59 +47,63 @@ void free(void *ptr) {
     PARROT_RET_COND(!ptr);
 
     AllocBlock *block = (AllocBlock *)ptr - 1;
-    PARROT_FAIL_COND_FMT(block->magic != MAGIC, "Attempt to free non-heap pointer at %p", ptr);
+    PARROT_FAIL_COND_FMT(block->meta.magic != MAGIC, "Attempt to free non-heap pointer at %p", ptr);
 
-    PARROT_FAIL_COND_FMT(block->free, "Double free at %p", ptr);
-    block->free = true;
+    PARROT_FAIL_COND_FMT(block->meta.free, "Double free at %p", ptr);
+    block->meta.free = true;
 
-    while (block->prev && block->prev->free) {
-        block = block->prev;
+    while (block->meta.prev && block->meta.prev->meta.free) {
+        block = block->meta.prev;
     }
 
-    while (block->next && block->next->free) {
-        AllocBlock *new_next_block = block->next->next;
+    while (block->meta.next && block->meta.next->meta.free) {
+        AllocBlock *new_next_block = block->meta.next->meta.next;
 
-        block->size += AllocBlock_size(block->next);
+        block->meta.size += AllocBlock_size(block->meta.next);
 
         if (new_next_block) {
-            new_next_block->prev = block;
+            new_next_block->meta.prev = block;
         }
-        block->next = new_next_block;
+        block->meta.next = new_next_block;
     }
 }
 
 void *malloc(size_t size) {
     PARROT_CHECK_HEAP();
 
-    size = alloc_align_up(size);
+    size = PARROT_ALIGN_UP(size, ALIGNMENT);
 
     AllocBlock *block = heap;
 
-    while (block->size < size || !block->free) {
-        block = block->next;
+    while (block->meta.size < size || !block->meta.free) {
+        block = block->meta.next;
         PARROT_RET_COND_V(!block, NULL);
     }
 
-    if (block->size > size) {
-        size_t remaining_size = block->size - size;
+    if (block->meta.size > size) {
+        size_t remaining_size = block->meta.size - size;
         if (remaining_size > sizeof(AllocBlock)) {
-            block->size = size;
+            block->meta.size = size;
 
-            AllocBlock *new_block = (AllocBlock *)((uintptr_t)block + AllocBlock_size(block));
+            AllocBlock *new_block = (AllocBlock *)((uint8_t *)block + AllocBlock_size(block));
             memset(new_block, 0, sizeof(AllocBlock));
 
-            new_block->magic = MAGIC;
-            new_block->size = remaining_size - sizeof(AllocBlock);
-            new_block->free = true;
+            new_block->meta.magic = MAGIC;
+            new_block->meta.size = remaining_size - sizeof(AllocBlock);
+            new_block->meta.free = true;
 
-            new_block->prev = block;
-            new_block->next = block->next;
+            new_block->meta.prev = block;
+            new_block->meta.next = block->meta.next;
 
-            block->next = new_block;
+            if (new_block->meta.next) {
+                new_block->meta.next->meta.prev = new_block;
+            }
+
+            block->meta.next = new_block;
         }
     }
 
-    block->free = false;
+    block->meta.free = false;
     return block->data;
 }
 
@@ -109,9 +114,9 @@ void *realloc(void *ptr, size_t size) {
 
     if (ptr && new_ptr) {
         AllocBlock *ptr_block = ((AllocBlock *)ptr - 1);
-        PARROT_FAIL_COND_FMT(ptr_block->magic != MAGIC, "Attempt to reallocate non-heap pointer at %p", ptr);
+        PARROT_FAIL_COND_FMT(ptr_block->meta.magic != MAGIC, "Attempt to reallocate non-heap pointer at %p", ptr);
 
-        size_t ptr_size = ptr_block->size;
+        size_t ptr_size = ptr_block->meta.size;
         size_t copy_size = ptr_size > size ? size : ptr_size;
 
         memcpy(new_ptr, ptr, copy_size);
@@ -128,8 +133,8 @@ void Parrot_os_heap_init(size_t memory_size) {
 
     void *mem_end = (uint8_t *)0x80000000 + memory_size;
 
-    heap->magic = MAGIC;
+    heap->meta.magic = MAGIC;
 
-    heap->size = (uintptr_t)mem_end - (uintptr_t)heap;
-    heap->free = true;
+    heap->meta.size = (uintptr_t)((uint8_t *)mem_end - (uint8_t *)heap) - sizeof(AllocBlock);
+    heap->meta.free = true;
 }

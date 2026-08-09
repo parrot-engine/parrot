@@ -3,13 +3,26 @@
 #include <string.h>
 
 void *memcpy(void *restrict s1, const void *restrict s2, size_t n) {
-    const uint8_t *src = (const uint8_t *)s2;
     uint8_t *dest = (uint8_t *)s1;
+    const uint8_t *src = (const uint8_t *)s2;
 
-    for (size_t i = 0; i < n; i++) {
+    size_t words = n / sizeof(uint32_t);
+    uint32_t *dest32 = (uint32_t *)dest;
+    const uint32_t *src32 = (const uint32_t *)src;
+
+    for (size_t i = 0; i < words; i++) {
+        dest32[i] = src32[i];
+    }
+
+    size_t remaining = n % sizeof(uint32_t);
+    dest += words * sizeof(uint32_t);
+    src += words * sizeof(uint32_t);
+
+    for (size_t i = 0; i < remaining; i++) {
         dest[i] = src[i];
     }
-    return dest;
+
+    return s1;
 }
 
 void *memmove(void *s1, const void *s2, size_t n) {

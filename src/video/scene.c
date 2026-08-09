@@ -14,7 +14,7 @@ static void ParrotVideoSceneCameraComponent_constructor(ParrotSceneWorldEntity e
     ParrotVideoSceneCameraComponent *self = (ParrotVideoSceneCameraComponent *)self_ptr;
 
     self->use_clear_color = true;
-    self->clear_color = ParrotVec3_n(0.3);
+    self->clear_color = ParrotColor_newf(0.3, 0.3, 0.3);
 }
 
 static void
@@ -29,7 +29,7 @@ ParrotVideoSceneRenderableComponent_constructor(ParrotSceneWorldEntity entity, v
     self->object_handle = ParrotVideo_create_object();
 
     self->visible = true;
-    self->tint = ParrotVec4_n(1);
+    self->tint = ParrotColor_WHITE;
 }
 
 void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
@@ -101,8 +101,10 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
 
         ParrotVideo_object_set_window_title(renderable->object_handle, window->title ? window->title : "");
 
-        if (ParrotVideo_object_get_window_width(renderable->object_handle) != window->width ||
-            ParrotVideo_object_get_window_height(renderable->object_handle) != window->height) {
+        if (!window->resize) {
+            window->width = ParrotVideo_object_get_window_width(renderable->object_handle);
+            window->height = ParrotVideo_object_get_window_height(renderable->object_handle);
+        } else {
             ParrotVideo_object_set_window_size(renderable->object_handle, window->width, window->height);
         }
 

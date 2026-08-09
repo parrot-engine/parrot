@@ -10,7 +10,9 @@ typedef struct {
     uint32_t index;
 } ParrotVideoObjectHandle;
 
+/// N64: Calling this will call ParrotRSP_init() if it's not already initialized
 PARROT_API void ParrotVideo_init(void);
+/// N64: Calling this will call ParrotRSP_shutdown() if it was not initialized at the time of video initialization
 PARROT_API void ParrotVideo_shutdown(void);
 PARROT_API bool ParrotVideo_is_initialized(void);
 
@@ -22,7 +24,7 @@ PARROT_API bool ParrotVideo_does_object_exist(ParrotVideoObjectHandle handle);
 PARROT_API void ParrotVideo_set_object_parent(ParrotVideoObjectHandle handle, ParrotVideoObjectHandle parent);
 
 PARROT_API void ParrotVideo_set_object_visible(ParrotVideoObjectHandle handle, bool visible);
-PARROT_API void ParrotVideo_set_object_tint(ParrotVideoObjectHandle handle, ParrotVec4 tint);
+PARROT_API void ParrotVideo_set_object_tint(ParrotVideoObjectHandle handle, ParrotColor tint);
 
 PARROT_API void ParrotVideo_set_object_matrix(ParrotVideoObjectHandle handle, ParrotMat matrix);
 
@@ -43,7 +45,7 @@ PARROT_API void ParrotVideo_object_set_viewport_size(ParrotVideoObjectHandle han
 PARROT_API void ParrotVideo_object_add_camera(ParrotVideoObjectHandle handle);
 PARROT_API void ParrotVideo_object_remove_camera(ParrotVideoObjectHandle handle);
 PARROT_API bool ParrotVideo_object_has_camera(ParrotVideoObjectHandle handle);
-PARROT_API void ParrotVideo_object_set_camera_clear_color(ParrotVideoObjectHandle handle, ParrotVec3 color);
+PARROT_API void ParrotVideo_object_set_camera_clear_color(ParrotVideoObjectHandle handle, ParrotColor color);
 PARROT_API void ParrotVideo_object_clear_camera_clear_color(ParrotVideoObjectHandle handle);
 
 PARROT_API void ParrotVideo_object_add_rect(ParrotVideoObjectHandle handle);

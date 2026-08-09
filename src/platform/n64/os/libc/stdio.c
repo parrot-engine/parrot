@@ -1,4 +1,5 @@
 #include "parrot/core/util.h"
+#include "parrot/platform/n64/util.h"
 #include "src/platform/n64/os/nanoprintf.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -176,8 +177,8 @@ int fputc(int c, FILE *stream) {
     char *isviewer_buffer = (char *)((uint8_t *)isviewer_base_address + 0x20);
     uint32_t *isviewer_write = (uint32_t *)((uint8_t *)isviewer_base_address + 0x14);
 
-    isviewer_buffer[0] = c;
-    *isviewer_write = 1;
+    PARROT_N64_IO_WRITE(isviewer_buffer[0], c);
+    PARROT_N64_IO_WRITE(*isviewer_write, 1);
 
     return sizeof(char);
 }

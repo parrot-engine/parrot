@@ -166,12 +166,12 @@ int ParrotVideoWindow_get_height(ParrotVideoWindow *self) {
     return attrs.height;
 }
 
-void ParrotVideoWindow_draw(ParrotVideoWindow *self, uint32_t *brga, int width, int height) {
+void ParrotVideoWindow_draw(ParrotVideoWindow *self, uint32_t *rgba8888, int width, int height) {
     PARROT_FAIL_NULL(self);
     PARROT_FAIL_COND(width != ParrotVideoWindow_get_width(self));
     PARROT_FAIL_COND(height != ParrotVideoWindow_get_height(self));
 
-    memcpy(self->image_data, brga, width * height * sizeof(uint32_t));
+    memcpy(self->image_data, rgba8888, width * height * sizeof(uint32_t));
     XPutImage(self->display, self->back_buffer, self->gc, self->image, 0, 0, 0, 0, width, height);
 
     XdbeSwapInfo swap_info = {self->window, XdbeBackground};

@@ -1,3 +1,6 @@
+#include "parrot/config.h"
+#include "parrot/platform/n64/util.h"
+#include "src/platform/n64/lib/video/platform.h"
 #include "src/platform/n64/os/boot_data.h"
 #include "src/platform/n64/os/libc/stdlib.malloc.h"
 #include <stdint.h>
@@ -5,20 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define VI_BASE 0xA4400000
-#define VI_CONTROL (*(volatile uint32_t *)(VI_BASE + 0x00))
-#define VI_ORIGIN (*(volatile uint32_t *)(VI_BASE + 0x04))
-#define VI_WIDTH (*(volatile uint32_t *)(VI_BASE + 0x08))
-#define VI_V_INTR (*(volatile uint32_t *)(VI_BASE + 0x0C))
-#define VI_BURST (*(volatile uint32_t *)(VI_BASE + 0x14))
-#define VI_V_SYNC (*(volatile uint32_t *)(VI_BASE + 0x18))
-#define VI_H_SYNC (*(volatile uint32_t *)(VI_BASE + 0x1C))
-#define VI_H_SYNC_LEAP (*(volatile uint32_t *)(VI_BASE + 0x20))
-#define VI_H_START (*(volatile uint32_t *)(VI_BASE + 0x24))
-#define VI_V_START (*(volatile uint32_t *)(VI_BASE + 0x28))
-#define VI_V_BURST (*(volatile uint32_t *)(VI_BASE + 0x2C))
-#define VI_X_SCALE (*(volatile uint32_t *)(VI_BASE + 0x30))
-#define VI_Y_SCALE (*(volatile uint32_t *)(VI_BASE + 0x34))
+extern uint8_t Parrot_os_interrupt_handler_entry;
+extern uint32_t Parrot_os_interrupt_handler_entry_size;
 
 static void success_fb(void) {
     uint16_t *fb = (uint16_t *)0xA0100000;
@@ -35,40 +26,18 @@ static void success_message(void) {
 int main(int argc, char *argv[]);
 
 void Parrot_os(void) {
-    LibdragonBootData boot_data;
-    memcpy(&boot_data, (void *)0xA4000000, sizeof(LibdragonBootData));
+    memcpy((void *)0x80000180, &Parrot_os_interrupt_handler_entry, Parrot_os_interrupt_handler_entry_size);
 
-    Parrot_os_heap_init(boot_data.avaliable_memory_bytes);
-
-    uint16_t *fb = (uint16_t *)0xA0100000;
-
-    VI_CONTROL = 0x00003202;
-    VI_ORIGIN = (uint32_t)(uintptr_t)fb & 0x00FFFFFF;
-    VI_WIDTH = 320;
-    VI_V_INTR = 0x00000200;
-    VI_BURST = 0x03E52239;
-    VI_V_SYNC = 0x0000020D;
-    VI_H_SYNC = 0x00000C15;
-    VI_H_SYNC_LEAP = 0x0C150C15;
-    VI_H_START = 0x006C02EC;
-    VI_V_START = 0x002301FD;
-    VI_V_BURST = 0x000E0204;
-    VI_X_SCALE = 0x00000200;
-    VI_Y_SCALE = 0x00000400;
-
-    atexit(success_message);
-    atexit(success_fb);
-
-    for (int i = 0; i < 320 * 240; i++) {
-        fb[i] = 0xF800;
-    }
+    ParrotVideoWindow_set_tv_type(LibdragonBootData_tv_type);
+    Parrot_os_heap_init(LibdragonBootData_avaliable_memory_bytes);
 
     char *argv[] = {
         "game",
     };
-    int status = main(1, argv);
 
+    int status = main(1, argv);
     exit(status);
+
     for (;;)
         ;
 }

@@ -7,5 +7,4 @@ export PLATFORM_UNIX ?= 1
 
 export LDFLAGS += -lX11 -lXext -lGL
 
-include $(ROOT_DIR)/make/platform_base/modern/setup.mk
 include $(ROOT_DIR)/make/platform_base/os/setup.mk

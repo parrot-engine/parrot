@@ -1,7 +1,22 @@
 #ifndef __SRC_PARROT_PLATFORM_N64_LIBC_STDINT_H_
 #define __SRC_PARROT_PLATFORM_N64_LIBC_STDINT_H_
 
-#include <stdint.h>
+#include <limits.h>
+
+#define INT8_MIN CHAR_MIN
+#define INT8_MAX CHAR_MAX
+#define INT16_MIN SHRT_MIN
+#define INT16_MAX SHRT_MAX
+#define INT32_MIN INT_MIN
+#define INT32_MAX INT_MAX
+#define INT64_MIN LLONG_MIN
+#define INT64_MAX LLONG_MAX
+
+#define UINT8_MAX UCHAR_MAX
+#define UINT16_MAX USHRT_MAX
+#define UINT32_MAX UINT_MAX
+#define UINT64_MAX ULLONG_MAX
+
 typedef char int8_t;
 typedef short int16_t;
 typedef int int32_t;
@@ -32,7 +47,7 @@ typedef uint32_t uint_fast16_t;
 typedef uint32_t uint_fast32_t;
 typedef uint64_t uint_fast64_t;
 
-typedef int64_t intptr_t;
-typedef uint64_t uintptr_t;
+typedef int32_t intptr_t;
+typedef uint32_t uintptr_t;
 
 #endif // __SRC_PARROT_PLATFORM_N64_LIBC_STDINT_H_

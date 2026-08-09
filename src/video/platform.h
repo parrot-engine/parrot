@@ -5,7 +5,6 @@
 #include <stdint.h>
 
 typedef struct ParrotVideoWindow ParrotVideoWindow;
-typedef struct ParrotVideoGLContext ParrotVideoGLContext;
 
 ParrotVideoWindow *ParrotVideoWindow_new(int width, int height);
 void ParrotVideoWindow_delete(ParrotVideoWindow *self);
@@ -20,13 +19,6 @@ void ParrotVideoWindow_set_size(ParrotVideoWindow *self, int width, int height);
 int ParrotVideoWindow_get_width(ParrotVideoWindow *self);
 int ParrotVideoWindow_get_height(ParrotVideoWindow *self);
 
-void ParrotVideoWindow_draw(ParrotVideoWindow *self, uint32_t *brga, int width, int height);
-
-//
-
-ParrotVideoGLContext *ParrotVideoGLContext_new(void);
-void ParrotVideoGLContext_delete(ParrotVideoGLContext *self);
-
-void ParrotVideoGLContext_make_current(ParrotVideoGLContext *self);
+void ParrotVideoWindow_draw(ParrotVideoWindow *self, uint32_t *rgba8888, int width, int height);
 
 #endif // __SRC_PARROT_SRC_VIDEO_PLATFORM_H_

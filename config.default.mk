@@ -93,4 +93,8 @@ endif
 ifeq ($(DEBUG_INFO),1)
 export BUILD_DIR_NAME := $(BUILD_DIR_NAME)+dbginfo
 endif
+
+ifeq ($(VIDEO_MODULE_ENABLE),1)
+export BUILD_DIR_NAME := $(BUILD_DIR_NAME)+video
+endif
 endif
