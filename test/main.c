@@ -1,19 +1,31 @@
+#include "parrot/core/main_loop.h"
 #include "parrot/core/math.h"
 #include "parrot/scene/matrix.h"
 #include "parrot/scene/world.h"
 #include "parrot/video/scene.h"
-#include <stdio.h>
+#include "parrot/video/video.h"
 
-int main(void) {
+#define SCREEN_WIDTH 640
+#define SCREEN_HEIGHT 480
+
+ParrotSceneWorld *world = NULL;
+ParrotSceneWorldEntity root;
+ParrotSceneWorldEntity camera;
+ParrotSceneWorldEntity object;
+
+float fps_update_timer = 0;
+
+static void init(ParrotMainLoopRunSettings *settings) {
+    settings->max_fps = 60;
+
     ParrotVideo_init();
 
-    ParrotSceneWorld *world = ParrotSceneWorld_new();
+    world = ParrotSceneWorld_new();
 
     ParrotMat_scene_register(world);
-
     ParrotVideoSceneSystem_register_components(world);
 
-    ParrotSceneWorldEntity root = ParrotSceneWorld_create_entity(world);
+    root = ParrotSceneWorld_create_entity(world);
     ParrotSceneWorld_add_component(world, root, ParrotVideoSceneWindowComponent);
     ParrotSceneWorld_add_component(world, root, ParrotVideoSceneViewportComponent);
     ParrotSceneWorld_add_component(world, root, ParrotVideoSceneRenderableComponent);
@@ -23,25 +35,24 @@ int main(void) {
             ParrotSceneWorld_get_component(world, root, ParrotVideoSceneWindowComponent);
 
         window->title = "Test Window";
-        window->width = 1280;
-        window->height = 720;
-        window->resize = true;
+        window->width = SCREEN_WIDTH;
+        window->height = SCREEN_HEIGHT;
     }
 
     {
         ParrotVideoSceneViewportComponent *viewport =
             ParrotSceneWorld_get_component(world, root, ParrotVideoSceneViewportComponent);
 
-        viewport->width = 1280;
-        viewport->height = 720;
+        viewport->width = SCREEN_WIDTH;
+        viewport->height = SCREEN_HEIGHT;
     }
 
-    ParrotSceneWorldEntity camera = ParrotSceneWorld_create_entity(world);
+    camera = ParrotSceneWorld_create_entity(world);
     ParrotSceneWorld_set_entity_parent(world, camera, root);
     ParrotSceneWorld_add_component(world, camera, ParrotVideoSceneRenderableComponent);
     ParrotSceneWorld_add_component(world, camera, ParrotVideoSceneCameraComponent);
 
-    ParrotSceneWorldEntity object = ParrotSceneWorld_create_entity(world);
+    object = ParrotSceneWorld_create_entity(world);
     ParrotSceneWorld_set_entity_parent(world, object, root);
     ParrotSceneWorld_add_component(world, object, ParrotMat);
     ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRenderableComponent);
@@ -49,7 +60,7 @@ int main(void) {
 
     {
         ParrotMat *matrix = ParrotSceneWorld_get_component(world, object, ParrotMat);
-        *matrix = ParrotMat_set_position(*matrix, (ParrotVec3){100, 100, 0});
+        *matrix = ParrotMat_set_position(*matrix, (ParrotVec3){SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0, 0});
         *matrix = ParrotMat_set_rotation(*matrix, (ParrotVec3){0, 0, 45});
     }
 
@@ -61,24 +72,45 @@ int main(void) {
         ParrotVideoSceneRectComponent *rect =
             ParrotSceneWorld_get_component(world, object, ParrotVideoSceneRectComponent);
 
-        rect->width = 100;
-        rect->height = 100;
+        rect->width = 150;
+        rect->height = 150;
+    }
+}
+
+static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should_close) {
+    if (!should_close) {
+        should_close = ParrotSceneWorld_get_component(world, root, ParrotVideoSceneWindowComponent)->close_requested;
     }
 
-    while (!ParrotSceneWorld_get_component(world, root, ParrotVideoSceneWindowComponent)->close_requested) {
-        {
-            ParrotMat *matrix = ParrotSceneWorld_get_component(world, object, ParrotMat);
-            ParrotVec3 rotation = ParrotMat_get_rotation(*matrix);
-            rotation.z += 1;
-            *matrix = ParrotMat_set_rotation(*matrix, rotation);
-        }
+    ParrotMat *matrix = ParrotSceneWorld_get_component(world, object, ParrotMat);
+    ParrotVec3 rotation = ParrotMat_get_rotation(*matrix);
+    rotation.z += delta;
+    *matrix = ParrotMat_set_rotation(*matrix, rotation);
 
-        ParrotVideoSceneSystem_update(world, ParrotVideo_get_root());
-        ParrotVideo_render();
+    if (fps_update_timer > 1.0) {
+        printf("FPS: %.02f\n", 1 / delta);
+        fps_update_timer = 0;
+    } else {
+        fps_update_timer += delta;
     }
 
+    return should_close;
+}
+
+static void render(ParrotMainLoopRunSettings *settings) {
+    ParrotVideoSceneSystem_update(world, ParrotVideo_get_root());
+    ParrotVideo_render();
+}
+
+static void shutdown(ParrotMainLoopRunSettings *settings) {
     ParrotSceneWorld_delete(world);
 
     ParrotVideo_shutdown();
+}
+
+int main(void) {
+    ParrotMainLoop *main_loop = ParrotMainLoop_new();
+    ParrotMainLoop_run(main_loop, NULL, init, update, render, shutdown);
+    ParrotMainLoop_delete(main_loop);
     return 0;
 }

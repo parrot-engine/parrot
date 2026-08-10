@@ -4,6 +4,8 @@ OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
 RUNNER=exec
 OUTPUT=$(BUILD_DIR)/test
 
+CFLAGS += -g
+
 .PHONY: all run $(OUTPUT)
 
 all: $(OUTPUT)
