@@ -10,6 +10,7 @@ typedef struct {
     ParrotVec3 position;
     ParrotVec3 normal;
     ParrotVec2 uv;
+    ParrotColor tint;
 } ParrotVideoBackendVertex;
 
 typedef struct {
@@ -29,7 +30,6 @@ void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle)
 const uint32_t *ParrotVideoBackend_get_viewport_pixels(ParrotVideoBackendViewportHandle handle);
 void ParrotVideoBackend_clear_viewport(ParrotVideoBackendViewportHandle handle, ParrotColor clear_color);
 void ParrotVideoBackend_draw_viewport_vertices(ParrotVideoBackendViewportHandle handle,
-                                               ParrotColor color,
                                                ParrotGMatSet matrix_set,
                                                const ParrotVideoBackendVertex *vertices,
                                                size_t count);

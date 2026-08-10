@@ -1,4 +1,5 @@
 #include "src/video/platform.h"
+#include "parrot/core/math.h"
 #include "parrot/core/util.h"
 #include <X11/X.h>
 #include <X11/Xlib.h>
@@ -172,7 +173,14 @@ void ParrotVideoWindow_set_image(ParrotVideoWindow *self, const uint32_t *rgbx88
     int width = ParrotVideoWindow_get_width(self);
     int height = ParrotVideoWindow_get_height(self);
 
-    memcpy(self->image_data, rgbx8888, width * height * sizeof(uint32_t));
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            uint8_t r = rgbx8888[y * width + x] & 0xFF;
+            uint8_t g = (rgbx8888[y * width + x] >> 8) & 0xFF;
+            uint8_t b = (rgbx8888[y * width + x] >> 16) & 0xFF;
+            self->image_data[y * width + x] = (0xFF << 24) | (r << 16) | (g << 8) | b;
+        }
+    }
     XPutImage(self->display, self->back_buffer, self->gc, self->image, 0, 0, 0, 0, width, height);
 
     XdbeSwapInfo swap_info = {self->window, XdbeBackground};

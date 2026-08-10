@@ -421,17 +421,16 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
         ParrotReal height = object->rect->height;
 
         ParrotVideoBackendVertex vertices[] = {
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, 0, 0}},
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, 0, 0}},
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, height, 0}},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, 0, 0}, .tint = ParrotColor_WHITE},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, 0, 0}, .tint = ParrotColor_ORANGE},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, height, 0}, .tint = ParrotColor_RED},
 
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, height, 0}},
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, height, 0}},
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, 0, 0}},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, height, 0}, .tint = ParrotColor_BLACK},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, height, 0}, .tint = ParrotColor_RED},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, 0, 0}, .tint = ParrotColor_ORANGE},
         };
 
         ParrotVideoBackend_draw_viewport_vertices(*viewport,
-                                                  tint,
                                                   (ParrotGMatSet){
                                                       .model = object->matrix,
                                                       .view = view_matrix,

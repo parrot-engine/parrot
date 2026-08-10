@@ -25,8 +25,8 @@ int main(void) {
             ParrotSceneWorld_get_component(world, root, ParrotVideoSceneWindowComponent);
 
         window->title = "Test Window";
-        window->width = 320;
-        window->height = 240;
+        window->width = 1280;
+        window->height = 720;
         window->resize = true;
     }
 
@@ -34,8 +34,8 @@ int main(void) {
         ParrotVideoSceneViewportComponent *viewport =
             ParrotSceneWorld_get_component(world, root, ParrotVideoSceneViewportComponent);
 
-        viewport->width = 320;
-        viewport->height = 240;
+        viewport->width = 1280;
+        viewport->height = 720;
     }
 
     ParrotSceneWorldEntity camera = ParrotSceneWorld_create_entity(world);
@@ -79,7 +79,6 @@ int main(void) {
         {
             ParrotMat *matrix = ParrotSceneWorld_get_component(world, object, ParrotMat);
             ParrotVec3 position = ParrotMat_get_position(*matrix);
-            position.x += 1;
             *matrix = ParrotMat_set_position(*matrix, position);
         }
 

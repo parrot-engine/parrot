@@ -37,13 +37,12 @@ typedef struct {
     GLuint shader;
     GLint shader_matrix_loc;
     GLint shader_texture_loc;
-    GLint shader_color_loc;
 
     GLuint vbo;
 
     GLuint white_texture;
 
-    uint32_t *heap_framebuffer;
+    uint32_t *framebuffer;
 } ParrotVideoBackendViewport;
 
 typedef struct {
@@ -162,7 +161,6 @@ ParrotVideoBackendViewportHandle ParrotVideoBackend_create_viewport(int width, i
 
         viewport.shader_matrix_loc = glGetUniformLocation(viewport.shader, "u_matrix");
         viewport.shader_texture_loc = glGetUniformLocation(viewport.shader, "u_texture");
-        viewport.shader_color_loc = glGetUniformLocation(viewport.shader, "u_color");
 
         glDeleteShader(vertex_shader);
         glDeleteShader(fragment_shader);
@@ -186,6 +184,7 @@ ParrotVideoBackendViewportHandle ParrotVideoBackend_create_viewport(int width, i
         ATTRIBUTE(0, 3, PARROT_GL_REAL, position);
         ATTRIBUTE(1, 3, PARROT_GL_REAL, normal);
         ATTRIBUTE(2, 2, PARROT_GL_REAL, uv);
+        ATTRIBUTE(3, 4, GL_FLOAT, tint);
 
 #undef ATTRIBUTE
     }
@@ -207,7 +206,7 @@ ParrotVideoBackendViewportHandle ParrotVideoBackend_create_viewport(int width, i
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    viewport.heap_framebuffer = calloc(width * height, sizeof(uint32_t));
+    viewport.framebuffer = calloc(width * height, sizeof(uint32_t));
 
     hmputs(self->hm_viewports, viewport);
     return (ParrotVideoBackendViewportHandle){
@@ -220,7 +219,7 @@ void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle)
 
     ParrotVideoBackendViewport *viewport = ParrotVideoBackend_use_viewport(handle);
 
-    free(viewport->heap_framebuffer);
+    free(viewport->framebuffer);
 
     glDeleteTextures(1, &viewport->white_texture);
 
@@ -237,8 +236,8 @@ void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle)
 
 const uint32_t *ParrotVideoBackend_get_viewport_pixels(ParrotVideoBackendViewportHandle handle) {
     ParrotVideoBackendViewport *viewport = ParrotVideoBackend_use_viewport(handle);
-    glReadPixels(0, 0, viewport->width, viewport->height, GL_RGBA, GL_UNSIGNED_BYTE, viewport->heap_framebuffer);
-    return viewport->heap_framebuffer;
+    glReadPixels(0, 0, viewport->width, viewport->height, GL_RGBA, GL_UNSIGNED_BYTE, viewport->framebuffer);
+    return viewport->framebuffer;
 }
 
 void ParrotVideoBackend_clear_viewport(ParrotVideoBackendViewportHandle handle, ParrotColor clear_color) {
@@ -249,7 +248,6 @@ void ParrotVideoBackend_clear_viewport(ParrotVideoBackendViewportHandle handle, 
 }
 
 void ParrotVideoBackend_draw_viewport_vertices(ParrotVideoBackendViewportHandle handle,
-                                               ParrotColor color,
                                                ParrotGMatSet matrix_set,
                                                const ParrotVideoBackendVertex *vertices,
                                                size_t count) {
@@ -267,7 +265,6 @@ void ParrotVideoBackend_draw_viewport_vertices(ParrotVideoBackendViewportHandle 
     glUseProgram(viewport->shader);
     glUniformMatrix4fv(viewport->shader_matrix_loc, 1, GL_FALSE, gl_matrix[0]);
     glUniform1i(viewport->shader_texture_loc, 0);
-    glUniform4f(viewport->shader_color_loc, color.r, color.g, color.b, color.a);
 
     glDrawArrays(GL_TRIANGLES, 0, count);
 }
