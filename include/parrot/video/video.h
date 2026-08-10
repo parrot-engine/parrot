@@ -10,9 +10,7 @@ typedef struct {
     uint32_t index;
 } ParrotVideoObjectHandle;
 
-/// N64: Calling this will call ParrotRSP_init() if it's not already initialized
 PARROT_API void ParrotVideo_init(void);
-/// N64: Calling this will call ParrotRSP_shutdown() if it was not initialized at the time of video initialization
 PARROT_API void ParrotVideo_shutdown(void);
 PARROT_API bool ParrotVideo_is_initialized(void);
 

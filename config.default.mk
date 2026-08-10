@@ -34,9 +34,6 @@ export VIDEO_MODULE_ENABLE ?= 1
 # other options.
 export BUILD_DIR_NAME = $(DEFAULT)
 
-# [bool] When building for the N64, controls if a mini OS which handles stdlib, and booting is provided
-export N64_PROVIDE_OS ?= 1
-
 
 #######################################################################################################################
 
