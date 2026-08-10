@@ -7,8 +7,6 @@
 int main(void) {
     ParrotVideo_init();
 
-    printf("Test 123\n");
-
     ParrotSceneWorld *world = ParrotSceneWorld_new();
 
     ParrotMat_scene_register(world);
@@ -53,14 +51,6 @@ int main(void) {
         ParrotMat *matrix = ParrotSceneWorld_get_component(world, object, ParrotMat);
         *matrix = ParrotMat_set_position(*matrix, (ParrotVec3){100, 100, 0});
         *matrix = ParrotMat_set_rotation(*matrix, (ParrotVec3){0, 0, 45});
-
-        for (int y = 0; y < 4; y++) {
-            printf("%.02f %.02f %.02f %.02f\n",
-                   matrix->data[0][y],
-                   matrix->data[1][y],
-                   matrix->data[2][y],
-                   matrix->data[3][y]);
-        }
     }
 
     {
@@ -78,16 +68,15 @@ int main(void) {
     while (!ParrotSceneWorld_get_component(world, root, ParrotVideoSceneWindowComponent)->close_requested) {
         {
             ParrotMat *matrix = ParrotSceneWorld_get_component(world, object, ParrotMat);
-            ParrotVec3 position = ParrotMat_get_position(*matrix);
-            *matrix = ParrotMat_set_position(*matrix, position);
+            ParrotVec3 rotation = ParrotMat_get_rotation(*matrix);
+            rotation.z += 1;
+            *matrix = ParrotMat_set_rotation(*matrix, rotation);
         }
 
         ParrotVideoSceneSystem_update(world, ParrotVideo_get_root());
         ParrotVideo_render();
-        printf("Loop\n");
     }
 
-    printf("End\n");
     ParrotSceneWorld_delete(world);
 
     ParrotVideo_shutdown();

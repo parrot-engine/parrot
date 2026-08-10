@@ -1,9 +1,8 @@
 #include "src/video/video_backend.h"
-#include "GL/gl3w.h"
-#include "GL/glcorearb.h"
 #include "parrot/core/math.h"
 #include "parrot/core/util.h"
 #include "stb_ds.h"
+#include <GL/gl.h>
 #include <GL/glx.h>
 #include <X11/Xlib.h>
 #include <stdint.h>
@@ -27,20 +26,8 @@ typedef struct {
 
     GLXContext context;
 
-    GLuint frame_buffer;
-    GLuint depth_render_buffer;
-    GLuint texture;
-
     int width;
     int height;
-
-    GLuint shader;
-    GLint shader_matrix_loc;
-    GLint shader_texture_loc;
-
-    GLuint vbo;
-
-    GLuint white_texture;
 
     uint32_t *framebuffer;
 } ParrotVideoBackendViewport;
@@ -58,9 +45,6 @@ void ParrotVideoBackend_init(void) {
     self = malloc(sizeof(ParrotVideoBackend));
     PARROT_FAIL_COND(!self);
     memset(self, 0, sizeof(ParrotVideoBackend));
-
-    PARROT_FAIL_COND(!gl3wInit());
-    PARROT_FAIL_COND_MSG(gl3wIsSupported(3, 3), "OpenGL 3.3 or later is required");
 }
 
 void ParrotVideoBackend_shutdown(void) {
@@ -90,7 +74,6 @@ static ParrotVideoBackendViewport *ParrotVideoBackend_use_viewport(ParrotVideoBa
 
     glXMakeContextCurrent(viewport->display, viewport->pbuffer, viewport->pbuffer, viewport->context);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, viewport->frame_buffer);
     glViewport(0, 0, viewport->width, viewport->height);
 
     return viewport;
@@ -109,102 +92,42 @@ ParrotVideoBackendViewportHandle ParrotVideoBackend_create_viewport(int width, i
     viewport.display = XOpenDisplay(NULL);
 
     int count = 0;
-    int attribs[] = {GLX_RENDER_TYPE, GLX_RGBA_BIT, GLX_DRAWABLE_TYPE, GLX_PBUFFER_BIT, GLX_DEPTH_SIZE, 24, None};
+    int attribs[] = {
+        GLX_RENDER_TYPE,
+        GLX_RGBA_BIT,
+        GLX_DRAWABLE_TYPE,
+        GLX_PBUFFER_BIT,
+
+        GLX_RED_SIZE,
+        8,
+        GLX_GREEN_SIZE,
+        8,
+        GLX_BLUE_SIZE,
+        8,
+        GLX_DEPTH_SIZE,
+        24,
+        None,
+    };
     GLXFBConfig *configs = glXChooseFBConfig(viewport.display, XDefaultScreen(viewport.display), attribs, &count);
+    if (count == 0) {
+        PARROT_FAIL_MSG("Your platform does not support the requirements for display");
+        XFree(configs);
+    }
+    GLXFBConfig config = configs[0];
+    XFree(configs);
 
-    PARROT_FAIL_COND_MSG(count == 0, "Your platform does not support the requirements for display");
+    int pb_attribs[] = {
+        GLX_PBUFFER_WIDTH,
+        width,
+        GLX_PBUFFER_HEIGHT,
+        height,
+        None,
+    };
 
-    int pb_attribs[] = {GLX_PBUFFER_WIDTH, 1, GLX_PBUFFER_HEIGHT, 1, None};
-    viewport.pbuffer = glXCreatePbuffer(viewport.display, configs[0], pb_attribs);
-
-    viewport.context = glXCreateNewContext(viewport.display, configs[0], GLX_RGBA_TYPE, NULL, True);
+    viewport.pbuffer = glXCreatePbuffer(viewport.display, config, pb_attribs);
+    viewport.context = glXCreateNewContext(viewport.display, config, GLX_RGBA_TYPE, NULL, True);
 
     glXMakeContextCurrent(viewport.display, viewport.pbuffer, viewport.pbuffer, viewport.context);
-
-    glGenFramebuffers(1, &viewport.frame_buffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, viewport.frame_buffer);
-
-    glGenTextures(1, &viewport.texture);
-    glBindTexture(GL_TEXTURE_2D, viewport.texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glGenRenderbuffers(1, &viewport.depth_render_buffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, viewport.depth_render_buffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
-    glFramebufferRenderbuffer(
-        GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, viewport.depth_render_buffer);
-
-    PARROT_FAIL_COND(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE);
-
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, viewport.texture, 0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    {
-        const char *src = NULL;
-
-        GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-        src = ParrotVideoBackend_vertex_shader;
-        glShaderSource(vertex_shader, 1, &src, NULL);
-        glCompileShader(vertex_shader);
-
-        GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-        src = ParrotVideoBackend_fragment_shader;
-        glShaderSource(fragment_shader, 1, &src, NULL);
-        glCompileShader(fragment_shader);
-
-        viewport.shader = glCreateProgram();
-        glAttachShader(viewport.shader, vertex_shader);
-        glAttachShader(viewport.shader, fragment_shader);
-        glLinkProgram(viewport.shader);
-
-        viewport.shader_matrix_loc = glGetUniformLocation(viewport.shader, "u_matrix");
-        viewport.shader_texture_loc = glGetUniformLocation(viewport.shader, "u_texture");
-
-        glDeleteShader(vertex_shader);
-        glDeleteShader(fragment_shader);
-    }
-
-    glGenBuffers(1, &viewport.vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, viewport.vbo);
-
-    {
-#define ATTRIBUTE(index, size, type, field)                                                                             \
-    do {                                                                                                                \
-        glVertexAttribPointer(index,                                                                                    \
-                              size,                                                                                     \
-                              type,                                                                                     \
-                              GL_FALSE,                                                                                 \
-                              sizeof(ParrotVideoBackendVertex),                                                         \
-                              (void *)offsetof(ParrotVideoBackendVertex, field));                                       \
-        glEnableVertexAttribArray(index);                                                                               \
-    } while (0)
-
-        ATTRIBUTE(0, 3, PARROT_GL_REAL, position);
-        ATTRIBUTE(1, 3, PARROT_GL_REAL, normal);
-        ATTRIBUTE(2, 2, PARROT_GL_REAL, uv);
-        ATTRIBUTE(3, 4, GL_FLOAT, tint);
-
-#undef ATTRIBUTE
-    }
-
-    {
-        glGenTextures(1, &viewport.white_texture);
-        glBindTexture(GL_TEXTURE_2D, viewport.white_texture);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-        uint32_t white = 0xFFFFFFFF;
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &white);
-    }
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     viewport.framebuffer = calloc(width * height, sizeof(uint32_t));
 
@@ -219,17 +142,11 @@ void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle)
 
     ParrotVideoBackendViewport *viewport = ParrotVideoBackend_use_viewport(handle);
 
+    glXDestroyPbuffer(viewport->display, viewport->pbuffer);
+    glXDestroyContext(viewport->display, viewport->context);
+    XCloseDisplay(viewport->display);
+
     free(viewport->framebuffer);
-
-    glDeleteTextures(1, &viewport->white_texture);
-
-    glDeleteBuffers(1, &viewport->vbo);
-
-    glDeleteProgram(viewport->shader);
-
-    glDeleteFramebuffers(1, &viewport->frame_buffer);
-    glDeleteTextures(1, &viewport->texture);
-    glDeleteRenderbuffers(1, &viewport->depth_render_buffer);
 
     hmdel(self->hm_viewports, handle.index);
 }
@@ -252,19 +169,32 @@ void ParrotVideoBackend_draw_viewport_vertices(ParrotVideoBackendViewportHandle 
                                                const ParrotVideoBackendVertex *vertices,
                                                size_t count) {
     ParrotVideoBackendViewport *viewport = ParrotVideoBackend_use_viewport(handle);
+    (void)viewport;
 
-    glBindTexture(GL_TEXTURE_2D, viewport->white_texture);
+    glMatrixMode(GL_MODELVIEW);
+    ParrotMat modelview_matrix = ParrotMat_mul(matrix_set.model, matrix_set.view);
+#ifndef PARROT_DOUBLE_PRECISION
+    glLoadMatrixf(modelview_matrix.data[0]);
+#else
+    glLoadMatrixd(modelview_matrix.data[0]);
+#endif
 
-    glBindBuffer(GL_ARRAY_BUFFER, viewport->vbo);
-    glBufferData(GL_ARRAY_BUFFER, count * sizeof(ParrotVideoBackendVertex), vertices, GL_DYNAMIC_DRAW);
+    glMatrixMode(GL_PROJECTION);
 
-    float gl_matrix[4][4];
-    ParrotMat matrix = ParrotMat_mul(ParrotMat_mul(matrix_set.projection, matrix_set.view), matrix_set.model);
-    ParrotReal_to_float_array(matrix.data[0], gl_matrix[0], 4 * 4);
+#ifndef PARROT_DOUBLE_PRECISION
+    glLoadMatrixf(matrix_set.projection.data[0]);
+#else
+    glLoadMatrixd(matrix_set.projection.data[0]);
+#endif
 
-    glUseProgram(viewport->shader);
-    glUniformMatrix4fv(viewport->shader_matrix_loc, 1, GL_FALSE, gl_matrix[0]);
-    glUniform1i(viewport->shader_texture_loc, 0);
-
-    glDrawArrays(GL_TRIANGLES, 0, count);
+    glBegin(GL_TRIANGLES);
+    {
+        for (size_t i = 0; i < count; i++) {
+            const ParrotVideoBackendVertex *vertex = &vertices[i];
+            glNormal3f(vertex->normal.x, vertex->normal.y, vertex->normal.z);
+            glColor4f(vertex->tint.r, vertex->tint.g, vertex->tint.b, vertex->tint.a);
+            glVertex3f(vertex->position.x, vertex->position.y, vertex->position.z);
+        }
+    }
+    glEnd();
 }
