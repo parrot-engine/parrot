@@ -18,7 +18,7 @@ ExternalProject_Add(
     parrot_external
     SOURCE_DIR ${CMAKE_SOURCE_DIR}
     CONFIGURE_COMMAND ""
-	BUILD_COMMAND make -f ${CMAKE_SOURCE_DIR}/Makefile ${OPTIONS}
+	BUILD_COMMAND make -f ${CMAKE_CURRENT_SOURCE_DIR}/Makefile ${OPTIONS}
     INSTALL_COMMAND ""
     BUILD_IN_SOURCE 1
 	BUILD_ALWAYS 1
@@ -28,7 +28,7 @@ add_library(parrot STATIC IMPORTED GLOBAL)
 
 set_target_properties(parrot PROPERTIES
     IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/parrot_external/libparrot.a"
-    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/include"
+	INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
 add_dependencies(parrot parrot_external)
