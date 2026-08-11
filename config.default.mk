@@ -30,7 +30,7 @@ export DOUBLE_PRECISION ?= 0
 # Default is platform dependent but if the platform specifies no default, it will be treated as false.
 export AVOID_MEMORY ?= $(DEFAULT)
 
-# [bool] If to build the video module
+# [bool] Builds the video module
 export VIDEO_MODULE_ENABLE ?= 1
 
 # [path] The build directory name (relative to the root build directory) to build into. By default, the value is derived from the
