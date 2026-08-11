@@ -289,114 +289,69 @@ ParrotMat_ortho(ParrotReal left, ParrotReal right, ParrotReal bottom, ParrotReal
     return matrix;
 }
 
-static ParrotReal ParrotMat_col_length(ParrotMat matrix, int col) {
-    ParrotReal x = matrix.data[col][0];
-    ParrotReal y = matrix.data[col][1];
-    ParrotReal z = matrix.data[col][2];
-    return ParrotReal_sqrt(x * x + y * y + z * z);
-}
+ParrotMat ParrotMat_translation(ParrotVec3 position) {
+    ParrotMat matrix = ParrotMat_identity();
 
-ParrotMat ParrotMat_set_position(ParrotMat matrix, ParrotVec3 position) {
     matrix.data[3][0] = position.x;
     matrix.data[3][1] = position.y;
     matrix.data[3][2] = position.z;
+
     return matrix;
 }
 
-ParrotMat ParrotMat_set_rotation(ParrotMat matrix, ParrotVec3 rotation) {
-    ParrotReal sx_scale = ParrotMat_col_length(matrix, 0);
-    ParrotReal sy_scale = ParrotMat_col_length(matrix, 1);
-    ParrotReal sz_scale = ParrotMat_col_length(matrix, 2);
-
-    if (sx_scale < 1e-6f) {
-        sx_scale = (ParrotReal)1.0;
-    }
-    if (sy_scale < 1e-6f) {
-        sy_scale = (ParrotReal)1.0;
-    }
-    if (sz_scale < 1e-6f) {
-        sz_scale = (ParrotReal)1.0;
-    }
+ParrotMat ParrotMat_rotation(ParrotVec3 rotation) {
+    ParrotMat matrix = ParrotMat_identity();
 
     ParrotReal sx = ParrotReal_sin(rotation.x), cx = ParrotReal_cos(rotation.x);
     ParrotReal sy = ParrotReal_sin(rotation.y), cy = ParrotReal_cos(rotation.y);
     ParrotReal sz = ParrotReal_sin(rotation.z), cz = ParrotReal_cos(rotation.z);
 
-    matrix.data[0][0] = (cz * cy) * sx_scale;
-    matrix.data[0][1] = (sz * cy) * sx_scale;
-    matrix.data[0][2] = (-sy) * sx_scale;
+    matrix.data[0][0] = cz * cy;
+    matrix.data[0][1] = sz * cy;
+    matrix.data[0][2] = -sy;
 
-    matrix.data[1][0] = (cz * sy * sx - sz * cx) * sy_scale;
-    matrix.data[1][1] = (sz * sy * sx + cz * cx) * sy_scale;
-    matrix.data[1][2] = (cy * sx) * sy_scale;
+    matrix.data[1][0] = cz * sy * sx - sz * cx;
+    matrix.data[1][1] = sz * sy * sx + cz * cx;
+    matrix.data[1][2] = cy * sx;
 
-    matrix.data[2][0] = (cz * sy * cx + sz * sx) * sz_scale;
-    matrix.data[2][1] = (sz * sy * cx - cz * sx) * sz_scale;
-    matrix.data[2][2] = (cy * cx) * sz_scale;
-
-    return matrix;
-}
-
-ParrotMat ParrotMat_set_scale(ParrotMat matrix, ParrotVec3 scale) {
-    for (int col = 0; col < 3; col++) {
-        ParrotReal new_scale = (col == 0) ? scale.x : (col == 1) ? scale.y : scale.z;
-        ParrotReal len = ParrotMat_col_length(matrix, col);
-
-        if (len > (ParrotReal)1e-6) {
-            ParrotReal factor = new_scale / len;
-            matrix.data[col][0] *= factor;
-            matrix.data[col][1] *= factor;
-            matrix.data[col][2] *= factor;
-        } else {
-            matrix.data[col][0] = (col == 0) ? new_scale : (ParrotReal)0.0;
-            matrix.data[col][1] = (col == 1) ? new_scale : (ParrotReal)0.0;
-            matrix.data[col][2] = (col == 2) ? new_scale : (ParrotReal)0.0;
-        }
-    }
+    matrix.data[2][0] = cz * sy * cx + sz * sx;
+    matrix.data[2][1] = sz * sy * cx - cz * sx;
+    matrix.data[2][2] = cy * cx;
 
     return matrix;
 }
 
-ParrotVec3 ParrotMat_get_position(ParrotMat matrix) {
-    return (ParrotVec3){matrix.data[3][0], matrix.data[3][1], matrix.data[3][2]};
+ParrotMat ParrotMat_scale(ParrotVec3 scale) {
+    ParrotMat matrix = ParrotMat_identity();
+
+    matrix.data[0][0] = scale.x;
+    matrix.data[1][1] = scale.y;
+    matrix.data[2][2] = scale.z;
+
+    return matrix;
 }
 
-ParrotVec3 ParrotMat_get_rotation(ParrotMat matrix) {
-    ParrotVec3 scale = ParrotMat_get_scale(matrix);
+ParrotTransform ParrotTransform_new(void) {
+    return (ParrotTransform){
+        .scale = ParrotVec3_n(1),
+    };
+}
 
-    ParrotReal r00 = matrix.data[0][0] / scale.x;
-    ParrotReal r01 = matrix.data[0][1] / scale.x;
-    ParrotReal r02 = matrix.data[0][2] / scale.x;
-    ParrotReal r12 = matrix.data[1][2] / scale.y;
-    ParrotReal r22 = matrix.data[2][2] / scale.z;
-    ParrotReal r10 = matrix.data[1][0] / scale.y;
-    ParrotReal r11 = matrix.data[1][1] / scale.y;
-
-    ParrotVec3 result;
-
-    ParrotReal cy = ParrotReal_sqrt(r00 * r00 + r01 * r01);
-    if (cy > (ParrotReal)1e-6) {
-        result.x = ParrotReal_atan2(r12, r22);
-        result.y = ParrotReal_atan2(-r02, cy);
-        result.z = ParrotReal_atan2(r01, r00);
-    } else {
-        result.x = ParrotReal_atan2(-r10, r11);
-        result.y = ParrotReal_atan2(-r02, cy);
-        result.z = (ParrotReal)0;
+ParrotMat ParrotTransform_calculate_matrix(const ParrotTransform *self) {
+    ParrotMat matrix = ParrotMat_identity();
+    if (self->parent) {
+        matrix = ParrotTransform_calculate_matrix(self->parent);
     }
 
-    return result;
-}
+    ParrotMat translation = ParrotMat_translation(self->position);
+    ParrotMat rotation = ParrotMat_rotation(self->rotation);
+    ParrotMat scale = ParrotMat_scale(self->scale);
 
-ParrotVec3 ParrotMat_get_scale(ParrotMat matrix) {
-    ParrotVec3 result;
-    result.x = ParrotReal_sqrt(matrix.data[0][0] * matrix.data[0][0] + matrix.data[0][1] * matrix.data[0][1] +
-                               matrix.data[0][2] * matrix.data[0][2]);
-    result.y = ParrotReal_sqrt(matrix.data[1][0] * matrix.data[1][0] + matrix.data[1][1] * matrix.data[1][1] +
-                               matrix.data[1][2] * matrix.data[1][2]);
-    result.z = ParrotReal_sqrt(matrix.data[2][0] * matrix.data[2][0] + matrix.data[2][1] * matrix.data[2][1] +
-                               matrix.data[2][2] * matrix.data[2][2]);
-    return result;
+    matrix = ParrotMat_mul(matrix, translation);
+    matrix = ParrotMat_mul(matrix, rotation);
+    matrix = ParrotMat_mul(matrix, scale);
+
+    return matrix;
 }
 
 ParrotMat ParrotGMatSet_combine(const ParrotGMatSet *self) {

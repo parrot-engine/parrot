@@ -1,6 +1,6 @@
 #include "parrot/core/main_loop.h"
 #include "parrot/core/math.h"
-#include "parrot/scene/matrix.h"
+#include "parrot/scene/transform.h"
 #include "parrot/scene/world.h"
 #include "parrot/video/scene.h"
 #include "parrot/video/video.h"
@@ -22,7 +22,7 @@ static void init(ParrotMainLoopRunSettings *settings) {
 
     world = ParrotSceneWorld_new();
 
-    ParrotMat_scene_register(world);
+    ParrotTransform_scene_register(world);
     ParrotVideoSceneSystem_register_components(world);
 
     root = ParrotSceneWorld_create_entity(world);
@@ -54,14 +54,14 @@ static void init(ParrotMainLoopRunSettings *settings) {
 
     object = ParrotSceneWorld_create_entity(world);
     ParrotSceneWorld_set_entity_parent(world, object, root);
-    ParrotSceneWorld_add_component(world, object, ParrotMat);
+    ParrotSceneWorld_add_component(world, object, ParrotTransform);
     ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRenderableComponent);
     ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRectComponent);
 
     {
-        ParrotMat *matrix = ParrotSceneWorld_get_component(world, object, ParrotMat);
-        *matrix = ParrotMat_set_position(*matrix, (ParrotVec3){SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0, 0});
-        *matrix = ParrotMat_set_rotation(*matrix, (ParrotVec3){0, 0, 45});
+        ParrotTransform *transform = ParrotSceneWorld_get_component(world, object, ParrotTransform);
+        transform->position = (ParrotVec3){SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0, 0};
+        transform->rotation = (ParrotVec3){0, 0, 45};
     }
 
     {
@@ -82,10 +82,9 @@ static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should
         should_close = ParrotSceneWorld_get_component(world, root, ParrotVideoSceneWindowComponent)->close_requested;
     }
 
-    ParrotMat *matrix = ParrotSceneWorld_get_component(world, object, ParrotMat);
-    ParrotVec3 rotation = ParrotMat_get_rotation(*matrix);
-    rotation.z += delta;
-    *matrix = ParrotMat_set_rotation(*matrix, rotation);
+    ParrotTransform *transform = ParrotSceneWorld_get_component(world, object, ParrotTransform);
+    transform->position.x += delta * 50;
+    transform->rotation.z += delta;
 
     if (fps_update_timer > 1.0) {
         printf("FPS: %.02f\n", 1 / delta);

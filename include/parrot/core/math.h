@@ -154,19 +154,29 @@ PARROT_API ParrotVec2 ParrotMat_transform2(ParrotMat matrix, ParrotVec2 vec);
 PARROT_API ParrotMat
 ParrotMat_ortho(ParrotReal left, ParrotReal right, ParrotReal down, ParrotReal up, ParrotReal near, ParrotReal far);
 
-PARROT_API ParrotMat ParrotMat_set_position(ParrotMat matrix, ParrotVec3 position);
-PARROT_API ParrotMat ParrotMat_set_rotation(ParrotMat matrix, ParrotVec3 rotation);
-PARROT_API ParrotMat ParrotMat_set_scale(ParrotMat matrix, ParrotVec3 scale);
-
-PARROT_API ParrotVec3 ParrotMat_get_position(ParrotMat matrix);
-PARROT_API ParrotVec3 ParrotMat_get_rotation(ParrotMat matrix);
-PARROT_API ParrotVec3 ParrotMat_get_scale(ParrotMat matrix);
+PARROT_API ParrotMat ParrotMat_translation(ParrotVec3 position);
+PARROT_API ParrotMat ParrotMat_rotation(ParrotVec3 rotation);
+PARROT_API ParrotMat ParrotMat_scale(ParrotVec3 scale);
 
 typedef struct {
     ParrotMat model;
     ParrotMat view;
     ParrotMat projection;
 } ParrotGMatSet;
+
+typedef struct ParrotTransform ParrotTransform;
+
+struct ParrotTransform {
+    ParrotTransform *parent;
+
+    ParrotVec3 position;
+    ParrotVec3 rotation;
+    ParrotVec3 scale;
+};
+
+ParrotTransform ParrotTransform_new(void);
+
+ParrotMat ParrotTransform_calculate_matrix(const ParrotTransform *self);
 
 PARROT_API ParrotMat ParrotGMatSet_combine(const ParrotGMatSet *self);
 

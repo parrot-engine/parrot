@@ -1,7 +1,7 @@
 #include "parrot/video/scene.h"
 #include "parrot/core/math.h"
 #include "parrot/core/util.h"
-#include "parrot/scene/matrix.h"
+#include "parrot/scene/transform.h"
 #include "parrot/scene/world.h"
 #include "parrot/video/video.h"
 
@@ -87,7 +87,10 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
         ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRenderableComponent);
     PARROT_FAIL_NULL(renderable);
 
-    ParrotVideo_set_object_matrix(renderable->object_handle, ParrotMat_get_entity_global_matrix(world, entity));
+    ParrotTransform *transform = ParrotSceneWorld_get_component(world, entity, ParrotTransform);
+    if (transform) {
+        ParrotVideo_set_object_matrix(renderable->object_handle, ParrotTransform_calculate_matrix(transform));
+    }
 
     ParrotVideo_set_object_visible(renderable->object_handle, renderable->visible);
     ParrotVideo_set_object_tint(renderable->object_handle, renderable->tint);

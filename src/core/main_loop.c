@@ -79,6 +79,7 @@ void ParrotMainLoop_run(ParrotMainLoop *self,
         init(&settings);
     }
 
+    ParrotMainLoop_next_frame(self, &delta, settings.max_fps);
     for (;;) {
         if (update(&settings, delta, !ParrotMainLoop_next_frame(self, &delta, settings.max_fps))) {
             break;
