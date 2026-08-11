@@ -15,6 +15,9 @@ export ARCH ?= $(DEFAULT)
 # adds several debugging features.
 export DEBUG ?= 0
 
+# [bool] Generate compile_commands.json
+export COMPILE_DB ?= 0
+
 # [bool] Build the code with optimizations. The default value is the opposite of if debug mode is enabled.
 export OPTIMIZE ?= $(DEFAULT)
 # [bool] Build with debug info for debuggers and other tools. The default value matches if debug mode is enabled.

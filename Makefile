@@ -22,7 +22,13 @@ export CFLAGS += -I$(INCLUDE_DIR) -I$(BUILD_INCLUDE_DIR) -I$(ROOT_DIR)/platform/
 
 export LIB_OUTPUT_STATIC=$(BUILD_DIR)/libparrot.a
 
-BEAR=bear
+ifeq ($(COMPILE_DB),1)
+BEAR=bear -a -- 
+endif
+
+ifeq ($(COMPILE_DB),0)
+BEAR=
+endif
 
 include platform/$(PLATFORM)/setup.mk
 
@@ -31,13 +37,13 @@ include platform/$(PLATFORM)/setup.mk
 all: src
 
 src:
-	$(BEAR) -a -- $(MAKE) -C src BUILD_DIR=$(BUILD_DIR)/lib
+	$(BEAR) $(MAKE) -C src BUILD_DIR=$(BUILD_DIR)/lib
 
-test: $(LIB_OUTPUT_STATIC)
-	$(BEAR) -a -- $(MAKE) -C test BUILD_DIR=$(BUILD_DIR)/test run
+test: build-test
+	$(MAKE) -C test BUILD_DIR=$(BUILD_DIR)/test run
 
-test-build: $(LIB_OUTPUT_STATIC)
-	$(BEAR) -a -- $(MAKE) -C test BUILD_DIR=$(BUILD_DIR)/test
+build-test: $(LIB_OUTPUT_STATIC)
+	$(BEAR) $(MAKE) -C test BUILD_DIR=$(BUILD_DIR)/test
 
 $(LIB_OUTPUT_STATIC): src
 

@@ -1,10 +1,10 @@
-SRCS=$(shell find . -name "*.c") $(shell find . -name "*.s")
+SRCS=$(shell find . -name "*.c")
 OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
 
 RUNNER=exec
 OUTPUT=$(BUILD_DIR)/test
 
-CFLAGS += -g
+CFLAGS += -g -std=c99
 
 .PHONY: all run $(OUTPUT)
 
