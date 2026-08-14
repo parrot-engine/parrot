@@ -18,15 +18,13 @@ typedef enum {
     ParrotSceneWorldQueryType_COMPONENT,
 } ParrotSceneWorldQueryType;
 
-typedef union {
-    struct {
-        const char *name;
-    } component;
-} ParrotSceneWorldQueryData;
-
 typedef struct {
     ParrotSceneWorldQueryType type;
-    ParrotSceneWorldQueryData data;
+    union {
+        struct {
+            const char *name;
+        } component;
+    } data;
 
     bool invert;
 } ParrotSceneWorldQuery;

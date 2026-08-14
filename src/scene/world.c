@@ -400,10 +400,9 @@ static ParrotCRC32 ParrotSceneWorld_query(ParrotSceneWorld *self, const ParrotSc
             hmputs(cache, (ParrotCRC32Set){query_crc32});
 
             arrpush(cached_query.arr_components, filter->data.component.name);
-            break;
-        }
-        case ParrotSceneWorldQueryType_END:
-            break;
+        } break;
+        case ParrotSceneWorldQueryType_END: {
+        } break;
         }
     }
 

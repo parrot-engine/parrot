@@ -5,20 +5,16 @@ void Parrot_free_scope_wrapper(void *ctx) {
     free(ctx);
 }
 
-void Parrot_arrfree_scope_wrapper(void *ctx) {
-    arrfree(*(void **)ctx);
+void Parrot_arrfree_scope_wrapper(void *ctx_ptr) {
+    ParrotSTBDSFreeCtx *ctx = ctx_ptr;
+    if (*ctx->data) {
+        stbds_arrfreef(*ctx->data);
+    }
 }
 
-typedef struct {
-    char *key;
-} HashDummy;
-
-void Parrot_shfree_scope_wrapper(void *ctx) {
-    HashDummy *dummy = *(void **)ctx;
-    shfree(dummy);
-}
-
-void Parrot_hmfree_scope_wrapper(void *ctx) {
-    HashDummy *dummy = *(void **)ctx;
-    hmfree(dummy);
+void Parrot_hmfree_scope_wrapper(void *ctx_ptr) {
+    ParrotSTBDSFreeCtx *ctx = ctx_ptr;
+    if (*ctx->data) {
+        stbds_hmfree_func(((uint8_t *)*ctx->data) - ctx->element_size, ctx->element_size);
+    }
 }

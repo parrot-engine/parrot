@@ -50,6 +50,7 @@ void ParrotScope_delete(ParrotScope *self) {
         entry.func(entry.ctx);
     }
 
+    hmfree(self->hm_stack);
     free(self);
 }
 

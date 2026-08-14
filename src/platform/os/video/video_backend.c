@@ -172,7 +172,7 @@ void ParrotVideoBackend_draw_viewport_vertices(ParrotVideoBackendViewportHandle 
     (void)viewport;
 
     glMatrixMode(GL_MODELVIEW);
-    ParrotMat modelview_matrix = ParrotMat_mul(matrix_set.model, matrix_set.view);
+    ParrotMat modelview_matrix = ParrotMat_mul(matrix_set.view, matrix_set.model);
 #ifndef PARROT_DOUBLE_PRECISION
     glLoadMatrixf(modelview_matrix.data[0]);
 #else

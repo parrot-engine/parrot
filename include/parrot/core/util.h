@@ -11,6 +11,7 @@ extern ParrotCrashHandlerFunc Parrot_crash_handler;
 
 #define PARROT_DEPEND(...) __asm__ volatile("" ::__VA_ARGS__)
 
+#define PARROT_STRING(x) #x
 #define PARROT_TYPE_STRING(type) ((void)sizeof(*(type *)NULL), #type)
 
 #define PARROT_FAIL_FMT(fmt, ...)                                                                                       \

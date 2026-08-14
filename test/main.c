@@ -1,5 +1,7 @@
 #include "parrot/core/main_loop.h"
 #include "parrot/core/math.h"
+#include "parrot/core/reflect.h"
+#include "parrot/module.h"
 #include "parrot/scene/transform.h"
 #include "parrot/scene/world.h"
 #include "parrot/video/scene.h"
@@ -8,6 +10,9 @@
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 
+#define RECT_SIZE 150
+
+ParrotReflect *reflect = NULL;
 ParrotSceneWorld *world = NULL;
 ParrotSceneWorldEntity root;
 ParrotSceneWorldEntity camera;
@@ -15,12 +20,55 @@ ParrotSceneWorldEntity object;
 
 float fps_update_timer = 0;
 
+static void print_type(const char *typename) {
+    ptrdiff_t type = ParrotReflect_resolve_type(reflect, typename);
+    printf("Type \"%s\":\n", typename);
+    printf("  Size: %td\n", ParrotReflect_get_type_size(reflect, type));
+
+    for (size_t i = 0; i < ParrotReflect_get_type_field_count(reflect, type); i++) {
+        char *name = ParrotReflect_get_type_field_name(reflect, type, i);
+        char *typename = ParrotReflect_get_type_field_typename(reflect, type, i);
+
+        printf("  Field \"%s\":\n", name);
+        printf("    Type: %s", typename);
+        {
+            size_t j = 1;
+            for (;;) {
+                size_t size = ParrotReflect_get_type_field_dimension_size(reflect, type, i, j++);
+                if (size == 0) {
+                    break;
+                }
+                printf("[%td]", size);
+            }
+        }
+        printf("\n");
+        printf("    Offset: %td\n", ParrotReflect_get_type_field_offset(reflect, type, i));
+        printf("    Size: %td\n", ParrotReflect_get_type_field_size(reflect, type, i));
+
+        free(typename);
+        free(name);
+    }
+
+    for (size_t i = 0; i < ParrotReflect_get_type_field_count(reflect, type); i++) {
+        char *typename = ParrotReflect_get_type_field_typename(reflect, type, i);
+
+        if (ParrotReflect_resolve_type(reflect, typename) >= 0) {
+            print_type(typename);
+        }
+
+        free(typename);
+    }
+}
+
 static void init(ParrotMainLoopRunSettings *settings) {
     settings->max_fps = 60;
 
     ParrotVideo_init();
 
+    reflect = ParrotReflect_new();
     world = ParrotSceneWorld_new();
+
+    ParrotReflect_register(reflect, Parrot_collection);
 
     ParrotTransform_scene_register(world);
     ParrotVideoSceneSystem_register_components(world);
@@ -49,22 +97,24 @@ static void init(ParrotMainLoopRunSettings *settings) {
 
     camera = ParrotSceneWorld_create_entity(world);
     ParrotSceneWorld_set_entity_parent(world, camera, root);
+    ParrotSceneWorld_add_component(world, camera, ParrotTransform);
     ParrotSceneWorld_add_component(world, camera, ParrotVideoSceneRenderableComponent);
     ParrotSceneWorld_add_component(world, camera, ParrotVideoSceneCameraComponent);
+    {
+        ParrotTransform *transform = ParrotSceneWorld_get_component(world, camera, ParrotTransform);
+        transform->position = (ParrotVec3){-(SCREEN_WIDTH - RECT_SIZE) / 2.0, -(SCREEN_HEIGHT - RECT_SIZE) / 2.0, 0};
+    }
 
     object = ParrotSceneWorld_create_entity(world);
     ParrotSceneWorld_set_entity_parent(world, object, root);
     ParrotSceneWorld_add_component(world, object, ParrotTransform);
     ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRenderableComponent);
     ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRectComponent);
-
     {
         ParrotTransform *transform = ParrotSceneWorld_get_component(world, object, ParrotTransform);
-        transform->position = (ParrotVec3){SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0, 0};
+        transform->origin = (ParrotVec3){RECT_SIZE / 2.0, RECT_SIZE / 2.0, 0};
         transform->rotation = (ParrotVec3){0, 0, 45};
-    }
 
-    {
         ParrotVideoSceneRenderableComponent *renderable =
             ParrotSceneWorld_get_component(world, object, ParrotVideoSceneRenderableComponent);
         renderable->tint = ParrotColor_RED;
@@ -72,8 +122,8 @@ static void init(ParrotMainLoopRunSettings *settings) {
         ParrotVideoSceneRectComponent *rect =
             ParrotSceneWorld_get_component(world, object, ParrotVideoSceneRectComponent);
 
-        rect->width = 150;
-        rect->height = 150;
+        rect->width = RECT_SIZE;
+        rect->height = RECT_SIZE;
     }
 }
 
@@ -103,6 +153,7 @@ static void render(ParrotMainLoopRunSettings *settings) {
 
 static void shutdown(ParrotMainLoopRunSettings *settings) {
     ParrotSceneWorld_delete(world);
+    ParrotReflect_delete(reflect);
 
     ParrotVideo_shutdown();
 }

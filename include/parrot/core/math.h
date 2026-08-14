@@ -3,6 +3,7 @@
 
 #include "parrot/config.h" // IWYU pragma: keep
 #include "parrot/core/api.h"
+#include "parrot/core/reflect.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -55,18 +56,26 @@ typedef int16_t ParrotFixed16f;
     ((ParrotFixed16f)(PARROT_CLAMP(ParrotFixed16f_MIN, n, ParrotFixed16f_MAX) * 4096.0f + 0.5f) - ((n) < 0))
 
 #ifndef PARROT_DOUBLE_PRECISION
-typedef float ParrotReal;
+#define ParrotReal float
 #define ParrotReal_sqrt sqrtf
 #define ParrotReal_sin sinf
 #define ParrotReal_cos cosf
 #define ParrotReal_atan2 atan2f
 #else
-typedef double ParrotReal;
+#define ParrotReal double
 #define ParrotReal_sqrt sqrt
 #define ParrotReal_sin sin
 #define ParrotReal_cos cos
 #define ParrotReal_atan2 atan2
 #endif
+
+static const ParrotReflectDescription ParrotReal_description[] = {
+#ifndef PARROT_DOUBE_PRECISION
+    PARROT_REFLECT_ALIAS(ParrotReal, float),
+#else
+    PARROT_REFLECT_ALIAS(ParrotReal, double),
+#endif
+};
 
 #define PARROT_CLAMP(min, value, max) PARROT_MAX(min, PARROT_MIN(value, max))
 #define PARROT_MIN(a, b) ((a) > (b) ? (b) : (a))
@@ -82,6 +91,15 @@ typedef struct {
     ParrotReal x;
     ParrotReal y;
 } ParrotVec2;
+
+static const ParrotReflectDescription ParrotVec2_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotVec2),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotVec2, ParrotReal, x, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVec2, ParrotReal, y, ),
+
+    PARROT_REFLECT_END(),
+};
 
 PARROT_API ParrotVec2 ParrotVec2_n(ParrotReal n);
 
@@ -101,6 +119,16 @@ typedef struct {
     ParrotReal y;
     ParrotReal z;
 } ParrotVec3;
+
+static const ParrotReflectDescription ParrotVec3_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotVec3),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotVec3, ParrotReal, x, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVec3, ParrotReal, y, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVec3, ParrotReal, z, ),
+
+    PARROT_REFLECT_END(),
+};
 
 PARROT_API ParrotVec3 ParrotVec3_n(ParrotReal n);
 
@@ -122,6 +150,17 @@ typedef struct {
     ParrotReal w;
 } ParrotVec4;
 
+static const ParrotReflectDescription ParrotVec4_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotVec4),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotVec4, ParrotReal, x, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVec4, ParrotReal, y, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVec4, ParrotReal, z, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVec4, ParrotReal, w, ),
+
+    PARROT_REFLECT_END(),
+};
+
 PARROT_API ParrotVec4 ParrotVec4_n(ParrotReal n);
 
 PARROT_API ParrotVec4 ParrotVec4_add(ParrotVec4 a, ParrotVec4 b);
@@ -139,6 +178,14 @@ typedef struct {
     // Column-major (accessed like data[x][y])
     ParrotReal data[4][4];
 } ParrotMat;
+
+static const ParrotReflectDescription ParrotMat_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotMat),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotMat, ParrotReal, data, [4][4]),
+
+    PARROT_REFLECT_END(),
+};
 
 PARROT_API ParrotMat ParrotMat_identity(void);
 
@@ -164,14 +211,41 @@ typedef struct {
     ParrotMat projection;
 } ParrotGMatSet;
 
+static const ParrotReflectDescription ParrotGMatSet_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotGMatSet),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotGMatSet, ParrotMat, model, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotGMatSet, ParrotMat, view, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotGMatSet, ParrotMat, projection, ),
+
+    PARROT_REFLECT_END(),
+};
+
 typedef struct ParrotTransform ParrotTransform;
 
 struct ParrotTransform {
     ParrotTransform *parent;
 
+    /// Relative to position
+    ParrotVec3 origin;
+
     ParrotVec3 position;
     ParrotVec3 rotation;
     ParrotVec3 scale;
+};
+
+static const ParrotReflectDescription ParrotTransform_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotTransform),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotTransform, ParrotTransform *, parent, ),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotTransform, ParrotVec3, origin, ),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotTransform, ParrotVec3, position, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotTransform, ParrotVec3, rotation, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotTransform, ParrotVec3, scale, ),
+
+    PARROT_REFLECT_END(),
 };
 
 ParrotTransform ParrotTransform_new(void);
@@ -190,6 +264,17 @@ typedef struct {
     // [0.0, 1.0]
     float a;
 } ParrotColor;
+
+static const ParrotReflectDescription ParrotColor_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotColor),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotColor, float, r, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotColor, float, g, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotColor, float, b, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotColor, float, a, ),
+
+    PARROT_REFLECT_END(),
+};
 
 PARROT_API ParrotColor ParrotColor_new(uint8_t r, uint8_t g, uint8_t b);
 PARROT_API ParrotColor ParrotColor_newf(float r, float g, float b);
@@ -219,5 +304,20 @@ PARROT_API ParrotColor ParrotColor_lerp(ParrotColor a, ParrotColor b, float t);
 #define ParrotColor_YELLOW ((ParrotColor){.r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0})
 #define ParrotColor_ORANGE ((ParrotColor){.r = 1.0, .g = 0.3, .b = 0.0, .a = 1.0})
 #define ParrotColor_CYAN ((ParrotColor){.r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0})
+
+static const ParrotReflectDescription Parrot_core_math_collection[] = {
+    PARROT_REFLECT_COLLECTION_HEADER(),
+
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVec2_description),
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVec3_description),
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVec4_description),
+
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotMat_description),
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotGMatSet_description),
+
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotColor_description),
+
+    PARROT_REFLECT_END(),
+};
 
 #endif // __SRC_PARROT_INCLUDE_PARROT_CORE_MATH_H_

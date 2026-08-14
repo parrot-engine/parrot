@@ -2,6 +2,7 @@
 #define PARROT_INCLUDE_PARROT_CORE_MAIN_LOOP_H_
 
 #include "parrot/core/api.h"
+#include "parrot/core/reflect.h"
 #include <stdbool.h>
 
 typedef struct {
@@ -10,6 +11,16 @@ typedef struct {
     // <=0 = Uncapped
     float max_fps;
 } ParrotMainLoopRunSettings;
+
+static const ParrotReflectDescription ParrotMainLoopRunSettings_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotMainLoopRunSettings),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotMainLoopRunSettings, void *, user_data, ),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotMainLoopRunSettings, float, max_fps, ),
+
+    PARROT_REFLECT_END(),
+};
 
 typedef void (*ParrotMainLoopInitFunc)(ParrotMainLoopRunSettings *settings);
 /// @return If the application should close
@@ -38,5 +49,13 @@ PARROT_API void ParrotMainLoop_run(ParrotMainLoop *self,
                                    /* Required */ ParrotMainLoopUpdateFunc update,
                                    /* NULL = uncalled */ ParrotMainLoopRenderFunc render,
                                    /* NULL = uncalled */ ParrotMainLoopShutdownFunc shutdown);
+
+static const ParrotReflectDescription Parrot_core_main_loop_collection[] = {
+    PARROT_REFLECT_COLLECTION_HEADER(),
+
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotMainLoopRunSettings_description),
+
+    PARROT_REFLECT_END(),
+};
 
 #endif // PARROT_INCLUDE_PARROT_CORE_MAIN_LOOP_H_

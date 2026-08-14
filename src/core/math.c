@@ -343,13 +343,11 @@ ParrotMat ParrotTransform_calculate_matrix(const ParrotTransform *self) {
         matrix = ParrotTransform_calculate_matrix(self->parent);
     }
 
-    ParrotMat translation = ParrotMat_translation(self->position);
-    ParrotMat rotation = ParrotMat_rotation(self->rotation);
-    ParrotMat scale = ParrotMat_scale(self->scale);
-
-    matrix = ParrotMat_mul(matrix, translation);
-    matrix = ParrotMat_mul(matrix, rotation);
-    matrix = ParrotMat_mul(matrix, scale);
+    matrix = ParrotMat_mul(matrix, ParrotMat_translation(self->position));
+    matrix = ParrotMat_mul(matrix, ParrotMat_translation(self->origin));
+    matrix = ParrotMat_mul(matrix, ParrotMat_rotation(self->rotation));
+    matrix = ParrotMat_mul(matrix, ParrotMat_scale(self->scale));
+    matrix = ParrotMat_mul(matrix, ParrotMat_translation(ParrotVec3_scale(self->origin, -1)));
 
     return matrix;
 }

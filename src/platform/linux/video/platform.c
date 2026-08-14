@@ -100,11 +100,11 @@ void ParrotVideoWindow_poll_events(ParrotVideoWindow *self) {
     while (XPending(self->display)) {
         XNextEvent(self->display, &event);
         switch (event.type) {
-        case ClientMessage:
+        case ClientMessage: {
             if ((Atom)event.xclient.data.l[0] == self->wm_delete) {
                 self->close_requested = true;
             }
-            break;
+        } break;
         case Expose: {
             int width = ParrotVideoWindow_get_width(self);
             int height = ParrotVideoWindow_get_height(self);
@@ -127,8 +127,7 @@ void ParrotVideoWindow_poll_events(ParrotVideoWindow *self) {
                 self->old_width = width;
                 self->old_height = height;
             }
-            break;
-        }
+        } break;
         }
     }
 }
