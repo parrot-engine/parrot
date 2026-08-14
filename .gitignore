@@ -3,8 +3,6 @@ out/
 
 compile_commands.json
 
-offline/
-
 .cache/
 
 .vscode/
