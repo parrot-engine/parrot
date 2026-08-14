@@ -25,6 +25,7 @@ PARROT_API void ParrotVideo_set_object_visible(ParrotVideoObjectHandle handle, b
 PARROT_API void ParrotVideo_set_object_tint(ParrotVideoObjectHandle handle, ParrotColor tint);
 
 PARROT_API void ParrotVideo_set_object_matrix(ParrotVideoObjectHandle handle, ParrotMat matrix);
+PARROT_API ParrotMat ParrotVideo_get_object_matrix(ParrotVideoObjectHandle handle);
 
 PARROT_API void ParrotVideo_object_add_window(ParrotVideoObjectHandle handle, int width, int height);
 PARROT_API void ParrotVideo_object_remove_window(ParrotVideoObjectHandle handle);
@@ -43,6 +44,7 @@ PARROT_API void ParrotVideo_object_set_viewport_size(ParrotVideoObjectHandle han
 PARROT_API void ParrotVideo_object_add_camera(ParrotVideoObjectHandle handle);
 PARROT_API void ParrotVideo_object_remove_camera(ParrotVideoObjectHandle handle);
 PARROT_API bool ParrotVideo_object_has_camera(ParrotVideoObjectHandle handle);
+PARROT_API void ParrotVideo_object_set_camera_corner_aligned(ParrotVideoObjectHandle handle, bool value);
 PARROT_API void ParrotVideo_object_set_camera_clear_color(ParrotVideoObjectHandle handle, ParrotColor color);
 PARROT_API void ParrotVideo_object_clear_camera_clear_color(ParrotVideoObjectHandle handle);
 

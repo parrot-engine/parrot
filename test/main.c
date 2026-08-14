@@ -102,7 +102,7 @@ static void init(ParrotMainLoopRunSettings *settings) {
     ParrotSceneWorld_add_component(world, camera, ParrotVideoSceneCameraComponent);
     {
         ParrotTransform *transform = ParrotSceneWorld_get_component(world, camera, ParrotTransform);
-        transform->position = (ParrotVec3){-(SCREEN_WIDTH - RECT_SIZE) / 2.0, -(SCREEN_HEIGHT - RECT_SIZE) / 2.0, 0};
+        transform->position = (ParrotVec3){RECT_SIZE / 2.0, RECT_SIZE / 2.0, 0};
     }
 
     object = ParrotSceneWorld_create_entity(world);

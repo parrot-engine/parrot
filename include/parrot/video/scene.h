@@ -64,12 +64,16 @@ static const ParrotReflectDescription ParrotVideoSceneViewportComponent_descript
 };
 
 typedef struct {
+    bool corner_aligned;
+
     bool use_clear_color;
     ParrotColor clear_color;
 } ParrotVideoSceneCameraComponent;
 
 static const ParrotReflectDescription ParrotVideoSceneCameraComponent_description[] = {
     PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneCameraComponent),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, bool, corner_aligned, ),
 
     PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, bool, use_clear_color, ),
     PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, ParrotColor, clear_color, ),

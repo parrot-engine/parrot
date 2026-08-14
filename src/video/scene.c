@@ -139,6 +139,8 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
             ParrotVideo_object_add_camera(renderable->object_handle);
         }
 
+        ParrotVideo_object_set_camera_corner_aligned(renderable->object_handle, camera->corner_aligned);
+
         if (camera->use_clear_color) {
             ParrotVideo_object_set_camera_clear_color(renderable->object_handle, camera->clear_color);
         } else {

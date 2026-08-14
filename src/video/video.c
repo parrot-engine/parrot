@@ -26,6 +26,8 @@ typedef struct {
 } ParrotVideoObjectViewport;
 
 typedef struct {
+    bool corner_aligned;
+
     bool use_clear_color;
     ParrotColor clear_color;
 } ParrotVideoObjectCamera;
@@ -203,6 +205,12 @@ void ParrotVideo_set_object_matrix(ParrotVideoObjectHandle handle, ParrotMat mat
     hmget(self->hm_pointers, handle.index)->matrix = matrix;
 }
 
+ParrotMat ParrotVideo_get_object_matrix(ParrotVideoObjectHandle handle) {
+    PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
+
+    return hmget(self->hm_pointers, handle.index)->matrix;
+}
+
 void ParrotVideo_object_add_window(ParrotVideoObjectHandle handle, int width, int height) {
     PARROT_FAIL_COND(ParrotVideo_object_has_window(handle));
 
@@ -332,6 +340,14 @@ bool ParrotVideo_object_has_camera(ParrotVideoObjectHandle handle) {
     return hmget(self->hm_pointers, handle.index)->camera;
 }
 
+void ParrotVideo_object_set_camera_corner_aligned(ParrotVideoObjectHandle handle, bool value) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_camera(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    object->camera->corner_aligned = value;
+}
+
 void ParrotVideo_object_set_camera_clear_color(ParrotVideoObjectHandle handle, ParrotColor color) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_camera(handle));
 
@@ -398,7 +414,13 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
             }
 
             view_matrix = ParrotMat_inverse(camera_object->matrix);
-            projection_matrix = ParrotMat_ortho(0, object->viewport->width, 0, object->viewport->height, 0, 1000000);
+            projection_matrix =
+                ParrotMat_ortho(!camera->corner_aligned ? -object->viewport->width / 2 : 0,
+                                !camera->corner_aligned ? object->viewport->width / 2 : object->viewport->width,
+                                !camera->corner_aligned ? -object->viewport->height / 2 : 0,
+                                !camera->corner_aligned ? object->viewport->height / 2 : object->viewport->height,
+                                0,
+                                1000000);
         }
     }
 
