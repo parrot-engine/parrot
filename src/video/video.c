@@ -37,6 +37,16 @@ typedef struct {
 typedef struct {
     ParrotReal width;
     ParrotReal height;
+
+    int texture_width;
+    int texture_height;
+    uint32_t *texture_rgba8888;
+
+    int texture_region_x;
+    int texture_region_y;
+    int texture_region_width;
+    int texture_region_height;
+    bool texture_nearest_filter;
 } ParrotVideoObjectRect;
 
 typedef struct {
@@ -451,16 +461,34 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
         ParrotReal width = object->rect->width;
         ParrotReal height = object->rect->height;
 
-        ParrotVideoBackendVertex vertices[] = {
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, 0, 0}, .tint = tint},
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, 0, 0}, .tint = tint},
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, height, 0}, .tint = tint},
+        float x0 =
+            object->rect->texture_rgba8888 ? object->rect->texture_region_x / (float)object->rect->texture_width : 0;
+        float y0 =
+            object->rect->texture_rgba8888 ? object->rect->texture_region_y / (float)object->rect->texture_height : 0;
+        float x1 = object->rect->texture_rgba8888 ?
+                       x0 + object->rect->texture_region_width / (float)object->rect->texture_width :
+                       0;
+        float y1 = object->rect->texture_rgba8888 ?
+                       y0 + object->rect->texture_region_height / (float)object->rect->texture_height :
+                       0;
 
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, height, 0}, .tint = tint},
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, height, 0}, .tint = tint},
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, 0, 0}, .tint = tint},
+        ParrotVideoBackendVertex vertices[] = {
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, 0, 0}, .uv = {x0, y0}, .tint = tint},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, 0, 0}, .uv = {x1, y0}, .tint = tint},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, height, 0}, .uv = {x0, y1}, .tint = tint},
+
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, height, 0}, .uv = {x1, y1}, .tint = tint},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, height, 0}, .uv = {x0, y1}, .tint = tint},
+            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, 0, 0}, .uv = {x1, y0}, .tint = tint},
         };
 
+        if (object->rect->texture_rgba8888) {
+            ParrotVideoBackend_set_viewport_texture(*viewport,
+                                                    object->rect->texture_width,
+                                                    object->rect->texture_height,
+                                                    object->rect->texture_rgba8888,
+                                                    object->rect->texture_nearest_filter);
+        }
         ParrotVideoBackend_draw_viewport_vertices(*viewport,
                                                   (ParrotGMatSet){
                                                       .model = object->matrix,
@@ -469,6 +497,7 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
                                                   },
                                                   vertices,
                                                   6);
+        ParrotVideoBackend_clear_viewport_texture(*viewport);
     }
 }
 
@@ -485,6 +514,7 @@ void ParrotVideo_object_remove_rect(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
 
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideo_object_clear_rect_texture(handle);
 
     free(object->rect);
     object->rect = NULL;
@@ -494,6 +524,50 @@ bool ParrotVideo_object_has_rect(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
     return hmget(self->hm_pointers, handle.index)->rect;
+}
+
+void ParrotVideo_object_set_rect_texture(
+    ParrotVideoObjectHandle handle, int width, int height, const uint32_t *rgba8888, bool nearest_filter) {
+    PARROT_FAIL_COND(width == 0);
+    PARROT_FAIL_COND(height == 0);
+    PARROT_FAIL_NULL(rgba8888);
+
+    PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    ParrotVideo_object_clear_rect_texture(handle);
+
+    object->rect->texture_width = width, object->rect->texture_region_width = width;
+    object->rect->texture_height = height, object->rect->texture_region_height = height;
+    object->rect->texture_region_x = 0, object->rect->texture_region_y = 0;
+    object->rect->texture_nearest_filter = nearest_filter;
+
+    object->rect->texture_rgba8888 = calloc(width * height, sizeof(uint32_t));
+    memcpy(object->rect->texture_rgba8888, rgba8888, width * height * sizeof(uint32_t));
+}
+
+void ParrotVideo_object_clear_rect_texture(ParrotVideoObjectHandle handle) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    free(object->rect->texture_rgba8888);
+    object->rect->texture_rgba8888 = NULL;
+}
+
+void ParrotVideo_object_set_rect_texture_region(ParrotVideoObjectHandle handle, int x, int y, int width, int height) {
+    PARROT_FAIL_COND(width == 0);
+    PARROT_FAIL_COND(height == 0);
+
+    PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    PARROT_FAIL_NULL(object->rect->texture_rgba8888);
+
+    object->rect->texture_region_x = x, object->rect->texture_region_y = y;
+    object->rect->texture_region_width = width, object->rect->texture_region_height = height;
 }
 
 void ParrotVideo_object_set_rect_size(ParrotVideoObjectHandle handle, ParrotReal width, ParrotReal height) {

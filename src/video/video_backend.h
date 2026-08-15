@@ -23,6 +23,11 @@ bool ParrotVideoBackend_is_initialized(void);
 
 ParrotVideoBackendViewportHandle ParrotVideoBackend_create_viewport(int width, int height);
 void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle);
+
+void ParrotVideoBackend_set_viewport_texture(
+    ParrotVideoBackendViewportHandle handle, int width, int height, const uint32_t *rgba8888, bool nearest_filter);
+void ParrotVideoBackend_clear_viewport_texture(ParrotVideoBackendViewportHandle handle);
+
 /**
  * Return value is RGBA8888 and guarnteed to live at least as long as the viewport which updates every call to this
  * function.

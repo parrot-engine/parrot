@@ -1,9 +1,17 @@
 #include "parrot/video/scene.h"
 #include "parrot/core/math.h"
+#include "parrot/core/scope.h"
 #include "parrot/core/util.h"
-#include "parrot/scene/transform.h"
 #include "parrot/scene/world.h"
 #include "parrot/video/video.h"
+#include "src/video/stb_image.h"
+
+struct ParrotVideoSceneSystem {
+    ParrotScope *scope;
+
+    ParrotSceneWorld *world;
+    ParrotVideoObjectHandle root_handle;
+};
 
 static void ParrotVideoSceneCameraComponent_constructor(ParrotSceneWorldEntity entity, void *self_ptr, void *user_data) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
@@ -11,7 +19,7 @@ static void ParrotVideoSceneCameraComponent_constructor(ParrotSceneWorldEntity e
     (void)entity;
     (void)user_data;
 
-    ParrotVideoSceneCameraComponent *self = (ParrotVideoSceneCameraComponent *)self_ptr;
+    ParrotVideoSceneCameraComponent *self = self_ptr;
 
     self->use_clear_color = true;
     self->clear_color = ParrotColor_newf(0.3, 0.3, 0.3);
@@ -24,7 +32,7 @@ ParrotVideoSceneRenderableComponent_constructor(ParrotSceneWorldEntity entity, v
     (void)entity;
     (void)user_data;
 
-    ParrotVideoSceneRenderableComponent *self = (ParrotVideoSceneRenderableComponent *)self_ptr;
+    ParrotVideoSceneRenderableComponent *self = self_ptr;
 
     self->object_handle = ParrotVideo_create_object();
 
@@ -32,12 +40,23 @@ ParrotVideoSceneRenderableComponent_constructor(ParrotSceneWorldEntity entity, v
     self->tint = ParrotColor_WHITE;
 }
 
+static void
+ParrotVideoSceneRectTextureComponent_destructor(ParrotSceneWorldEntity entity, void *self_ptr, void *user_data) {
+    (void)entity;
+    (void)user_data;
+
+    ParrotVideoSceneRectTextureComponent *self = self_ptr;
+
+    if (self->_rgba8888) {
+        stbi_image_free(self->_rgba8888);
+    }
+}
+
 void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
     ParrotSceneWorld_register_component(world,
                                         PARROT_TYPE_STRING(ParrotVideoSceneRenderableComponent),
                                         (ParrotSceneWorldComponentDescription){
                                             .size = sizeof(ParrotVideoSceneRenderableComponent),
-
                                             .constructor = ParrotVideoSceneRenderableComponent_constructor,
                                         });
 
@@ -45,8 +64,14 @@ void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
                                         PARROT_TYPE_STRING(ParrotVideoSceneCameraComponent),
                                         (ParrotSceneWorldComponentDescription){
                                             .size = sizeof(ParrotVideoSceneCameraComponent),
-
                                             .constructor = ParrotVideoSceneCameraComponent_constructor,
+                                        });
+
+    ParrotSceneWorld_register_component(world,
+                                        PARROT_TYPE_STRING(ParrotVideoSceneRectTextureComponent),
+                                        (ParrotSceneWorldComponentDescription){
+                                            .size = sizeof(ParrotVideoSceneRectTextureComponent),
+                                            .destructor = ParrotVideoSceneRectTextureComponent_destructor,
                                         });
 }
 
@@ -156,6 +181,64 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
     if (rect) {
         if (!ParrotVideo_object_has_rect(renderable->object_handle)) {
             ParrotVideo_object_add_rect(renderable->object_handle);
+        }
+
+        ParrotVideoSceneRectTextureComponent *texture =
+            ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRectTextureComponent);
+        ParrotVideoSceneRectRawTextureComponent *raw_texture =
+            ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRectRawTextureComponent);
+
+        if (texture) {
+            if (texture->image_dirty) {
+                if (texture->_rgba8888) {
+                    stbi_image_free(texture->_rgba8888);
+                }
+
+                int channels = 0;
+                texture->_rgba8888 = (uint32_t *)stbi_load_from_memory(
+                    texture->image.data, texture->image.size, &texture->_width, &texture->_height, &channels, 4);
+            }
+
+            if (!texture->_rgba8888) {
+#define X {0xFF, 0x00, 0x00, 0xFF}
+#define O {0x00, 0x00, 0x00, 0xFF}
+                const uint8_t image_fail_texture_data[6][6][4] = {
+                    {O, X, X, X, X, O},
+                    {X, X, O, O, O, X},
+                    {X, O, X, O, O, X},
+                    {X, O, O, X, O, X},
+                    {X, O, O, O, X, X},
+                    {O, X, X, X, X, O},
+                };
+#undef O
+#undef X
+                ParrotVideo_object_set_rect_texture(
+                    renderable->object_handle, 6, 6, (uint32_t *)image_fail_texture_data, true);
+            } else {
+                ParrotVideo_object_set_rect_texture(renderable->object_handle,
+                                                    texture->_width,
+                                                    texture->_height,
+                                                    texture->_rgba8888,
+                                                    rect->texture_nearest_filter);
+            }
+        } else if (raw_texture) {
+            ParrotVideo_object_set_rect_texture(renderable->object_handle,
+                                                raw_texture->width,
+                                                raw_texture->height,
+                                                raw_texture->rgba8888,
+                                                rect->texture_nearest_filter);
+        } else {
+            ParrotVideo_object_clear_rect_texture(renderable->object_handle);
+        }
+
+        if (texture || raw_texture) {
+            if (rect->texture_use_region) {
+                ParrotVideo_object_set_rect_texture_region(renderable->object_handle,
+                                                           rect->texture_region_x,
+                                                           rect->texture_region_y,
+                                                           rect->texture_region_width,
+                                                           rect->texture_region_height);
+            }
         }
 
         ParrotVideo_object_set_rect_size(renderable->object_handle, rect->width, rect->height);

@@ -51,6 +51,11 @@ PARROT_API void ParrotVideo_object_clear_camera_clear_color(ParrotVideoObjectHan
 PARROT_API void ParrotVideo_object_add_rect(ParrotVideoObjectHandle handle);
 PARROT_API void ParrotVideo_object_remove_rect(ParrotVideoObjectHandle handle);
 PARROT_API bool ParrotVideo_object_has_rect(ParrotVideoObjectHandle handle);
+PARROT_API void ParrotVideo_object_set_rect_texture(
+    ParrotVideoObjectHandle handle, int width, int height, const uint32_t *rgba8888, bool nearest_filter);
+PARROT_API void ParrotVideo_object_clear_rect_texture(ParrotVideoObjectHandle handle);
+PARROT_API void
+ParrotVideo_object_set_rect_texture_region(ParrotVideoObjectHandle handle, int x, int y, int width, int height);
 PARROT_API void ParrotVideo_object_set_rect_size(ParrotVideoObjectHandle handle, ParrotReal width, ParrotReal height);
 
 PARROT_API void ParrotVideo_render(void);

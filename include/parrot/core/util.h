@@ -16,7 +16,7 @@ extern ParrotCrashHandlerFunc Parrot_crash_handler;
 
 #define PARROT_FAIL_FMT(fmt, ...)                                                                                       \
     do {                                                                                                                \
-        fprintf(stderr, "(%s:%d) ERROR: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                 \
+        fprintf(stderr, "(%s:%d at %s) ERROR: " fmt "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__);                 \
         Parrot_crash_handler("Assertion Failed");                                                                       \
     } while (0)
 #define PARROT_FAIL_MSG(msg) PARROT_FAIL_FMT("%s", msg)
