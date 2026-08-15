@@ -1,6 +1,8 @@
 #include "parrot/video/video.h"
 #include "parrot/core/math.h"
+#include "parrot/core/scope.h"
 #include "parrot/core/util.h"
+#include "src/ds.h"
 #include "src/video/platform.h"
 #include "src/video/video_backend.h"
 #include "stb_ds.h"
@@ -64,14 +66,21 @@ typedef struct ParrotVideoObjectPointer {
 } ParrotVideoObjectPointer;
 
 typedef struct {
-    ParrotVideoObject *root_object;
-    ParrotVideoObjectHandle root_object_handle;
+    ParrotScope *scope;
 
     ParrotVideoObjectPointer *hm_pointers;
     uint32_t next_pointer_id;
+
+    ParrotVideoObject *root_object;
+    ParrotVideoObjectHandle root_object_handle;
 } ParrotVideo;
 
 static ParrotVideo *self = NULL;
+
+static void shutdown_video_backend_wrapper(void *ctx) {
+    (void)ctx;
+    ParrotVideoBackend_shutdown();
+}
 
 void ParrotVideo_init(void) {
     PARROT_FAIL_COND(ParrotVideo_is_initialized());
@@ -80,7 +89,12 @@ void ParrotVideo_init(void) {
     PARROT_FAIL_NULL(self);
     memset(self, 0, sizeof(ParrotVideo));
 
+    self->scope = ParrotScope_new(NULL);
+
     ParrotVideoBackend_init();
+    ParrotScope_push(self->scope, shutdown_video_backend_wrapper, NULL);
+
+    ParrotScope_push(self->scope, Parrot_hmfree_scope_wrapper, Parrot_hmfree_scope_wrapper_PACK_CTX(self->hm_pointers));
 
     ParrotVideo_create_object();
 }
@@ -88,12 +102,7 @@ void ParrotVideo_init(void) {
 void ParrotVideo_shutdown(void) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
 
-    ParrotVideo_delete_object(ParrotVideo_get_root());
-
-    hmfree(self->hm_pointers);
-
-    ParrotVideoBackend_shutdown();
-
+    ParrotScope_delete(self->scope);
     free(self);
     self = NULL;
 }
