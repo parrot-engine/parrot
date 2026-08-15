@@ -155,11 +155,9 @@ void ParrotVideoBackend_delete_viewport(ParrotVideoBackendViewportHandle handle)
 
     ParrotVideoBackendViewport *viewport = use_viewport(handle);
 
-    glXDestroyPbuffer(viewport->display, viewport->pbuffer);
-    glXDestroyContext(viewport->display, viewport->context);
-    XCloseDisplay(viewport->display);
-
     free(viewport->framebuffer);
+
+    XCloseDisplay(viewport->display);
 
     hmdel(self->hm_viewports, handle.index);
 }
@@ -197,6 +195,8 @@ apply_texture: {
     glBindTexture(GL_TEXTURE_2D, entry.handle);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, !nearest_filter ? GL_LINEAR : GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, !nearest_filter ? GL_LINEAR : GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
     glEnable(GL_TEXTURE_2D);
 
     for (size_t i = MAX_TEXTURE_CACHE_SIZE - 1; i > 0; i--) {

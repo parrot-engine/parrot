@@ -6,6 +6,7 @@
 #include "parrot/scene/world.h"
 #include "parrot/video/scene.h"
 #include "parrot/video/video.h"
+#include <stdio.h>
 
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
@@ -125,6 +126,8 @@ static void init(ParrotMainLoopRunSettings *settings) {
         rect->width = RECT_SIZE;
         rect->height = RECT_SIZE;
     }
+
+    ParrotVideoSceneSystem_update(world, ParrotVideo_get_root());
 }
 
 static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should_close) {

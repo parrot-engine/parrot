@@ -247,6 +247,13 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
             ParrotVideo_object_remove_rect(renderable->object_handle);
         }
     }
+
+    ParrotVideoSceneTextComponent *text = ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneTextComponent);
+    if (text) {
+        ParrotVideo_object_set_text(renderable->object_handle, text->font, text->size, text->text);
+    } else {
+        ParrotVideo_object_clear_text(renderable->object_handle);
+    }
 }
 
 void ParrotVideoSceneSystem_update(ParrotSceneWorld *world, ParrotVideoObjectHandle root_handle) {

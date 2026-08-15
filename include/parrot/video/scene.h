@@ -5,6 +5,7 @@
 #include "parrot/core/math.h"
 #include "parrot/core/reflect.h"
 #include "parrot/scene/world.h"
+#include "parrot/video/font.h"
 #include "parrot/video/video.h"
 #include <stdbool.h>
 
@@ -144,6 +145,22 @@ static const ParrotReflectDescription ParrotVideoSceneRectTextureComponent_descr
     PARROT_REFLECT_END(),
 };
 
+typedef struct {
+    float size;
+    ParrotVideoFont *font;
+    const char *text;
+} ParrotVideoSceneTextComponent;
+
+static const ParrotReflectDescription ParrotVideoSceneTextComponent_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneTextComponent),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneTextComponent, float, size, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneTextComponent, ParrotVideoFont *, font, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneTextComponent, const char *, text, ),
+
+    PARROT_REFLECT_END(),
+};
+
 void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world);
 void ParrotVideoSceneSystem_update(ParrotSceneWorld *world, ParrotVideoObjectHandle root_handle);
 
@@ -157,6 +174,7 @@ static const ParrotReflectDescription Parrot_video_scene_collection[] = {
     PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVideoSceneRectComponent_description),
     PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVideoSceneRectRawTextureComponent_description),
     PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVideoSceneRectTextureComponent_description),
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVideoSceneTextComponent_description),
 
     PARROT_REFLECT_END(),
 };

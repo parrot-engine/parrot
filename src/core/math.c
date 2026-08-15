@@ -398,7 +398,7 @@ uint32_t ParrotColor_to_rgba8888(ParrotColor self) {
     uint8_t g = PARROT_CLAMP(0.0, self.g, 1.0) * 255;
     uint8_t b = PARROT_CLAMP(0.0, self.b, 1.0) * 255;
     uint8_t a = PARROT_CLAMP(0.0, self.a, 1.0) * 255;
-    return (r << 24) | (g << 16) | (b << 8) | a;
+    return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
 uint16_t ParrotColor_to_rgba5551(ParrotColor self) {

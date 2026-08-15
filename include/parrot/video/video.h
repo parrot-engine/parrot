@@ -3,6 +3,7 @@
 
 #include "parrot/core/api.h"
 #include "parrot/core/math.h"
+#include "parrot/video/font.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -57,6 +58,10 @@ PARROT_API void ParrotVideo_object_clear_rect_texture(ParrotVideoObjectHandle ha
 PARROT_API void
 ParrotVideo_object_set_rect_texture_region(ParrotVideoObjectHandle handle, int x, int y, int width, int height);
 PARROT_API void ParrotVideo_object_set_rect_size(ParrotVideoObjectHandle handle, ParrotReal width, ParrotReal height);
+
+PARROT_API void
+ParrotVideo_object_set_text(ParrotVideoObjectHandle handle, ParrotVideoFont *font, float size, const char *text);
+PARROT_API void ParrotVideo_object_clear_text(ParrotVideoObjectHandle handle);
 
 PARROT_API void ParrotVideo_render(void);
 
