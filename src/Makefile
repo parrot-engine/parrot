@@ -3,7 +3,7 @@
 export PACK_BEGIN = _Pragma(\"pack(push, 1)\")
 export PACK_END = _Pragma(\"pack(pop)\")
 
-export CFLAGS += -std=c99 -Wall -Wextra -pedantic-errors -MMD -MP -I$(ROOT_DIR) -I$(shell pwd)/include
+export CFLAGS += -std=c99 -Wall -Wextra -pedantic-errors -MMD -MP -I$(ROOT_DIR) -I$(shell pwd)/lib
 
 ifeq ($(DEBUG),1)
 export CFLAGS += -g
@@ -20,7 +20,7 @@ CONFIG_HEADER_GUARD_NAME := _$(shell openssl rand -hex 32)_PARROT_CONFIG_H_
 MODULE_BUILD_DIRS=
 MODULE_TARGETS=
 
-SRCS=$(shell echo *.c)
+SRCS=$(shell echo *.c lib/*.c)
 OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
 
 .PHONY: all

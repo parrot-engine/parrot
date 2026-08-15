@@ -4,7 +4,7 @@
 #include "parrot/core/util.h"
 #include "parrot/scene/world.h"
 #include "parrot/video/video.h"
-#include "src/video/stb_image.h"
+#include "stb_image.h"
 
 struct ParrotVideoSceneSystem {
     ParrotScope *scope;
