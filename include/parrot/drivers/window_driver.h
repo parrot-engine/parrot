@@ -5,6 +5,26 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+typedef enum {
+    ParrotWindowDriverEventType_QUIT = 0,
+
+    ParrotWindowDriverEventType_RESIZE,
+} ParrotWindowDriverEventType;
+
+typedef struct {
+    ParrotWindowDriverEventType type;
+
+    union {
+        struct {
+            int width;
+            int height;
+
+            int old_width;
+            int old_height;
+        } resize;
+    } data;
+} ParrotWindowDriverEvent;
+
 typedef struct ParrotWindowDriverWindow ParrotWindowDriverWindow;
 
 typedef struct {
@@ -14,8 +34,7 @@ typedef struct {
     ParrotWindowDriverWindow *(*create_window)(int width, int height);
     void (*delete_window)(ParrotWindowDriverWindow *window);
 
-    void (*poll_events)(ParrotWindowDriverWindow *window);
-    bool (*should_close)(ParrotWindowDriverWindow *window);
+    bool (*poll_events)(ParrotWindowDriverWindow *window, ParrotWindowDriverEvent *out_event);
 
     void (*set_title)(ParrotWindowDriverWindow *window, const char *title);
 

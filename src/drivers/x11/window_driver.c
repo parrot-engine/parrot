@@ -1,6 +1,6 @@
+#include "parrot/drivers/window_driver.h"
 #include "parrot/core/math.h"
 #include "parrot/core/util.h"
-#include "parrot/drivers/window_driver.h"
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -102,14 +102,17 @@ static void driver_delete_window(ParrotWindowDriverWindow *self) {
     free(self);
 }
 
-static void driver_poll_events(ParrotWindowDriverWindow *self) {
+static bool driver_poll_events(ParrotWindowDriverWindow *self, ParrotWindowDriverEvent *out_event) {
     XEvent event;
     while (XPending(self->display)) {
         XNextEvent(self->display, &event);
         switch (event.type) {
         case ClientMessage: {
             if ((Atom)event.xclient.data.l[0] == self->wm_delete) {
-                self->close_requested = true;
+                *out_event = (ParrotWindowDriverEvent){
+                    .type = ParrotWindowDriverEventType_QUIT,
+                };
+                return true;
             }
         } break;
         case Expose: {
@@ -117,6 +120,17 @@ static void driver_poll_events(ParrotWindowDriverWindow *self) {
             XGetWindowAttributes(self->display, self->window, &attrs);
 
             if (attrs.width != self->width || attrs.height != self->height) {
+                *out_event = (ParrotWindowDriverEvent){
+                    .type = ParrotWindowDriverEventType_RESIZE,
+                    .data.resize =
+                        {
+                            .width = attrs.width,
+                            .height = attrs.height,
+                            .old_width = self->width,
+                            .old_height = self->height,
+                        },
+                };
+
                 XDestroyImage(self->image);
 
                 self->image_data = calloc(attrs.width * attrs.height, sizeof(uint32_t));
@@ -133,16 +147,14 @@ static void driver_poll_events(ParrotWindowDriverWindow *self) {
 
                 self->width = attrs.width;
                 self->height = attrs.height;
+
+                return true;
             }
         } break;
         }
     }
-}
 
-static bool driver_should_close(ParrotWindowDriverWindow *self) {
-    bool value = self->close_requested;
-    self->close_requested = false;
-    return value;
+    return false;
 }
 
 static void driver_set_title(ParrotWindowDriverWindow *self, const char *title) {
@@ -198,7 +210,6 @@ const ParrotWindowDriver Parrot_x11_window_driver = {
     .delete_window = driver_delete_window,
 
     .poll_events = driver_poll_events,
-    .should_close = driver_should_close,
 
     .set_title = driver_set_title,
 

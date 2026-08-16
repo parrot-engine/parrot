@@ -263,8 +263,11 @@ bool ParrotVideo_object_has_window(ParrotVideoObjectHandle handle) {
 
 bool ParrotVideo_object_is_window_close_requested(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
-    return Parrot_window_driver->should_close(hmget(self->hm_pointers, handle.index)->window->window);
+    bool close_requested = object->window->close_requested;
+    object->window->close_requested = false;
+    return close_requested;
 }
 
 void ParrotVideo_object_set_window_title(ParrotVideoObjectHandle handle, const char *title) {
@@ -418,7 +421,16 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
     tint = ParrotColor_mul(tint, object->tint);
 
     if (ParrotVideo_object_has_window(handle)) {
-        Parrot_window_driver->poll_events(object->window->window);
+        ParrotWindowDriverEvent event = {0};
+        while (Parrot_window_driver->poll_events(object->window->window, &event)) {
+            switch (event.type) {
+            case ParrotWindowDriverEventType_QUIT: {
+                object->window->close_requested = true;
+            } break;
+            default:
+                break;
+            }
+        }
     }
 
     if (ParrotVideo_object_has_viewport(handle)) {
