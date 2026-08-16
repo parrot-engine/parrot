@@ -8,6 +8,13 @@
 #include <stdint.h>
 
 typedef struct {
+    ParrotVec3 position;
+    ParrotVec3 normal;
+    ParrotVec2 uv;
+    ParrotColor tint;
+} ParrotVideoVertex;
+
+typedef struct {
     uint32_t index;
 } ParrotVideoObjectHandle;
 

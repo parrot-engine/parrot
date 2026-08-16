@@ -7,6 +7,3 @@ endif
 ifeq ($(PLATFORM_UNIX),1)
 	$(MAKE) -C unix BUILD_DIR=$(BUILD_DIR)/unix
 endif
-ifeq ($(PLATFORM_HAS_OS),1)
-	$(MAKE) -C os BUILD_DIR=$(BUILD_DIR)/os
-endif

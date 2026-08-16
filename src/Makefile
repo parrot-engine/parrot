@@ -39,10 +39,9 @@ endef
 $(eval $(call ADD_MODULE,core))
 $(eval $(call ADD_MODULE,scene))
 
-ifeq ($(VIDEO_MODULE_ENABLE),1)
 $(eval $(call ADD_MODULE,video))
-endif
 
+$(eval $(call ADD_MODULE,drivers))
 $(eval $(call ADD_MODULE,platform))
 
 $(LIB_OUTPUT_STATIC): $(CONFIG_HEADER) $(MODULE_TARGETS) $(OBJS)

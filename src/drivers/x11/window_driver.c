@@ -1,6 +1,6 @@
-#include "src/video/platform.h"
 #include "parrot/core/math.h"
 #include "parrot/core/util.h"
+#include "parrot/drivers/window_driver.h"
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -11,13 +11,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct ParrotVideoWindow {
+struct ParrotWindowDriverWindow {
     Display *display;
 
     int screen;
     Window window;
 
-    int old_width;
+    int width;
+    int height;
     int old_height;
 
     Atom wm_delete;
@@ -31,13 +32,19 @@ struct ParrotVideoWindow {
     XImage *image;
 };
 
-ParrotVideoWindow *ParrotVideoWindow_new(int width, int height) {
-    ParrotVideoWindow *self = malloc(sizeof(ParrotVideoWindow));
-    PARROT_RET_COND_V(!self, NULL);
-    memset(self, 0, sizeof(ParrotVideoWindow));
+static void driver_init(void) {
+}
 
-    self->old_width = width;
-    self->old_height = height;
+static void driver_shutdown(void) {
+}
+
+static ParrotWindowDriverWindow *driver_create_window(int width, int height) {
+    ParrotWindowDriverWindow *self = malloc(sizeof(ParrotWindowDriverWindow));
+    PARROT_RET_COND_V(!self, NULL);
+    memset(self, 0, sizeof(ParrotWindowDriverWindow));
+
+    self->width = width;
+    self->height = height;
 
     self->display = XOpenDisplay(NULL);
     PARROT_FAIL_NULL_MSG(self->display, "Failed to open X11 display");
@@ -82,7 +89,7 @@ ParrotVideoWindow *ParrotVideoWindow_new(int width, int height) {
     return self;
 }
 
-void ParrotVideoWindow_delete(ParrotVideoWindow *self) {
+static void driver_delete_window(ParrotWindowDriverWindow *self) {
     XDestroyImage(self->image);
 
     XdbeDeallocateBackBufferName(self->display, self->back_buffer);
@@ -95,7 +102,7 @@ void ParrotVideoWindow_delete(ParrotVideoWindow *self) {
     free(self);
 }
 
-void ParrotVideoWindow_poll_events(ParrotVideoWindow *self) {
+static void driver_poll_events(ParrotWindowDriverWindow *self) {
     XEvent event;
     while (XPending(self->display)) {
         XNextEvent(self->display, &event);
@@ -106,39 +113,39 @@ void ParrotVideoWindow_poll_events(ParrotVideoWindow *self) {
             }
         } break;
         case Expose: {
-            int width = ParrotVideoWindow_get_width(self);
-            int height = ParrotVideoWindow_get_height(self);
+            XWindowAttributes attrs;
+            XGetWindowAttributes(self->display, self->window, &attrs);
 
-            if (width != self->old_width || height != self->old_height) {
+            if (attrs.width != self->width || attrs.height != self->height) {
                 XDestroyImage(self->image);
 
-                self->image_data = calloc(width * height, sizeof(uint32_t));
+                self->image_data = calloc(attrs.width * attrs.height, sizeof(uint32_t));
                 self->image = XCreateImage(self->display,
                                            DefaultVisual(self->display, self->screen),
                                            DefaultDepth(self->display, self->screen),
                                            ZPixmap,
                                            0,
                                            (char *)self->image_data,
-                                           width,
-                                           height,
+                                           attrs.width,
+                                           attrs.height,
                                            32,
                                            0);
 
-                self->old_width = width;
-                self->old_height = height;
+                self->width = attrs.width;
+                self->height = attrs.height;
             }
         } break;
         }
     }
 }
 
-bool ParrotVideoWindow_should_close(ParrotVideoWindow *self) {
+static bool driver_should_close(ParrotWindowDriverWindow *self) {
     bool value = self->close_requested;
     self->close_requested = false;
     return value;
 }
 
-void ParrotVideoWindow_set_title(ParrotVideoWindow *self, const char *title) {
+static void driver_set_title(ParrotWindowDriverWindow *self, const char *title) {
     Atom netWmName = XInternAtom(self->display, "_NET_WM_NAME", False);
     Atom utf8 = XInternAtom(self->display, "UTF8_STRING", False);
     XChangeProperty(self->display,
@@ -151,38 +158,53 @@ void ParrotVideoWindow_set_title(ParrotVideoWindow *self, const char *title) {
                     strlen(title) * sizeof(char));
 }
 
-void ParrotVideoWindow_set_size(ParrotVideoWindow *self, int width, int height) {
+static void driver_set_size(ParrotWindowDriverWindow *self, int width, int height) {
     XResizeWindow(self->display, self->window, width, height);
 }
 
-int ParrotVideoWindow_get_width(ParrotVideoWindow *self) {
-    XWindowAttributes attrs;
-    XGetWindowAttributes(self->display, self->window, &attrs);
-    return attrs.width;
+static int driver_get_width(ParrotWindowDriverWindow *self) {
+    return self->width;
 }
 
-int ParrotVideoWindow_get_height(ParrotVideoWindow *self) {
-    XWindowAttributes attrs;
-    XGetWindowAttributes(self->display, self->window, &attrs);
-    return attrs.height;
+static int driver_get_height(ParrotWindowDriverWindow *self) {
+    return self->height;
 }
 
-void ParrotVideoWindow_set_image(ParrotVideoWindow *self, const uint32_t *rgbx8888) {
+static void driver_set_image(ParrotWindowDriverWindow *self, const uint32_t *rgbx8888) {
     PARROT_FAIL_NULL(self);
 
-    int width = ParrotVideoWindow_get_width(self);
-    int height = ParrotVideoWindow_get_height(self);
+    XWindowAttributes attrs;
+    XGetWindowAttributes(self->display, self->window, &attrs);
 
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            uint8_t r = rgbx8888[y * width + x] & 0xFF;
-            uint8_t g = (rgbx8888[y * width + x] >> 8) & 0xFF;
-            uint8_t b = (rgbx8888[y * width + x] >> 16) & 0xFF;
-            self->image_data[y * width + x] = (0xFF << 24) | (r << 16) | (g << 8) | b;
+    for (int y = 0; y < attrs.height; y++) {
+        for (int x = 0; x < attrs.width; x++) {
+            uint8_t r = rgbx8888[y * attrs.width + x] & 0xFF;
+            uint8_t g = (rgbx8888[y * attrs.width + x] >> 8) & 0xFF;
+            uint8_t b = (rgbx8888[y * attrs.width + x] >> 16) & 0xFF;
+            self->image_data[y * attrs.width + x] = (0xFF << 24) | (r << 16) | (g << 8) | b;
         }
     }
-    XPutImage(self->display, self->back_buffer, self->gc, self->image, 0, 0, 0, 0, width, height);
+    XPutImage(self->display, self->back_buffer, self->gc, self->image, 0, 0, 0, 0, attrs.width, attrs.height);
 
     XdbeSwapInfo swap_info = {self->window, XdbeBackground};
     XdbeSwapBuffers(self->display, &swap_info, 1);
 }
+
+const ParrotWindowDriver Parrot_x11_window_driver = {
+    .init = driver_init,
+    .shutdown = driver_shutdown,
+
+    .create_window = driver_create_window,
+    .delete_window = driver_delete_window,
+
+    .poll_events = driver_poll_events,
+    .should_close = driver_should_close,
+
+    .set_title = driver_set_title,
+
+    .set_size = driver_set_size,
+    .get_width = driver_get_width,
+    .get_height = driver_get_height,
+
+    .set_image = driver_set_image,
+};

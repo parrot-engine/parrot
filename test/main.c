@@ -1,6 +1,9 @@
 #include "parrot/core/main_loop.h"
 #include "parrot/core/math.h"
 #include "parrot/core/reflect.h"
+#include "parrot/drivers/gl_driver.h"
+#include "parrot/drivers/video_driver.h"
+#include "parrot/drivers/window_driver.h"
 #include "parrot/module.h"
 #include "parrot/scene/transform.h"
 #include "parrot/scene/world.h"
@@ -63,6 +66,15 @@ static void print_type(const char *typename) {
 
 static void init(ParrotMainLoopRunSettings *settings) {
     settings->max_fps = 60;
+
+    Parrot_window_driver = &Parrot_x11_window_driver;
+    Parrot_window_driver->init();
+
+    Parrot_gl_driver = &Parrot_x11_gl_driver;
+    Parrot_gl_driver->init();
+
+    Parrot_video_driver = &Parrot_gl11_video_driver;
+    Parrot_video_driver->init();
 
     ParrotVideo_init();
 
@@ -159,6 +171,10 @@ static void shutdown(ParrotMainLoopRunSettings *settings) {
     ParrotReflect_delete(reflect);
 
     ParrotVideo_shutdown();
+
+    Parrot_video_driver->shutdown();
+    Parrot_gl_driver->shutdown();
+    Parrot_window_driver->shutdown();
 }
 
 int main(void) {

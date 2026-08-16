@@ -2,10 +2,10 @@
 #include "parrot/core/math.h"
 #include "parrot/core/scope.h"
 #include "parrot/core/util.h"
+#include "parrot/drivers/video_driver.h"
+#include "parrot/drivers/window_driver.h"
 #include "parrot/video/font.h"
 #include "src/ds.h"
-#include "src/video/platform.h"
-#include "src/video/video_backend.h"
 #include "stb_ds.h"
 #include <stdint.h>
 #include <stdlib.h>
@@ -14,7 +14,7 @@
 typedef struct ParrotVideoObject ParrotVideoObject;
 
 typedef struct {
-    ParrotVideoWindow *window;
+    ParrotWindowDriverWindow *window;
 
     int width;
     int height;
@@ -23,7 +23,7 @@ typedef struct {
 } ParrotVideoObjectWindow;
 
 typedef struct {
-    ParrotVideoBackendViewportHandle viewport;
+    ParrotVideoDriverViewport *viewport;
 
     int width;
     int height;
@@ -96,11 +96,6 @@ typedef struct {
 
 static ParrotVideo *self = NULL;
 
-static void shutdown_video_backend_wrapper(void *ctx) {
-    (void)ctx;
-    ParrotVideoBackend_shutdown();
-}
-
 void ParrotVideo_init(void) {
     PARROT_FAIL_COND(ParrotVideo_is_initialized());
 
@@ -109,9 +104,6 @@ void ParrotVideo_init(void) {
     memset(self, 0, sizeof(ParrotVideo));
 
     self->scope = ParrotScope_new(NULL);
-
-    ParrotVideoBackend_init();
-    ParrotScope_push(self->scope, shutdown_video_backend_wrapper, NULL);
 
     ParrotScope_push(self->scope, Parrot_hmfree_scope_wrapper, Parrot_hmfree_scope_wrapper_PACK_CTX(self->hm_pointers));
 
@@ -249,7 +241,7 @@ void ParrotVideo_object_add_window(ParrotVideoObjectHandle handle, int width, in
     object->window = malloc(sizeof(ParrotVideoObjectWindow));
     memset(object->window, 0, sizeof(ParrotVideoObjectWindow));
 
-    object->window->window = ParrotVideoWindow_new(width, height);
+    object->window->window = Parrot_window_driver->create_window(width, height);
 }
 
 void ParrotVideo_object_remove_window(ParrotVideoObjectHandle handle) {
@@ -257,7 +249,7 @@ void ParrotVideo_object_remove_window(ParrotVideoObjectHandle handle) {
 
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
-    ParrotVideoWindow_delete(object->window->window);
+    Parrot_window_driver->delete_window(object->window->window);
 
     free(object->window);
     object->window = NULL;
@@ -272,13 +264,13 @@ bool ParrotVideo_object_has_window(ParrotVideoObjectHandle handle) {
 bool ParrotVideo_object_is_window_close_requested(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
 
-    return ParrotVideoWindow_should_close(hmget(self->hm_pointers, handle.index)->window->window);
+    return Parrot_window_driver->should_close(hmget(self->hm_pointers, handle.index)->window->window);
 }
 
 void ParrotVideo_object_set_window_title(ParrotVideoObjectHandle handle, const char *title) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
 
-    ParrotVideoWindow_set_title(hmget(self->hm_pointers, handle.index)->window->window, title);
+    Parrot_window_driver->set_title(hmget(self->hm_pointers, handle.index)->window->window, title);
 }
 
 void ParrotVideo_object_set_window_size(ParrotVideoObjectHandle handle, int width, int height) {
@@ -287,17 +279,17 @@ void ParrotVideo_object_set_window_size(ParrotVideoObjectHandle handle, int widt
     PARROT_FAIL_COND(width == 0);
     PARROT_FAIL_COND(height == 0);
 
-    ParrotVideoWindow_set_size(hmget(self->hm_pointers, handle.index)->window->window, width, height);
+    Parrot_window_driver->set_size(hmget(self->hm_pointers, handle.index)->window->window, width, height);
 }
 
 int ParrotVideo_object_get_window_width(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
-    return ParrotVideoWindow_get_width(hmget(self->hm_pointers, handle.index)->window->window);
+    return Parrot_window_driver->get_width(hmget(self->hm_pointers, handle.index)->window->window);
 }
 
 int ParrotVideo_object_get_window_height(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
-    return ParrotVideoWindow_get_height(hmget(self->hm_pointers, handle.index)->window->window);
+    return Parrot_window_driver->get_height(hmget(self->hm_pointers, handle.index)->window->window);
 }
 
 void ParrotVideo_object_add_viewport(ParrotVideoObjectHandle handle, int width, int height) {
@@ -310,7 +302,7 @@ void ParrotVideo_object_add_viewport(ParrotVideoObjectHandle handle, int width, 
     PARROT_FAIL_COND(width == 0);
     PARROT_FAIL_COND(height == 0);
 
-    object->viewport->viewport = ParrotVideoBackend_create_viewport(width, height);
+    object->viewport->viewport = Parrot_video_driver->create_viewport(width, height);
     object->viewport->width = width;
     object->viewport->height = height;
 }
@@ -321,10 +313,10 @@ void ParrotVideo_object_remove_viewport(ParrotVideoObjectHandle handle) {
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
     if (ParrotVideo_object_has_window(handle)) {
-        ParrotVideoWindow_set_image(object->window->window, NULL);
+        Parrot_window_driver->set_image(object->window->window, NULL);
     }
 
-    ParrotVideoBackend_delete_viewport(object->viewport->viewport);
+    Parrot_video_driver->delete_viewport(object->viewport->viewport);
 
     free(object->viewport);
     object->viewport = NULL;
@@ -417,7 +409,7 @@ static bool ParrotVideo_find_camera(ParrotVideoObjectHandle handle,
 }
 
 static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
-                                      ParrotVideoBackendViewportHandle *viewport,
+                                      ParrotVideoDriverViewport *viewport,
                                       ParrotMat view_matrix,
                                       ParrotMat projection_matrix,
                                       ParrotColor tint) {
@@ -426,11 +418,11 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
     tint = ParrotColor_mul(tint, object->tint);
 
     if (ParrotVideo_object_has_window(handle)) {
-        ParrotVideoWindow_poll_events(object->window->window);
+        Parrot_window_driver->poll_events(object->window->window);
     }
 
     if (ParrotVideo_object_has_viewport(handle)) {
-        viewport = &object->viewport->viewport;
+        viewport = object->viewport->viewport;
         ParrotVideoObjectHandle camera_handle;
         ParrotVideoObjectCamera *camera;
 
@@ -438,7 +430,7 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
             ParrotVideoObject *camera_object = hmget(self->hm_pointers, camera_handle.index);
 
             if (camera->use_clear_color) {
-                ParrotVideoBackend_clear_viewport(object->viewport->viewport, camera->clear_color);
+                Parrot_video_driver->clear_viewport(object->viewport->viewport, camera->clear_color);
             }
 
             view_matrix = ParrotMat_inverse(camera_object->matrix);
@@ -459,8 +451,8 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
     }
 
     if (ParrotVideo_object_has_viewport(handle) && ParrotVideo_object_has_window(handle)) {
-        ParrotVideoWindow_set_image(object->window->window,
-                                    ParrotVideoBackend_get_viewport_pixels(object->viewport->viewport));
+        Parrot_window_driver->set_image(object->window->window,
+                                        Parrot_video_driver->get_viewport_pixels(object->viewport->viewport));
     }
 
     PARROT_RET_COND(!viewport);
@@ -481,32 +473,32 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
                        y0 + object->rect->texture_region_height / (float)object->rect->texture_height :
                        0;
 
-        ParrotVideoBackendVertex vertices[] = {
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, 0, 0}, .uv = {x0, y0}, .tint = tint},
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, 0, 0}, .uv = {x1, y0}, .tint = tint},
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, height, 0}, .uv = {x0, y1}, .tint = tint},
+        ParrotVideoVertex vertices[] = {
+            (ParrotVideoVertex){.position = (ParrotVec3){0, 0, 0}, .uv = {x0, y0}, .tint = tint},
+            (ParrotVideoVertex){.position = (ParrotVec3){width, 0, 0}, .uv = {x1, y0}, .tint = tint},
+            (ParrotVideoVertex){.position = (ParrotVec3){0, height, 0}, .uv = {x0, y1}, .tint = tint},
 
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, height, 0}, .uv = {x1, y1}, .tint = tint},
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){0, height, 0}, .uv = {x0, y1}, .tint = tint},
-            (ParrotVideoBackendVertex){.position = (ParrotVec3){width, 0, 0}, .uv = {x1, y0}, .tint = tint},
+            (ParrotVideoVertex){.position = (ParrotVec3){width, height, 0}, .uv = {x1, y1}, .tint = tint},
+            (ParrotVideoVertex){.position = (ParrotVec3){0, height, 0}, .uv = {x0, y1}, .tint = tint},
+            (ParrotVideoVertex){.position = (ParrotVec3){width, 0, 0}, .uv = {x1, y0}, .tint = tint},
         };
 
         if (object->rect->texture_rgba8888) {
-            ParrotVideoBackend_set_viewport_texture(*viewport,
-                                                    object->rect->texture_width,
-                                                    object->rect->texture_height,
-                                                    object->rect->texture_rgba8888,
-                                                    object->rect->texture_nearest_filter);
+            Parrot_video_driver->set_viewport_texture(viewport,
+                                                      object->rect->texture_width,
+                                                      object->rect->texture_height,
+                                                      object->rect->texture_rgba8888,
+                                                      object->rect->texture_nearest_filter);
         }
-        ParrotVideoBackend_draw_viewport_vertices(*viewport,
-                                                  (ParrotGMatSet){
-                                                      .model = object->matrix,
-                                                      .view = view_matrix,
-                                                      .projection = projection_matrix,
-                                                  },
-                                                  vertices,
-                                                  6);
-        ParrotVideoBackend_clear_viewport_texture(*viewport);
+        Parrot_video_driver->draw_viewport_vertices(viewport,
+                                                    (ParrotGMatSet){
+                                                        .model = object->matrix,
+                                                        .view = view_matrix,
+                                                        .projection = projection_matrix,
+                                                    },
+                                                    vertices,
+                                                    6);
+        Parrot_video_driver->clear_viewport_texture(viewport);
     }
 
     if (object->text) {
@@ -559,7 +551,7 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
         }
 
         for (size_t i = 0; i < shlen(hm_chars); i++) {
-            ParrotVideoBackendVertex *arr_vertices = NULL;
+            ParrotVideoVertex *arr_vertices = NULL;
 
             ParrotVideoFontChar character = hm_chars[i].value;
             int w = character.width;
@@ -569,12 +561,12 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
                 float x = hm_arr_char_positions[i].value[j].x;
                 float y = hm_arr_char_positions[i].value[j].y;
 
-                ParrotVideoBackendVertex a = {(ParrotVec3){x, y, 0}, .uv = {0, 0}, .tint = tint};
-                ParrotVideoBackendVertex b = {(ParrotVec3){x + w, y, 0}, .uv = {1, 0}, .tint = tint};
-                ParrotVideoBackendVertex c = {(ParrotVec3){x, y + h, 0}, .uv = {0, 1}, .tint = tint};
-                ParrotVideoBackendVertex d = {(ParrotVec3){x + w, y + h, 0}, .uv = {1, 1}, .tint = tint};
-                ParrotVideoBackendVertex e = {(ParrotVec3){x, y + h, 0}, .uv = {0, 1}, .tint = tint};
-                ParrotVideoBackendVertex f = {(ParrotVec3){x + w, y, 0}, .uv = {1, 0}, .tint = tint};
+                ParrotVideoVertex a = {(ParrotVec3){x, y, 0}, .uv = {0, 0}, .tint = tint};
+                ParrotVideoVertex b = {(ParrotVec3){x + w, y, 0}, .uv = {1, 0}, .tint = tint};
+                ParrotVideoVertex c = {(ParrotVec3){x, y + h, 0}, .uv = {0, 1}, .tint = tint};
+                ParrotVideoVertex d = {(ParrotVec3){x + w, y + h, 0}, .uv = {1, 1}, .tint = tint};
+                ParrotVideoVertex e = {(ParrotVec3){x, y + h, 0}, .uv = {0, 1}, .tint = tint};
+                ParrotVideoVertex f = {(ParrotVec3){x + w, y, 0}, .uv = {1, 0}, .tint = tint};
 
                 arrpush(arr_vertices, a);
                 arrpush(arr_vertices, b);
@@ -594,16 +586,16 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
                 }
                 free(character.bitmap);
 
-                ParrotVideoBackend_set_viewport_texture(*viewport, w, h, rgba8888, false);
-                ParrotVideoBackend_draw_viewport_vertices(*viewport,
-                                                          (ParrotGMatSet){
-                                                              .model = object->matrix,
-                                                              .view = view_matrix,
-                                                              .projection = projection_matrix,
-                                                          },
-                                                          arr_vertices,
-                                                          arrlen(arr_vertices));
-                ParrotVideoBackend_clear_viewport_texture(*viewport);
+                Parrot_video_driver->set_viewport_texture(viewport, w, h, rgba8888, false);
+                Parrot_video_driver->draw_viewport_vertices(viewport,
+                                                            (ParrotGMatSet){
+                                                                .model = object->matrix,
+                                                                .view = view_matrix,
+                                                                .projection = projection_matrix,
+                                                            },
+                                                            arr_vertices,
+                                                            arrlen(arr_vertices));
+                Parrot_video_driver->clear_viewport_texture(viewport);
             }
             free(rgba8888);
 

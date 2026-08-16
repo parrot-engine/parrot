@@ -1,6 +1,7 @@
-SRCS=$(shell find . -name "*.c") $(shell find . -name "*.s")
+SRCS=$(shell find . -name "*.c")
 OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
 
+.PHONY: all
 all: $(OBJS)
 
 include $(ROOT_DIR)/make/basic-targets.mk

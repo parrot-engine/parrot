@@ -30,12 +30,12 @@ export DOUBLE_PRECISION ?= 0
 # Default is platform dependent but if the platform specifies no default, it will be treated as false.
 export AVOID_MEMORY ?= $(DEFAULT)
 
-# [bool] Builds the video module
-export VIDEO_MODULE_ENABLE ?= 1
-
 # [path] The build directory name (relative to the root build directory) to build into. By default, the value is derived from the
 # other options.
 export BUILD_DIR_NAME = $(DEFAULT)
+
+# [set: default, x11] List of drivers to build. `default` includes platform default drivers
+export DRIVERS = default
 
 
 #######################################################################################################################
@@ -93,8 +93,6 @@ endif
 ifeq ($(DEBUG_INFO),1)
 export BUILD_DIR_NAME := $(BUILD_DIR_NAME)+dbginfo
 endif
+endif
 
-ifeq ($(VIDEO_MODULE_ENABLE),1)
-export BUILD_DIR_NAME := $(BUILD_DIR_NAME)+video
-endif
-endif
+export DRIVERS := $(filter-out default,$(DRIVERS))
