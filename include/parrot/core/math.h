@@ -131,6 +131,7 @@ static const ParrotReflectDescription ParrotVec3_description[] = {
 };
 
 PARROT_API ParrotVec3 ParrotVec3_n(ParrotReal n);
+PARROT_API ParrotVec3 ParrotVec3_upgrade(ParrotVec2 v);
 
 PARROT_API ParrotVec3 ParrotVec3_add(ParrotVec3 a, ParrotVec3 b);
 PARROT_API ParrotVec3 ParrotVec3_sub(ParrotVec3 a, ParrotVec3 b);
@@ -162,6 +163,7 @@ static const ParrotReflectDescription ParrotVec4_description[] = {
 };
 
 PARROT_API ParrotVec4 ParrotVec4_n(ParrotReal n);
+PARROT_API ParrotVec4 ParrotVec4_upgrade(ParrotVec3 v);
 
 PARROT_API ParrotVec4 ParrotVec4_add(ParrotVec4 a, ParrotVec4 b);
 PARROT_API ParrotVec4 ParrotVec4_sub(ParrotVec4 a, ParrotVec4 b);

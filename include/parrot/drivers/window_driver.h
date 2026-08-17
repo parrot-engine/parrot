@@ -2,6 +2,7 @@
 #define PARROT_PARROT_INCLUDE_PARROT_DRIVERS_WINDOW_DRIVER_H_
 
 #include "parrot/core/api.h"
+#include "parrot/drivers/window_driver.keys.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -9,6 +10,8 @@ typedef enum {
     ParrotWindowDriverEventType_QUIT = 0,
 
     ParrotWindowDriverEventType_RESIZE,
+
+    ParrotWindowDriverEventType_KEY,
 } ParrotWindowDriverEventType;
 
 typedef struct {
@@ -22,6 +25,25 @@ typedef struct {
             int old_width;
             int old_height;
         } resize;
+
+        struct {
+            /// Physical key layout, never changes
+            ParrotWindowDriverEventKey physical_key;
+            /// Logical key layout, changes based on layout
+            ParrotWindowDriverEventKey logical_key;
+            /// '\0' =  unprintable character
+            char character;
+
+            bool key_down;
+
+            bool mod_lctrl;
+            bool mod_lshift;
+            bool mod_lalt;
+            bool mod_rctrl;
+            bool mod_rshift;
+            bool mod_ralt;
+            bool mod_caps_lock;
+        } key;
     } data;
 } ParrotWindowDriverEvent;
 

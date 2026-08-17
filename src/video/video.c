@@ -20,6 +20,9 @@ typedef struct {
     int height;
 
     bool close_requested;
+
+    bool physical_keys[ParrotWindowDriverEventKey_COUNT];
+    bool logical_keys[ParrotWindowDriverEventKey_COUNT];
 } ParrotVideoObjectWindow;
 
 typedef struct {
@@ -69,6 +72,10 @@ struct ParrotVideoObject {
 
     bool visible;
     ParrotColor tint;
+
+    ParrotVideoObjectEvent event_queue[256];
+    uint8_t event_queue_read;
+    uint8_t event_queue_write;
 
     ParrotVideoObjectWindow *window;
     ParrotVideoObjectViewport *viewport;
@@ -231,6 +238,26 @@ ParrotMat ParrotVideo_get_object_matrix(ParrotVideoObjectHandle handle) {
     return hmget(self->hm_pointers, handle.index)->matrix;
 }
 
+bool ParrotVideo_poll_object_events(ParrotVideoObjectHandle handle, ParrotVideoObjectEvent *out_event) {
+    PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    if (object->event_queue_read == object->event_queue_write) {
+        return false;
+    }
+
+    *out_event = object->event_queue[object->event_queue_read++];
+    return true;
+}
+
+void ParrotVideo_push_object_event(ParrotVideoObjectHandle handle, ParrotVideoObjectEvent event) {
+    PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    object->event_queue[object->event_queue_write++] = event;
+}
+
 void ParrotVideo_object_add_window(ParrotVideoObjectHandle handle, int width, int height) {
     PARROT_FAIL_COND(ParrotVideo_object_has_window(handle));
 
@@ -263,6 +290,7 @@ bool ParrotVideo_object_has_window(ParrotVideoObjectHandle handle) {
 
 bool ParrotVideo_object_is_window_close_requested(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
+
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
     bool close_requested = object->window->close_requested;
@@ -293,6 +321,20 @@ int ParrotVideo_object_get_window_width(ParrotVideoObjectHandle handle) {
 int ParrotVideo_object_get_window_height(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
     return Parrot_window_driver->get_height(hmget(self->hm_pointers, handle.index)->window->window);
+}
+
+bool ParrotVideo_object_is_window_key_down(ParrotVideoObjectHandle handle, ParrotWindowDriverEventKey key) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    return hmget(self->hm_pointers, handle.index)->window->physical_keys[key];
+}
+
+bool ParrotVideo_object_is_window_logical_key_down(ParrotVideoObjectHandle handle, ParrotWindowDriverEventKey key) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
+
+    return hmget(self->hm_pointers, handle.index)->window->logical_keys[key];
 }
 
 void ParrotVideo_object_add_viewport(ParrotVideoObjectHandle handle, int width, int height) {
@@ -427,9 +469,19 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
             case ParrotWindowDriverEventType_QUIT: {
                 object->window->close_requested = true;
             } break;
+            case ParrotWindowDriverEventType_KEY: {
+                object->window->physical_keys[event.data.key.physical_key] = event.data.key.key_down;
+                object->window->logical_keys[event.data.key.logical_key] = event.data.key.key_down;
+            } break;
             default:
                 break;
             }
+
+            ParrotVideo_push_object_event(handle,
+                                          (ParrotVideoObjectEvent){
+                                              .type = ParrotVideoObjectEventType_WINDOW,
+                                              .data.window = event,
+                                          });
         }
     }
 

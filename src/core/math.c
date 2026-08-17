@@ -66,6 +66,14 @@ ParrotVec3 ParrotVec3_n(ParrotReal n) {
     return (ParrotVec3){n, n, n};
 }
 
+ParrotVec3 ParrotVec3_upgrade(ParrotVec2 v) {
+    return (ParrotVec3){
+        v.x,
+        v.y,
+        0,
+    };
+}
+
 ParrotVec3 ParrotVec3_add(ParrotVec3 a, ParrotVec3 b) {
     return (ParrotVec3){a.x + b.x, a.y + b.y, a.z + b.z};
 }
@@ -106,6 +114,10 @@ ParrotReal ParrotVec3_dot(ParrotVec3 self, ParrotVec3 other) {
 
 ParrotVec4 ParrotVec4_n(ParrotReal n) {
     return (ParrotVec4){n, n, n, n};
+}
+
+ParrotVec4 ParrotVec4_upgrade(ParrotVec3 v) {
+    return (ParrotVec4){v.x, v.y, v.z, 0};
 }
 
 ParrotVec4 ParrotVec4_add(ParrotVec4 a, ParrotVec4 b) {

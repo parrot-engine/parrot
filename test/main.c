@@ -4,6 +4,7 @@
 #include "parrot/drivers/gl_driver.h"
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
+#include "parrot/drivers/window_driver.keys.h"
 #include "parrot/module.h"
 #include "parrot/scene/transform.h"
 #include "parrot/scene/world.h"
@@ -18,9 +19,12 @@
 
 ParrotReflect *reflect = NULL;
 ParrotSceneWorld *world = NULL;
+
 ParrotSceneWorldEntity root;
 ParrotSceneWorldEntity camera;
 ParrotSceneWorldEntity object;
+
+ParrotVideoObjectHandle root_handle;
 
 float fps_update_timer = 0;
 
@@ -140,6 +144,11 @@ static void init(ParrotMainLoopRunSettings *settings) {
     }
 
     ParrotVideoSceneSystem_update(world, ParrotVideo_get_root());
+    {
+        ParrotVideoSceneRenderableComponent *renderable =
+            ParrotSceneWorld_get_component(world, root, ParrotVideoSceneRenderableComponent);
+        root_handle = renderable->object_handle;
+    }
 }
 
 static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should_close) {
@@ -147,9 +156,37 @@ static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should
         should_close = ParrotSceneWorld_get_component(world, root, ParrotVideoSceneWindowComponent)->close_requested;
     }
 
-    ParrotTransform *transform = ParrotSceneWorld_get_component(world, object, ParrotTransform);
-    transform->position.x += delta * 50;
-    transform->rotation.z += delta;
+    {
+        ParrotTransform *transform = ParrotSceneWorld_get_component(world, object, ParrotTransform);
+        transform->position.x += delta * 50;
+        transform->rotation.z += delta;
+    }
+
+    {
+        ParrotTransform *transform = ParrotSceneWorld_get_component(world, camera, ParrotTransform);
+        ParrotVec2 direction = {
+            ParrotVideo_object_is_window_key_down(root_handle, ParrotWindowDriverEventKey_D) -
+                ParrotVideo_object_is_window_key_down(root_handle, ParrotWindowDriverEventKey_A),
+            ParrotVideo_object_is_window_key_down(root_handle, ParrotWindowDriverEventKey_S) -
+                ParrotVideo_object_is_window_key_down(root_handle, ParrotWindowDriverEventKey_W),
+        };
+
+        transform->position =
+            ParrotVec3_add(transform->position, ParrotVec3_upgrade(ParrotVec2_scale(direction, delta * 500)));
+    }
+
+    ParrotVideoObjectEvent event = {0};
+    while (ParrotVideo_poll_object_events(root_handle, &event)) {
+        if (event.type == ParrotVideoObjectEventType_WINDOW) {
+            ParrotWindowDriverEvent window_event = event.data.window;
+            if (window_event.type == ParrotWindowDriverEventType_KEY) {
+                if (window_event.data.key.key_down &&
+                    window_event.data.key.logical_key == ParrotWindowDriverEventKey_ESCAPE) {
+                    should_close = true;
+                }
+            }
+        }
+    }
 
     if (fps_update_timer > 1.0) {
         printf("FPS: %.02f\n", 1 / delta);
