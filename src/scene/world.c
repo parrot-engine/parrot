@@ -62,9 +62,10 @@ struct ParrotSceneWorld {
 
     ParrotSceneWorldCachedQuery *hm_queries;
     ParrotSceneWorldInitialCachedQueries *sh_initial_cached_queries;
+    ParrotCRC32 *arr_entity_tree_queries;
 };
 
-void ParrotSceneWorld_invalidate_cached_query(ParrotSceneWorld *self, ParrotCRC32 query_crc32) {
+static void ParrotSceneWorld_invalidate_cached_query(ParrotSceneWorld *self, ParrotCRC32 query_crc32) {
     ParrotSceneWorldCachedQuery *cached_query = hmgetp_null(self->hm_queries, query_crc32);
     PARROT_FAIL_NULL(cached_query);
 
@@ -82,7 +83,13 @@ void ParrotSceneWorld_invalidate_cached_query(ParrotSceneWorld *self, ParrotCRC3
     hmdel(self->hm_queries, query_crc32);
 }
 
-void ParrotSceneWorldRegisteredComponent_min_size(ParrotSceneWorldRegisteredComponent *self, size_t size) {
+static void ParrotSceneWorld_invalidate_tree_queries(ParrotSceneWorld *self) {
+    for (size_t i = 0; i < arrlen(self->arr_entity_tree_queries); i++) {
+        ParrotSceneWorld_invalidate_cached_query(self, self->arr_entity_tree_queries[i]);
+    }
+}
+
+static void ParrotSceneWorldRegisteredComponent_min_size(ParrotSceneWorldRegisteredComponent *self, size_t size) {
     if (self->description.size * size > arrlen(self->arr_data)) {
         arrsetlen(self->arr_data, self->description.size * size);
     }
@@ -129,6 +136,7 @@ void ParrotSceneWorld_delete(ParrotSceneWorld *self) {
     arrfree(self->arr_free_indices);
 
     shfree(self->hm_queries);
+    arrfree(self->arr_entity_tree_queries);
 
     while (shlen(self->sh_initial_cached_queries) > 0) {
         hmfree(self->sh_initial_cached_queries[0].value);
@@ -164,6 +172,8 @@ ParrotSceneWorldEntity ParrotSceneWorld_create_entity(ParrotSceneWorld *self) {
 
     self->arr_entity_exists[index] = true;
 
+    ParrotSceneWorld_invalidate_tree_queries(self);
+
     return MAKE_ENTITY(index, self->arr_entity_gens[index]);
 }
 
@@ -184,6 +194,8 @@ void ParrotSceneWorld_delete_entity(ParrotSceneWorld *self, ParrotSceneWorldEnti
     ParrotSceneWorld_set_entity_parent(self, entity, ParrotSceneWorldEntity_NULL);
 
     self->arr_entity_exists[ENTITY_INDEX(entity)] = false;
+
+    ParrotSceneWorld_invalidate_tree_queries(self);
     arrpush(self->arr_free_indices, ENTITY_INDEX(entity));
 }
 
@@ -214,6 +226,8 @@ void ParrotSceneWorld_set_entity_parent(ParrotSceneWorld *self,
     }
 
     self->arr_entity_parents[ENTITY_INDEX(child)] = new_parent;
+
+    ParrotSceneWorld_invalidate_tree_queries(self);
 }
 
 ParrotSceneWorldEntity ParrotSceneWorld_get_entity_parent(ParrotSceneWorld *self, ParrotSceneWorldEntity entity) {
@@ -388,6 +402,8 @@ static ParrotCRC32 ParrotSceneWorld_query(ParrotSceneWorld *self, const ParrotSc
                     hmdel(shm_entity_indices, i);
                 }
             }
+
+            arrpush(self->arr_entity_tree_queries, query_crc32);
         } break;
         case ParrotSceneWorldQueryType_COMPONENT: {
             ParrotSceneWorldRegisteredComponent *component =
