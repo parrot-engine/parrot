@@ -59,61 +59,61 @@ struct ParrotReflectDescription {
         .type = ParrotReflectEntryType_END,                                                                             \
     }
 
-#define PARROT_REFLECT_TYPE_HEADER(typename)                                                                            \
+#define PARROT_REFLECT_TYPE_HEADER(p_type)                                                                              \
     {                                                                                                                   \
         .type = ParrotReflectEntryType_TYPE_HEADER,                                                                     \
-        .name = PARROT_STRING(typename),                                                                                \
+        .name = PARROT_STRING(p_type),                                                                                  \
         .data.type_header_data =                                                                                        \
             {                                                                                                           \
-                .size = sizeof(typename),                                                                               \
+                .size = sizeof(p_type),                                                                                 \
             },                                                                                                          \
     }
-#define PARROT_REFLECT_TYPE_HEADER_TAG(typename, ...)                                                                   \
+#define PARROT_REFLECT_TYPE_HEADER_TAG(p_type, ...)                                                                     \
     {                                                                                                                   \
         .type = ParrotReflectEntryType_TYPE_HEADER,                                                                     \
-        .name = PARROT_STRING(typename),                                                                                \
+        .name = PARROT_STRING(type),                                                                                    \
         .data.type_header_data =                                                                                        \
             {                                                                                                           \
-                .size = sizeof(typename),                                                                               \
+                .size = sizeof(p_type),                                                                                 \
                                                                                                                         \
                 .tags = {__VA_ARGS__},                                                                                  \
             },                                                                                                          \
     }
-#define PARROT_REFLECT_TYPE_FIELD(typename, field_type, field_name, field_suffix)                                       \
+#define PARROT_REFLECT_TYPE_FIELD(p_type, p_field_type, p_field_name, p_field_suffix)                                   \
     {                                                                                                                   \
         .type = ParrotReflectEntryType_TYPE_FIELD,                                                                      \
         .name = PARROT_STRING(field_name),                                                                              \
         .data.type_field_data =                                                                                         \
             {                                                                                                           \
-                .offset = offsetof(typename, field_name),                                                               \
-                .field_base_size = sizeof(field_type),                                                                  \
-                .type = PARROT_STRING(field_type),                                                                      \
-                .suffix = PARROT_STRING(field_suffix),                                                                  \
+                .offset = offsetof(p_type, p_field_name),                                                               \
+                .field_base_size = sizeof(p_field_type),                                                                \
+                .type = PARROT_STRING(p_field_type),                                                                    \
+                .suffix = PARROT_STRING(p_field_suffix),                                                                \
             },                                                                                                          \
     }
-#define PARROT_REFLECT_TYPE_FIELD_TAG(typename, field_type, field_name, field_suffix, ...)                              \
+#define PARROT_REFLECT_TYPE_FIELD_TAG(p_type, p_field_type, p_field_name, p_field_suffix, ...)                          \
     {                                                                                                                   \
         .type = ParrotReflectEntryType_TYPE_FIELD,                                                                      \
-        .name = PARROT_STRING(field_name),                                                                              \
+        .name = PARROT_STRING(p_field_name),                                                                            \
         .tags = {__VA_ARGS__},                                                                                          \
         .data.type_field_data =                                                                                         \
             {                                                                                                           \
-                .offset = offsetof(typename, field_name),                                                               \
-                .field_base_size = sizeof(field_type),                                                                  \
-                .type = PARROT_STRING(field_type),                                                                      \
-                .suffix = PARROT_STRING(field_suffix),                                                                  \
+                .offset = offsetof(p_type, p_field_name),                                                               \
+                .field_base_size = sizeof(p_field_type),                                                                \
+                .type = PARROT_STRING(p_field_type),                                                                    \
+                .suffix = PARROT_STRING(p_field_suffix),                                                                \
             },                                                                                                          \
     }
 
 /// Immediately acts as the end as well
-#define PARROT_REFLECT_ALIAS(typename, alias_of)                                                                        \
+#define PARROT_REFLECT_ALIAS(p_type, p_alias_of)                                                                        \
     {                                                                                                                   \
         .type = ParrotReflectEntryType_ALIAS,                                                                           \
-        .name = PARROT_STRING(typename),                                                                                \
+        .name = PARROT_STRING(p_type),                                                                                  \
         .data.alias_data =                                                                                              \
             {                                                                                                           \
-                .alias_of_name = PARROT_STRING(alias_of),                                                               \
-                .size = sizeof(alias_of),                                                                               \
+                .alias_of_name = PARROT_STRING(p_alias_of),                                                             \
+                .size = sizeof(p_alias_of),                                                                             \
             },                                                                                                          \
     }
 
@@ -121,12 +121,12 @@ struct ParrotReflectDescription {
     {                                                                                                                   \
         .type = ParrotReflectEntryType_COLLECTION_HEADER,                                                               \
     }
-#define PARROT_REFLECT_COLLECTION_DESCRIPTION(typename)                                                                 \
+#define PARROT_REFLECT_COLLECTION_DESCRIPTION(p_description)                                                            \
     {                                                                                                                   \
         .type = ParrotReflectEntryType_COLLECTION_DESCRIPTION,                                                          \
         .data.collection_description_data =                                                                             \
             {                                                                                                           \
-                .description = typename,                                                                                \
+                .description = p_description,                                                                           \
             },                                                                                                          \
     }
 
