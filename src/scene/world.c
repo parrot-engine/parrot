@@ -375,14 +375,26 @@ static ParrotCRC32 ParrotSceneWorld_query(ParrotSceneWorld *self, const ParrotSc
         }
     }
 
+    bool invert = false;
+
     for (const ParrotSceneWorldQuery *filter = query; filter->type != ParrotSceneWorldQueryType_END; filter++) {
         switch (filter->type) {
+        case ParrotSceneWorldQueryType_SET_INVERT:
+            invert = filter->data.invert;
+            break;
+        case ParrotSceneWorldQueryType_PARENT: {
+            for (size_t i = 0; i < arrlen(self->arr_entity_gens); i++) {
+                if ((self->arr_entity_parents[i] == filter->data.parent.entity) == invert) {
+                    hmdel(shm_entity_indices, i);
+                }
+            }
+        } break;
         case ParrotSceneWorldQueryType_COMPONENT: {
             ParrotSceneWorldRegisteredComponent *component =
                 shgetp_null(self->sh_registered_components, filter->data.component.name);
 
             for (size_t i = 0; i < arrlen(self->arr_entity_gens); i++) {
-                if ((component && component->arr_exists[i]) == filter->invert) {
+                if ((component && component->arr_exists[i]) == invert) {
                     hmdel(shm_entity_indices, i);
                 }
             }

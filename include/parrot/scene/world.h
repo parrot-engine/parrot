@@ -15,18 +15,25 @@ typedef struct ParrotSceneWorld ParrotSceneWorld;
 typedef enum {
     ParrotSceneWorldQueryType_END = 0,
 
+    ParrotSceneWorldQueryType_SET_INVERT,
+
+    ParrotSceneWorldQueryType_PARENT,
     ParrotSceneWorldQueryType_COMPONENT,
 } ParrotSceneWorldQueryType;
 
 typedef struct {
     ParrotSceneWorldQueryType type;
     union {
+        bool invert;
+
+        struct {
+            ParrotSceneWorldEntity entity;
+        } parent;
+
         struct {
             const char *name;
         } component;
     } data;
-
-    bool invert;
 } ParrotSceneWorldQuery;
 
 #define PARROT_SCENE_WORLD_QUERY_END()                                                                                  \
@@ -34,22 +41,40 @@ typedef struct {
         .type = ParrotSceneWorldQueryType_END,                                                                          \
     })
 
+#define PARROT_SCENE_WORLD_QUERY_SET_INVERT(p_invert)                                                                   \
+    ((ParrotSceneWorldQuery){                                                                                           \
+        .type = ParrotSceneWorldQueryType_SET_INVERT,                                                                   \
+        .data =                                                                                                         \
+            {                                                                                                           \
+                .invert = p_invert,                                                                                     \
+            },                                                                                                          \
+    })
+
+#define PARROT_SCENE_WORLD_QUERY_WITH_PARENT(p_entity)                                                                  \
+    ((ParrotSceneWorldQuery){                                                                                           \
+        .type = ParrotSceneWorldQueryType_PARENT,                                                                       \
+        .data =                                                                                                         \
+            {                                                                                                           \
+                .parent =                                                                                               \
+                    {                                                                                                   \
+                        .entity = p_entity,                                                                             \
+                    },                                                                                                  \
+            },                                                                                                          \
+    })
+
 #define PARROT_SCENE_WORLD_QUERY_WITH_COMPONENT_NAME(p_name)                                                            \
     ((ParrotSceneWorldQuery){                                                                                           \
         .type = ParrotSceneWorldQueryType_COMPONENT,                                                                    \
-        .data.component.name = p_name,                                                                                  \
+        .data =                                                                                                         \
+            {                                                                                                           \
+                .component =                                                                                            \
+                    {                                                                                                   \
+                        .name = p_name,                                                                                 \
+                    },                                                                                                  \
+            },                                                                                                          \
     })
 #define PARROT_SCENE_WORLD_QUERY_WITH_COMPONENT(type)                                                                   \
     PARROT_SCENE_WORLD_QUERY_WITH_COMPONENT_NAME(PARROT_TYPE_STRING(type))
-
-#define PARROT_SCENE_WORLD_QUERY_WITHOUT_COMPONENT_NAME(p_name)                                                         \
-    ((ParrotSceneWorldQuery){                                                                                           \
-        .type = ParrotSceneWorldQueryType_COMPONENT,                                                                    \
-        .data.component.name = p_name,                                                                                  \
-        .invert = true,                                                                                                 \
-    })
-#define PARROT_SCENE_WORLD_QUERY_WITHOUT_COMPONENT(type)                                                                \
-    PARROT_SCENE_WORLD_QUERY_WITHOUT_COMPONENT_NAME(PARROT_TYPE_STRING(type))
 
 typedef void (*ParrotSceneWorldComponentConstructor)(ParrotSceneWorldEntity entity, void *component, void *user_data);
 typedef void (*ParrotSceneWorldComponentDestructor)(ParrotSceneWorldEntity entity, void *component, void *user_data);
