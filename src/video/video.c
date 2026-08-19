@@ -326,8 +326,6 @@ int ParrotVideo_object_get_window_height(ParrotVideoObjectHandle handle) {
 bool ParrotVideo_object_is_window_key_down(ParrotVideoObjectHandle handle, ParrotWindowDriverEventKey key) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
-
     return hmget(self->hm_pointers, handle.index)->window->physical_keys[key];
 }
 

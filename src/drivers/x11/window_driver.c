@@ -264,13 +264,6 @@ static void driver_set_image(ParrotWindowDriverWindow *self, const uint32_t *rgb
     XdbeSwapBuffers(self->display, &swap_info, 1);
 }
 
-static ParrotWindowDriverEventKey x_keycode_to_driver_key(unsigned int keycode) {
-    switch (keycode) {
-    default:
-        return ParrotWindowDriverEventKey_UNKNOWN;
-    }
-}
-
 static ParrotWindowDriverEventKey x_keysym_to_driver_key(KeySym keysym) {
     switch (keysym) {
     case XK_Escape:
