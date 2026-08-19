@@ -67,17 +67,9 @@ struct ParrotSceneWorld {
 
 static void ParrotSceneWorld_invalidate_cached_query(ParrotSceneWorld *self, ParrotCRC32 query_crc32) {
     ParrotSceneWorldCachedQuery *cached_query = hmgetp_null(self->hm_queries, query_crc32);
-    PARROT_FAIL_NULL(cached_query);
+    PARROT_RET_COND(!cached_query);
 
     arrfree(cached_query->arr_results);
-
-    for (size_t i = 0; i < arrlen(cached_query->arr_components); i++) {
-        ParrotSceneWorldRegisteredComponent *registered_component =
-            hmgetp_null(self->sh_registered_components, cached_query->arr_components[i]);
-        if (registered_component) {
-            hmdel(registered_component->shm_queries, query_crc32);
-        }
-    }
     arrfree(cached_query->arr_components);
 
     hmdel(self->hm_queries, query_crc32);
@@ -87,6 +79,7 @@ static void ParrotSceneWorld_invalidate_tree_queries(ParrotSceneWorld *self) {
     for (size_t i = 0; i < arrlen(self->arr_entity_tree_queries); i++) {
         ParrotSceneWorld_invalidate_cached_query(self, self->arr_entity_tree_queries[i]);
     }
+    arrfree(self->arr_entity_tree_queries);
 }
 
 static void ParrotSceneWorldRegisteredComponent_min_size(ParrotSceneWorldRegisteredComponent *self, size_t size) {
@@ -336,6 +329,7 @@ void ParrotSceneWorld_add_component_name(ParrotSceneWorld *self, ParrotSceneWorl
     while (hmlen(component->shm_queries) > 0) {
         ParrotSceneWorld_invalidate_cached_query(self, component->shm_queries[0].key);
     }
+    hmfree(component->shm_queries);
 }
 
 void *ParrotSceneWorld_get_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name) {
@@ -368,6 +362,7 @@ void ParrotSceneWorld_delete_component_name(ParrotSceneWorld *self, ParrotSceneW
     while (hmlen(component->shm_queries) > 0) {
         ParrotSceneWorld_invalidate_cached_query(self, component->shm_queries[0].key);
     }
+    hmfree(component->shm_queries);
 }
 
 static ParrotCRC32 ParrotSceneWorld_query(ParrotSceneWorld *self, const ParrotSceneWorldQuery *query) {
