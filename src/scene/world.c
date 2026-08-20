@@ -20,10 +20,6 @@
 #define ENTITY_GEN(entity) ((uint32_t)(((entity) >> 32)))
 
 typedef struct {
-    ParrotSceneWorldEntity key;
-} ParrotSceneWorldEntitySet;
-
-typedef struct {
     ParrotCRC32 key;
 
     ParrotSceneWorldEntity *arr_results;
@@ -52,7 +48,6 @@ struct ParrotSceneWorld {
     ParrotSceneWorldRegisteredComponent *sh_registered_components;
 
     ParrotSceneWorldEntity *arr_entity_parents;
-    ParrotSceneWorldEntitySet **arr_hm_entity_children;
 
     bool *arr_entity_exists;
     uint32_t *arr_entity_gens;
@@ -118,10 +113,6 @@ void ParrotSceneWorld_delete(ParrotSceneWorld *self) {
     shfree(self->sh_registered_components);
 
     arrfree(self->arr_entity_parents);
-    for (size_t i = 0; i < arrlen(self->arr_hm_entity_children); i++) {
-        hmfree(self->arr_hm_entity_children[i]);
-    }
-    arrfree(self->arr_hm_entity_children);
 
     arrfree(self->arr_entity_exists);
     arrfree(self->arr_entity_gens);
@@ -152,7 +143,6 @@ ParrotSceneWorldEntity ParrotSceneWorld_create_entity(ParrotSceneWorld *self) {
     }
 
     MIN_ARR_SIZE_VALUE(self->arr_entity_parents, index + 1, ParrotSceneWorldEntity_NULL);
-    MIN_ARR_SIZE_VALUE(self->arr_hm_entity_children, index + 1, NULL);
 
     MIN_ARR_SIZE_VALUE(self->arr_entity_exists, index + 1, false);
     MIN_ARR_SIZE_VALUE(self->arr_entity_gens, index + 1, 0);
@@ -173,8 +163,12 @@ ParrotSceneWorldEntity ParrotSceneWorld_create_entity(ParrotSceneWorld *self) {
 void ParrotSceneWorld_delete_entity(ParrotSceneWorld *self, ParrotSceneWorldEntity entity) {
     PARROT_RET_COND(!ParrotSceneWorld_does_entity_exist(self, entity));
 
-    for (size_t i = ParrotSceneWorld_get_entity_child_count(self, entity); i > 0; i--) {
-        ParrotSceneWorld_delete_entity(self, ParrotSceneWorld_get_entity_child(self, entity, i - 1));
+    ParrotSceneWorldQuery child_query[] = {
+        PARROT_SCENE_WORLD_QUERY_WITH_PARENT(entity),
+        PARROT_SCENE_WORLD_QUERY_END(),
+    };
+    for (size_t i = ParrotSceneWorld_query_result_count(self, child_query); i > 0; i--) {
+        ParrotSceneWorld_delete_entity(self, ParrotSceneWorld_query_result_at(self, child_query, i - 1));
     }
 
     for (size_t i = 0; i < shlen(self->sh_registered_components); i++) {
@@ -200,23 +194,25 @@ bool ParrotSceneWorld_does_entity_exist(ParrotSceneWorld *self, ParrotSceneWorld
            self->arr_entity_gens[ENTITY_INDEX(entity)] == ENTITY_GEN(entity);
 }
 
+size_t ParrotSceneWorld_get_entity_count(ParrotSceneWorld *self) {
+    PARROT_FAIL_NULL(self);
+
+    return arrlen(self->arr_entity_gens);
+}
+
+ParrotSceneWorldEntity ParrotSceneWorld_get_entity(ParrotSceneWorld *self, size_t index) {
+    PARROT_FAIL_NULL(self);
+    PARROT_FAIL_COND_MSG(index >= arrlen(self->arr_entity_gens), "Attempted to access out of bounds index in children");
+
+    return MAKE_ENTITY(index, self->arr_entity_gens[index]);
+}
+
 void ParrotSceneWorld_set_entity_parent(ParrotSceneWorld *self,
                                         ParrotSceneWorldEntity child,
                                         /* Nullable */ ParrotSceneWorldEntity new_parent) {
     PARROT_RET_COND(!ParrotSceneWorld_does_entity_exist(self, child));
 
     // TODO: Cycle detection
-
-    ParrotSceneWorldEntity old_parent = ParrotSceneWorld_get_entity_parent(self, child);
-    if (ParrotSceneWorld_does_entity_exist(self, old_parent)) {
-        hmdel(self->arr_hm_entity_children[ENTITY_INDEX(old_parent)], child);
-    }
-
-    if (ParrotSceneWorld_does_entity_exist(self, new_parent)) {
-        ParrotSceneWorldEntitySet child_entry = {0};
-        child_entry.key = child;
-        hmputs(self->arr_hm_entity_children[ENTITY_INDEX(new_parent)], child_entry);
-    }
 
     self->arr_entity_parents[ENTITY_INDEX(child)] = new_parent;
 
@@ -227,30 +223,6 @@ ParrotSceneWorldEntity ParrotSceneWorld_get_entity_parent(ParrotSceneWorld *self
     PARROT_RET_COND_V(!ParrotSceneWorld_does_entity_exist(self, entity), ParrotSceneWorldEntity_NULL);
 
     return self->arr_entity_parents[ENTITY_INDEX(entity)];
-}
-
-size_t ParrotSceneWorld_get_entity_child_count(ParrotSceneWorld *self, ParrotSceneWorldEntity entity) {
-    PARROT_FAIL_NULL(self);
-
-    if (!ParrotSceneWorld_does_entity_exist(self, entity)) {
-        return arrlen(self->arr_entity_gens);
-    }
-
-    return hmlen(self->arr_hm_entity_children[ENTITY_INDEX(entity)]);
-}
-
-ParrotSceneWorldEntity
-ParrotSceneWorld_get_entity_child(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, size_t index) {
-    PARROT_FAIL_NULL(self);
-
-    bool parent_exists = ParrotSceneWorld_does_entity_exist(self, entity);
-    size_t children_size =
-        parent_exists ? hmlen(self->arr_hm_entity_children[ENTITY_INDEX(entity)]) : arrlen(self->arr_entity_gens);
-
-    PARROT_FAIL_COND_MSG(index >= children_size, "Attempted to access out of bounds index in children");
-
-    return parent_exists ? self->arr_hm_entity_children[ENTITY_INDEX(entity)][index].key :
-                           MAKE_ENTITY(index, self->arr_entity_gens[index]);
 }
 
 void ParrotSceneWorld_register_component(ParrotSceneWorld *self,

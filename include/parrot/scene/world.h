@@ -94,17 +94,14 @@ PARROT_API ParrotSceneWorldEntity ParrotSceneWorld_create_entity(ParrotSceneWorl
 PARROT_API void ParrotSceneWorld_delete_entity(ParrotSceneWorld *self, ParrotSceneWorldEntity entity);
 
 PARROT_API bool ParrotSceneWorld_does_entity_exist(ParrotSceneWorld *self, ParrotSceneWorldEntity entity);
+PARROT_API size_t ParrotSceneWorld_get_entity_count(ParrotSceneWorld *self);
+PARROT_API ParrotSceneWorldEntity ParrotSceneWorld_get_entity(ParrotSceneWorld *self, size_t index);
 
 PARROT_API void ParrotSceneWorld_set_entity_parent(ParrotSceneWorld *self,
                                                    ParrotSceneWorldEntity child,
                                                    /* Nullable */ ParrotSceneWorldEntity new_parent);
 PARROT_API ParrotSceneWorldEntity ParrotSceneWorld_get_entity_parent(ParrotSceneWorld *self,
                                                                      ParrotSceneWorldEntity entity);
-PARROT_API size_t ParrotSceneWorld_get_entity_child_count(ParrotSceneWorld *self,
-                                                          /* NULL = list all */ ParrotSceneWorldEntity entity);
-PARROT_API ParrotSceneWorldEntity ParrotSceneWorld_get_entity_child(ParrotSceneWorld *self,
-                                                                    /* NULL = list all */ ParrotSceneWorldEntity entity,
-                                                                    size_t index);
 
 #define ParrotSceneWorld_simple_register_component(self, type)                                                          \
     ParrotSceneWorld_register_component(self,                                                                           \
