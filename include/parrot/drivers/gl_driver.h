@@ -18,8 +18,8 @@ typedef struct {
     void (*use_context)(ParrotGLDriverContext *context);
 } ParrotGLDriver;
 
-PARROT_API extern const ParrotGLDriver *Parrot_gl_driver;
+PARROT_API const ParrotGLDriver *Parrot_gl_driver;
 
-PARROT_API extern const ParrotGLDriver Parrot_x11_gl_driver;
+PARROT_API const ParrotGLDriver Parrot_x11_gl_driver;
 
 #endif // PARROT_PARROT_INCLUDE_PARROT_DRIVERS_GL_DRIVER_H_

@@ -32,8 +32,8 @@ typedef struct {
                                    size_t count);
 } ParrotVideoDriver;
 
-PARROT_API extern const ParrotVideoDriver Parrot_gl11_video_driver;
+PARROT_API const ParrotVideoDriver Parrot_gl11_video_driver;
 
-PARROT_API extern const ParrotVideoDriver *Parrot_video_driver;
+PARROT_API const ParrotVideoDriver *Parrot_video_driver;
 
 #endif // PARROT_PARROT_INCLUDE_PARROT_DRIVERS_VIDEO_DRIVER_H_

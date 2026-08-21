@@ -67,8 +67,8 @@ typedef struct {
     void (*set_image)(ParrotWindowDriverWindow *window, const uint32_t *rgbx8888);
 } ParrotWindowDriver;
 
-PARROT_API extern const ParrotWindowDriver *Parrot_window_driver;
+PARROT_API const ParrotWindowDriver *Parrot_window_driver;
 
-PARROT_API extern const ParrotWindowDriver Parrot_x11_window_driver;
+PARROT_API const ParrotWindowDriver Parrot_x11_window_driver;
 
 #endif // PARROT_PARROT_INCLUDE_PARROT_DRIVERS_WINDOW_DRIVER_H_
