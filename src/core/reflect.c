@@ -3,6 +3,7 @@
 #include "parrot/core/util.h"
 #include "src/ds.h"
 #include "stb_ds.h"
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -345,10 +346,23 @@ ptrdiff_t ParrotReflect_resolve_type(ParrotReflect *self, const char *type) {
     PARROT_FAIL_NULL(self);
     PARROT_FAIL_NULL(type);
 
+    char *arr_type_str = NULL;
+
+    while (*type && isspace(*type)) {
+        type++;
+    }
+
+    while (*type && *type != '*' && !isspace(*type)) {
+        arrpush(arr_type_str, *type++);
+    }
+    arrpush(arr_type_str, '\0');
+
+    type = arr_type_str;
     while (shgeti(self->sh_aliases, type) >= 0) {
         type = shget(self->sh_aliases, type);
     }
 
+    arrfree(arr_type_str);
     return shgeti(self->sh_types, type);
 }
 
