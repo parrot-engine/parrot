@@ -37,7 +37,7 @@ include platform/$(PLATFORM)/setup.mk
 all: src
 
 src:
-	$(BEAR) $(MAKE) -C src BUILD_DIR=$(BUILD_DIR)/lib
+	$(BEAR) $(MAKE) -C src BUILD_DIR=$(BUILD_DIR)/lib "DRIVERS=$(DRIVERS)"
 
 test: build-test
 	$(MAKE) -C test BUILD_DIR=$(BUILD_DIR)/test run

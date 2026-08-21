@@ -32,10 +32,10 @@ export AVOID_MEMORY ?= $(DEFAULT)
 
 # [path] The build directory name (relative to the root build directory) to build into. By default, the value is derived from the
 # other options.
-export BUILD_DIR_NAME = $(DEFAULT)
+export BUILD_DIR_NAME ?= $(DEFAULT)
 
 # [set: default, x11] List of drivers to build. `default` includes platform default drivers
-export DRIVERS = default
+export DRIVERS ?= default
 
 
 #######################################################################################################################
@@ -95,4 +95,4 @@ export BUILD_DIR_NAME := $(BUILD_DIR_NAME)+dbginfo
 endif
 endif
 
-export DRIVERS := $(filter-out default,$(DRIVERS))
+override DRIVERS := $(filter-out default,$(DRIVERS))
