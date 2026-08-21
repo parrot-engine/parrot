@@ -3,16 +3,16 @@ project(parrot)
 
 option(PARROT_DOUBLE_PRECISION "Makes the value of ParrotReal a double instead of a float" OFF)
 
-option(PARROT_DRIVERS "The drivers to include in the build" "default")
+set(PARROT_DRIVERS "default" CACHE STRING "The drivers to include in the build")
 
 
 include(ExternalProject)
 
-set(OPTIONS "BUILD_DIR=\"${CMAKE_BINARY_DIR}/parrot_external\"")
-
-set("${OPTIONS} DOUBLE_PRECISION=$<BOOL:${PARROT_DOUBLE_PRECISION}>")
-
-set("${OPTIONS} DRIVERS=$<BOOL:${PARROT_DRIVERS}>")
+set(OPTIONS
+    BUILD_DIR=${CMAKE_BINARY_DIR}/parrot_external
+    DOUBLE_PRECISION=$<BOOL:${PARROT_DOUBLE_PRECISION}>
+    DRIVERS=${PARROT_DRIVERS}
+)
 
 ExternalProject_Add(
     parrot_external
@@ -24,11 +24,13 @@ ExternalProject_Add(
 	BUILD_ALWAYS 1
 )
 
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/parrot_external/include")
+
 add_library(parrot STATIC IMPORTED GLOBAL)
 
 set_target_properties(parrot PROPERTIES
     IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/parrot_external/libparrot.a"
-	INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include"
+	INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include;${CMAKE_BINARY_DIR}/parrot_external/include"
 )
 
 add_dependencies(parrot parrot_external)
