@@ -305,7 +305,7 @@ void ParrotSceneWorld_add_component_name(ParrotSceneWorld *self, ParrotSceneWorl
 }
 
 void *ParrotSceneWorld_get_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name) {
-    PARROT_FAIL_COND(!ParrotSceneWorld_is_component_registered(self, name));
+    PARROT_RET_COND_V(!ParrotSceneWorld_is_component_registered(self, name), NULL);
     PARROT_RET_COND_V(!ParrotSceneWorld_does_entity_exist(self, entity), NULL);
 
     ParrotSceneWorldRegisteredComponent *component = shgetp_null(self->sh_registered_components, name);
@@ -317,7 +317,7 @@ void *ParrotSceneWorld_get_component_name(ParrotSceneWorld *self, ParrotSceneWor
 }
 
 void ParrotSceneWorld_delete_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name) {
-    PARROT_FAIL_COND(!ParrotSceneWorld_is_component_registered(self, name));
+    PARROT_RET_COND(!ParrotSceneWorld_is_component_registered(self, name));
     PARROT_RET_COND(!ParrotSceneWorld_does_entity_exist(self, entity));
 
     ParrotSceneWorldRegisteredComponent *component = shgetp_null(self->sh_registered_components, name);
