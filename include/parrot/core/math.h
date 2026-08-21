@@ -317,6 +317,8 @@ static const ParrotReflectDescription Parrot_core_math_collection[] = {
     PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotMat_description),
     PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotGMatSet_description),
 
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotTransform_description),
+
     PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotColor_description),
 
     PARROT_REFLECT_END(),
