@@ -304,9 +304,14 @@ ptrdiff_t ParrotReflect_resolve_type(ParrotReflect *self, const char *type) {
         type++;
     }
 
-    while (*type && *type != '*') {
+    while (*type) {
         arrpush(arr_type_str, *type++);
     }
+
+    while (arr_type_str[arrlen(arr_type_str) - 1] == ' ' || arr_type_str[arrlen(arr_type_str) - 1] == '*') {
+        arrdel(arr_type_str, arrlen(arr_type_str) - 1);
+    }
+
     arrpush(arr_type_str, '\0');
 
     type = arr_type_str;
