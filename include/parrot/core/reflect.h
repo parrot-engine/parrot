@@ -87,7 +87,7 @@ struct ParrotReflectDescription {
 #define PARROT_REFLECT_TYPE_FIELD(p_type, p_field_type, p_field_name, p_field_suffix)                                   \
     {                                                                                                                   \
         .type = ParrotReflectEntryType_TYPE_FIELD,                                                                      \
-        .name = PARROT_STRING(field_name),                                                                              \
+        .name = PARROT_STRING(p_field_name),                                                                            \
         .data =                                                                                                         \
             {                                                                                                           \
                 .type_field_data =                                                                                      \
