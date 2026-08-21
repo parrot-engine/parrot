@@ -385,14 +385,14 @@ size_t ParrotReflect_get_type_field_count(ParrotReflect *self, size_t type) {
 size_t ParrotReflect_get_type_field_offset(ParrotReflect *self, size_t type, size_t index) {
     ParrotReflectTypeInfo *type_info = resolve_type_info(self, type);
     PARROT_FAIL_NULL(type_info);
-    PARROT_FAIL_COND(index >= shlen(type_info->sh_fields));
+    PARROT_FAIL_COND(index >= shlen(*type_info->sh_fields));
     return (*type_info->sh_fields)[index].offset;
 }
 
 char *ParrotReflect_get_type_field_typename(ParrotReflect *self, size_t type, size_t index) {
     ParrotReflectTypeInfo *type_info = resolve_type_info(self, type);
     PARROT_FAIL_NULL(type_info);
-    PARROT_FAIL_COND(index >= shlen(type_info->sh_fields));
+    PARROT_FAIL_COND(index >= shlen(*type_info->sh_fields));
 
     ParrotReflectTypeFieldInfo *field_info = &(*type_info->sh_fields)[index];
     return strcpy(calloc(strlen(field_info->type) + 1, sizeof(char)), field_info->type);
@@ -401,7 +401,7 @@ char *ParrotReflect_get_type_field_typename(ParrotReflect *self, size_t type, si
 char *ParrotReflect_get_type_field_name(ParrotReflect *self, size_t type, size_t index) {
     ParrotReflectTypeInfo *type_info = resolve_type_info(self, type);
     PARROT_FAIL_NULL(type_info);
-    PARROT_FAIL_COND(index >= shlen(type_info->sh_fields));
+    PARROT_FAIL_COND(index >= shlen(*type_info->sh_fields));
 
     ParrotReflectTypeFieldInfo *field_info = &(*type_info->sh_fields)[index];
     return strcpy(calloc(strlen(field_info->key) + 1, sizeof(char)), field_info->key);
@@ -410,7 +410,7 @@ char *ParrotReflect_get_type_field_name(ParrotReflect *self, size_t type, size_t
 size_t ParrotReflect_get_type_field_dimension_size(ParrotReflect *self, size_t type, size_t field, size_t n) {
     ParrotReflectTypeInfo *type_info = resolve_type_info(self, type);
     PARROT_FAIL_NULL(type_info);
-    PARROT_FAIL_COND(field >= shlen(type_info->sh_fields));
+    PARROT_FAIL_COND(field >= shlen(*type_info->sh_fields));
 
     ParrotReflectTypeFieldInfo *field_info = &(*type_info->sh_fields)[field];
     PARROT_RET_COND_V(n >= field_info->dimension_count, 0);
