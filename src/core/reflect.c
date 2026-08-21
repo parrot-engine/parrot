@@ -296,9 +296,17 @@ size_t ParrotReflect_get_type_count(ParrotReflect *self) {
     return shlen(self->sh_types);
 }
 
-ptrdiff_t ParrotReflect_resolve_type(ParrotReflect *self, const char *type) {
+ptrdiff_t ParrotReflect_resolve_type_ex(ParrotReflect *self, const char *type, bool *out_is_ptr, bool *out_is_const) {
     PARROT_FAIL_NULL(self);
     PARROT_FAIL_NULL(type);
+
+    if (out_is_ptr) {
+        *out_is_ptr = false;
+    }
+
+    if (out_is_const) {
+        *out_is_const = false;
+    }
 
     char *arr_type_str = NULL;
 
@@ -306,11 +314,18 @@ ptrdiff_t ParrotReflect_resolve_type(ParrotReflect *self, const char *type) {
         type++;
     }
 
+    if (out_is_const && strncmp(type, "const", strlen("const")) == 0) {
+        *out_is_const = true;
+    }
+
     while (*type) {
         arrpush(arr_type_str, *type++);
     }
 
     while (arr_type_str[arrlen(arr_type_str) - 1] == ' ' || arr_type_str[arrlen(arr_type_str) - 1] == '*') {
+        if (out_is_ptr && arr_type_str[arrlen(arr_type_str) - 1] == '*') {
+            *out_is_ptr = true;
+        }
         arrdel(arr_type_str, arrlen(arr_type_str) - 1);
     }
 
