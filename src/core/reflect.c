@@ -336,6 +336,11 @@ void ParrotReflect_unregister(ParrotReflect *self, const char *type) {
     }
 }
 
+size_t ParrotReflect_get_type_count(ParrotReflect *self) {
+    PARROT_FAIL_NULL(self);
+    return shlen(self->sh_types);
+}
+
 ptrdiff_t ParrotReflect_resolve_type(ParrotReflect *self, const char *type) {
     PARROT_FAIL_NULL(self);
     PARROT_FAIL_NULL(type);
@@ -347,11 +352,22 @@ ptrdiff_t ParrotReflect_resolve_type(ParrotReflect *self, const char *type) {
     return shgeti(self->sh_types, type);
 }
 
+ptrdiff_t ParrotReflect_resolve_type_by_index(ParrotReflect *self, size_t index) {
+    PARROT_FAIL_NULL(self);
+    return shlen(self->sh_types) > index ? (ptrdiff_t)index : -1;
+}
+
 static ParrotReflectTypeInfo *resolve_type_info(ParrotReflect *self, size_t type) {
     PARROT_FAIL_NULL(self);
     PARROT_RET_COND_V(type >= shlen(self->sh_types), NULL);
 
     return &self->sh_types[type];
+}
+
+char *ParrotReflect_get_type_name(ParrotReflect *self, size_t type) {
+    ParrotReflectTypeInfo *type_info = resolve_type_info(self, type);
+    PARROT_FAIL_NULL(type_info);
+    return strcpy(calloc(strlen(type_info->key) + 1, sizeof(char)), type_info->key);
 }
 
 size_t ParrotReflect_get_type_size(ParrotReflect *self, size_t type) {

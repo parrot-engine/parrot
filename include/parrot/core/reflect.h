@@ -156,9 +156,15 @@ PARROT_API void ParrotReflect_register(ParrotReflect *self, const ParrotReflectD
 /// Does not error on unregister of not registered type
 PARROT_API void ParrotReflect_unregister(ParrotReflect *self, const char *type);
 
+PARROT_API size_t ParrotReflect_get_type_count(ParrotReflect *self);
+
 /// 0< = Not found
 PARROT_API ptrdiff_t ParrotReflect_resolve_type(ParrotReflect *self, const char *type);
+/// 0< = Not found
+PARROT_API ptrdiff_t ParrotReflect_resolve_type_by_index(ParrotReflect *self, size_t index);
 
+/// Return type is allocated with malloc() that the caller tkes ownership of
+PARROT_API char *ParrotReflect_get_type_name(ParrotReflect *self, size_t type);
 PARROT_API size_t ParrotReflect_get_type_size(ParrotReflect *self, size_t type);
 
 PARROT_API size_t ParrotReflect_get_type_field_count(ParrotReflect *self, size_t type);
