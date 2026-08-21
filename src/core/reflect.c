@@ -77,6 +77,8 @@ struct ParrotReflect {
     X(uint16, uint16_t)                                                                                                 \
     X(uint32, uint32_t)                                                                                                 \
     X(uint64, uint64_t)                                                                                                 \
+    X(size, size_t)                                                                                                     \
+    X(ptrdiff, ptrdiff_t)                                                                                               \
     X(float, float)                                                                                                     \
     X(double, double)
 
