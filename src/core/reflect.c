@@ -57,93 +57,45 @@ struct ParrotReflect {
     ParrotReflectAliasInfo *sh_aliases;
 };
 
-static const ParrotReflectDescription builtin_int_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(int),
-    PARROT_REFLECT_END(),
-};
+#define BUILTIN_TYPES                                                                                                   \
+    X(char, char)                                                                                                       \
+    X(int, int)                                                                                                         \
+    X(short, short)                                                                                                     \
+    X(long, long)                                                                                                       \
+    X(ll, long long)                                                                                                    \
+    X(uchar, unsigned char)                                                                                             \
+    X(uint, unsigned int)                                                                                               \
+    X(ushort, unsigned short)                                                                                           \
+    X(ulong, unsigned long)                                                                                             \
+    X(ull, unsigned long long)                                                                                          \
+    X(bool, bool)                                                                                                       \
+    X(int8, int8_t)                                                                                                     \
+    X(int16, int16_t)                                                                                                   \
+    X(int32, int32_t)                                                                                                   \
+    X(int64, int64_t)                                                                                                   \
+    X(uint8, uint8_t)                                                                                                   \
+    X(uint16, uint16_t)                                                                                                 \
+    X(uint32, uint32_t)                                                                                                 \
+    X(uint64, uint64_t)                                                                                                 \
+    X(float, float)                                                                                                     \
+    X(double, double)
 
-static const ParrotReflectDescription builtin_uint_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(unsigned int),
-    PARROT_REFLECT_END(),
-};
-
-static const ParrotReflectDescription builtin_bool_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(bool),
-    PARROT_REFLECT_END(),
-};
-
-static const ParrotReflectDescription builtin_uint8_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(uint8_t),
-    PARROT_REFLECT_END(),
-};
-
-static const ParrotReflectDescription builtin_uint16_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(uint16_t),
-    PARROT_REFLECT_END(),
-};
-
-static const ParrotReflectDescription builtin_uint32_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(uint32_t),
-    PARROT_REFLECT_END(),
-};
-
-static const ParrotReflectDescription builtin_uint64_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(uint64_t),
-    PARROT_REFLECT_END(),
-};
-
-static const ParrotReflectDescription builtin_int8_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(int8_t),
-    PARROT_REFLECT_END(),
-};
-
-static const ParrotReflectDescription builtin_int16_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(int16_t),
-    PARROT_REFLECT_END(),
-};
-
-static const ParrotReflectDescription builtin_int32_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(int32_t),
-    PARROT_REFLECT_END(),
-};
-
-static const ParrotReflectDescription builtin_int64_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(int64_t),
-    PARROT_REFLECT_END(),
-};
-
-static const ParrotReflectDescription builtin_float_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(float),
-    PARROT_REFLECT_END(),
-};
-
-static const ParrotReflectDescription builtin_double_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(double),
-    PARROT_REFLECT_END(),
-};
+#define X(name, type)                                                                                                   \
+    static const ParrotReflectDescription builtin_##name##_description[] = {                                            \
+        PARROT_REFLECT_TYPE_HEADER(type),                                                                               \
+        PARROT_REFLECT_END(),                                                                                           \
+    };
+BUILTIN_TYPES
+#undef X
 
 static const ParrotReflectDescription builtin_collection[] = {
     PARROT_REFLECT_COLLECTION_HEADER(),
 
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_int_description),
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_uint_description),
+#define X(name, type) PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_##name##_description),
+    BUILTIN_TYPES
+#undef X
 
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_bool_description),
-
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_uint8_description),
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_uint16_description),
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_uint32_description),
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_uint64_description),
-
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_int8_description),
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_int16_description),
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_int32_description),
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_int64_description),
-
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_float_description),
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(builtin_double_description),
-
-    PARROT_REFLECT_END(),
+        PARROT_REFLECT_END(),
 };
 
 ParrotReflect *ParrotReflect_new(void) {
@@ -352,7 +304,7 @@ ptrdiff_t ParrotReflect_resolve_type(ParrotReflect *self, const char *type) {
         type++;
     }
 
-    while (*type && *type != '*' && !isspace(*type)) {
+    while (*type && *type != '*') {
         arrpush(arr_type_str, *type++);
     }
     arrpush(arr_type_str, '\0');
