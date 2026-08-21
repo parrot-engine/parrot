@@ -1,5 +1,6 @@
 #include "parrot/scene/world.h"
 #include "parrot/core/hash.h"
+#include "parrot/core/math.h"
 #include "parrot/core/util.h"
 #include "src/ds.h"
 #include "stb_ds.h"
@@ -85,12 +86,52 @@ static void ParrotSceneWorldRegisteredComponent_min_size(ParrotSceneWorldRegiste
     MIN_ARR_SIZE_VALUE(self->arr_exists, size, false);
 }
 
+static void ParrotSceneWorld_ParrotMat_constructor(ParrotSceneWorldEntity entity, void *component_ptr, void *user_data) {
+    (void)entity;
+    (void)user_data;
+    *(ParrotMat *)component_ptr = ParrotMat_identity();
+}
+
+static void
+ParrotSceneWorld_ParrotTransform_constructor(ParrotSceneWorldEntity entity, void *component_ptr, void *user_data) {
+    (void)entity;
+    (void)user_data;
+    *(ParrotTransform *)component_ptr = ParrotTransform_new();
+}
+
+static void
+ParrotSceneWorld_ParrotColor_constructor(ParrotSceneWorldEntity entity, void *component_ptr, void *user_data) {
+    (void)entity;
+    (void)user_data;
+    *(ParrotColor *)component_ptr = ParrotColor_WHITE;
+}
+
 ParrotSceneWorld *ParrotSceneWorld_new(void) {
     ParrotSceneWorld *self = malloc(sizeof(ParrotSceneWorld));
     PARROT_RET_COND_V(!self, NULL);
     memset(self, 0, sizeof(ParrotSceneWorld));
 
     self->next_new_index = 1;
+
+    ParrotSceneWorld_register_component(self,
+                                        "ParrotMat",
+                                        (ParrotSceneWorldComponentDescription){
+                                            .size = sizeof(ParrotMat),
+                                            .constructor = ParrotSceneWorld_ParrotMat_constructor,
+                                        });
+    ParrotSceneWorld_register_component(self,
+                                        "ParrotTransform",
+                                        (ParrotSceneWorldComponentDescription){
+                                            .size = sizeof(ParrotTransform),
+                                            .constructor = ParrotSceneWorld_ParrotTransform_constructor,
+                                        });
+
+    ParrotSceneWorld_register_component(self,
+                                        "ParrotColor",
+                                        (ParrotSceneWorldComponentDescription){
+                                            .size = sizeof(ParrotColor),
+                                            .constructor = ParrotSceneWorld_ParrotColor_constructor,
+                                        });
 
     return self;
 }

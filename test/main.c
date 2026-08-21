@@ -6,7 +6,6 @@
 #include "parrot/drivers/window_driver.h"
 #include "parrot/drivers/window_driver.keys.h"
 #include "parrot/module.h"
-#include "parrot/scene/transform.h"
 #include "parrot/scene/world.h"
 #include "parrot/video/scene.h"
 #include "parrot/video/video.h"
@@ -87,7 +86,6 @@ static void init(ParrotMainLoopRunSettings *settings) {
 
     ParrotReflect_register(reflect, Parrot_collection);
 
-    ParrotTransform_scene_register(world);
     ParrotVideoSceneSystem_register_components(world);
 
     root = ParrotSceneWorld_create_entity(world);
