@@ -7,8 +7,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define ParrotReflect_MAX_TAGS 16
-
 typedef enum {
     ParrotReflectEntryType_END = 0,
 
@@ -27,7 +25,19 @@ struct ParrotReflectDescription {
     ParrotReflectEntryType type;
 
     const char *name;
-    const char *tags[ParrotReflect_MAX_TAGS];
+    /**
+     * NULL-terminated array or keys and values
+     *
+     * Example:
+     * ```
+     * const char *tags[][2] = {
+     *     {"key", "value"},
+     *     {NULL, NULL},
+     * };
+     * ```
+     *
+     */
+    const char *(*tags)[2];
 
     union {
         struct {
@@ -72,18 +82,18 @@ struct ParrotReflectDescription {
                     },                                                                                                  \
             },                                                                                                          \
     }
-#define PARROT_REFLECT_TYPE_HEADER_TAG(p_type, ...)                                                                     \
+#define PARROT_REFLECT_TYPE_HEADER_TAG(p_type, p_tags)                                                                  \
     {                                                                                                                   \
         .type = ParrotReflectEntryType_TYPE_HEADER,                                                                     \
-        .name = PARROT_STRING(type),                                                                                    \
-        .data{                                                                                                          \
-            .type_header_data =                                                                                         \
-                {                                                                                                       \
-                    .size = sizeof(p_type),                                                                             \
-                                                                                                                        \
-                    .tags = {__VA_ARGS__},                                                                              \
-                },                                                                                                      \
-        },                                                                                                              \
+        .name = PARROT_STRING(p_type),                                                                                  \
+        .tags = p_tags,                                                                                                 \
+        .data =                                                                                                         \
+            {                                                                                                           \
+                .type_header_data =                                                                                     \
+                    {                                                                                                   \
+                        .size = sizeof(p_type),                                                                         \
+                    },                                                                                                  \
+            },                                                                                                          \
     }
 #define PARROT_REFLECT_TYPE_FIELD(p_type, p_field_type, p_field_name, p_field_suffix)                                   \
     {                                                                                                                   \
@@ -100,11 +110,11 @@ struct ParrotReflectDescription {
                     },                                                                                                  \
             },                                                                                                          \
     }
-#define PARROT_REFLECT_TYPE_FIELD_TAG(p_type, p_field_type, p_field_name, p_field_suffix, ...)                          \
+#define PARROT_REFLECT_TYPE_FIELD_TAG(p_type, p_field_type, p_field_name, p_field_suffix, p_tags)                       \
     {                                                                                                                   \
         .type = ParrotReflectEntryType_TYPE_FIELD,                                                                      \
         .name = PARROT_STRING(p_field_name),                                                                            \
-        .tags = {__VA_ARGS__},                                                                                          \
+        .tags = p_tags,                                                                                                 \
         .data =                                                                                                         \
             {                                                                                                           \
                 .type_field_data =                                                                                      \
@@ -172,6 +182,8 @@ PARROT_API ptrdiff_t ParrotReflect_resolve_type_by_index(ParrotReflect *self, si
 /// Return type is allocated with malloc() that the caller tkes ownership of
 PARROT_API char *ParrotReflect_get_type_name(ParrotReflect *self, size_t type);
 PARROT_API size_t ParrotReflect_get_type_size(ParrotReflect *self, size_t type);
+/// Return type is allocated with malloc() that the caller takes ownership of or NULL if tag doesn't exist
+PARROT_API char *ParrotReflect_get_type_tag(ParrotReflect *self, size_t type, const char *key);
 
 PARROT_API size_t ParrotReflect_get_type_field_count(ParrotReflect *self, size_t type);
 PARROT_API size_t ParrotReflect_get_type_field_offset(ParrotReflect *self, size_t type, size_t field);
@@ -185,5 +197,7 @@ PARROT_API size_t ParrotReflect_get_type_field_dimension_size(ParrotReflect *sel
                                                               size_t field,
                                                               /* 0 = Base size */ size_t n);
 PARROT_API size_t ParrotReflect_get_type_field_size(ParrotReflect *self, size_t type, size_t field);
+/// Return type is allocated with malloc() that the caller takes ownership of or NULL if tag doesn't exist
+PARROT_API char *ParrotReflect_get_type_field_tag(ParrotReflect *self, size_t type, size_t field, const char *key);
 
 #endif // PARROT_PARROT_INCLUDE_PARROT_CORE_REFLECT_H_
