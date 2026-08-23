@@ -27,7 +27,7 @@ typedef struct {
 static const ParrotReflectDescription ParrotMutableBinaryImage_description[] = {
     PARROT_REFLECT_TYPE_HEADER(ParrotMutableBinaryImage),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotMutableBinaryImage, const uint8_t *, data, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotMutableBinaryImage, uint8_t *, data, ),
     PARROT_REFLECT_TYPE_FIELD(ParrotMutableBinaryImage, size_t, size, ),
 
     PARROT_REFLECT_END(),
