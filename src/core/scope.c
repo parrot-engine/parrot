@@ -1,6 +1,7 @@
 #include "parrot/core/scope.h"
 #include "parrot/core/util.h"
 #include "stb_ds.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -64,6 +65,14 @@ uint32_t ParrotScope_push(ParrotScope *self, void (*func)(void *ctx), void *ctx)
 
     hmputs(self->hm_stack, entry);
     return entry.key;
+}
+
+static void free_wrapper(void *ctx) {
+    free(ctx);
+}
+
+uint32_t ParrotScope_push_free(ParrotScope *self, void *ptr) {
+    return ParrotScope_push(self, free_wrapper, ptr);
 }
 
 void ParrotScope_cancel(ParrotScope *self, uint32_t id) {

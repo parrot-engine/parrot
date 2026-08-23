@@ -106,8 +106,8 @@ ParrotReflect *ParrotReflect_new(void) {
 
     self->scope = ParrotScope_new(NULL);
 
-    ParrotScope_push(self->scope, Parrot_shfree_scope_wrapper, Parrot_shfree_scope_wrapper_PACK_CTX(self->sh_types));
-    ParrotScope_push(self->scope, Parrot_shfree_scope_wrapper, Parrot_shfree_scope_wrapper_PACK_CTX(self->sh_aliases));
+    ParrotScope_push_shfree(self->scope, self->sh_types);
+    ParrotScope_push_shfree(self->scope, self->sh_aliases);
 
     ParrotReflect_register(self, builtin_collection);
     return self;
@@ -125,7 +125,7 @@ static void register_type(ParrotReflect *self, const ParrotReflectDescription *d
     type_info.scope = ParrotScope_new(self->scope);
 
     type_info.key = strcpy(calloc(strlen(description->name) + 1, sizeof(char)), description->name);
-    ParrotScope_push(type_info.scope, Parrot_free_scope_wrapper, type_info.key);
+    ParrotScope_push_free(type_info.scope, type_info.key);
 
     for (size_t i = 0; i < ParrotReflect_MAX_TAGS; i++) {
         if (!description->tags[i]) {
@@ -133,16 +133,15 @@ static void register_type(ParrotReflect *self, const ParrotReflectDescription *d
         }
 
         type_info.tags[i] = strcpy(calloc(strlen(description->tags[i]) + 1, sizeof(char)), description->tags[i]);
-        ParrotScope_push(type_info.scope, Parrot_free_scope_wrapper, type_info.tags[i]);
+        ParrotScope_push_free(type_info.scope, type_info.tags[i]);
     }
 
     type_info.size = description->data.type_header_data.size;
 
     type_info.sh_fields = malloc(sizeof(type_info.sh_fields));
     *type_info.sh_fields = NULL;
-    ParrotScope_push(type_info.scope, Parrot_free_scope_wrapper, type_info.sh_fields);
-    ParrotScope_push(
-        type_info.scope, Parrot_shfree_scope_wrapper, Parrot_shfree_scope_wrapper_PACK_CTX(*type_info.sh_fields));
+    ParrotScope_push_free(type_info.scope, type_info.sh_fields);
+    ParrotScope_push_shfree(type_info.scope, *type_info.sh_fields);
 
     description++;
 
@@ -161,13 +160,13 @@ static void register_type(ParrotReflect *self, const ParrotReflectDescription *d
             field_info.scope = ParrotScope_new(type_info.scope);
 
             field_info.key = strcpy(calloc(strlen(description->name) + 1, sizeof(char)), description->name);
-            ParrotScope_push(field_info.scope, Parrot_free_scope_wrapper, field_info.key);
+            ParrotScope_push_free(field_info.scope, field_info.key);
 
             field_info.offset = description->data.type_field_data.offset;
 
             field_info.type = strcpy(calloc(strlen(description->data.type_field_data.type) + 1, sizeof(char)),
                                      description->data.type_field_data.type);
-            ParrotScope_push(field_info.scope, Parrot_free_scope_wrapper, field_info.type);
+            ParrotScope_push_free(field_info.scope, field_info.type);
 
             for (size_t i = 0; i < ParrotReflect_MAX_TAGS; i++) {
                 if (!description->tags[i]) {
@@ -176,7 +175,7 @@ static void register_type(ParrotReflect *self, const ParrotReflectDescription *d
 
                 field_info.tags[i] =
                     strcpy(calloc(strlen(description->tags[i]) + 1, sizeof(char)), description->tags[i]);
-                ParrotScope_push(field_info.scope, Parrot_free_scope_wrapper, field_info.tags[i]);
+                ParrotScope_push_free(field_info.scope, field_info.tags[i]);
             }
 
             field_info.size[field_info.dimension_count++] = description->data.type_field_data.field_base_size;
@@ -254,11 +253,11 @@ void ParrotReflect_register(ParrotReflect *self, const ParrotReflectDescription 
 
         alias_info.key = strcpy(calloc(strlen(description->data.alias_data.name) + 1, sizeof(char)),
                                 description->data.alias_data.name);
-        ParrotScope_push(alias_info.scope, Parrot_free_scope_wrapper, alias_info.key);
+        ParrotScope_push_free(alias_info.scope, alias_info.key);
 
         alias_info.value = strcpy(calloc(strlen(description->data.alias_data.alias_of_name) + 1, sizeof(char)),
                                   description->data.alias_data.alias_of_name);
-        ParrotScope_push(alias_info.scope, Parrot_free_scope_wrapper, alias_info.value);
+        ParrotScope_push_free(alias_info.scope, alias_info.value);
 
         shputs(self->sh_aliases, alias_info);
     } break;

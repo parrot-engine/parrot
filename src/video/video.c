@@ -112,7 +112,7 @@ void ParrotVideo_init(void) {
 
     self->scope = ParrotScope_new(NULL);
 
-    ParrotScope_push(self->scope, Parrot_hmfree_scope_wrapper, Parrot_hmfree_scope_wrapper_PACK_CTX(self->hm_pointers));
+    ParrotScope_push_hmfree(self->scope, self->hm_pointers);
 
     ParrotVideo_create_object();
 }
