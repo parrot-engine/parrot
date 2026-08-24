@@ -172,9 +172,9 @@ PARROT_API size_t ParrotReflect_get_type_count(ParrotReflect *self);
 #define ParrotReflect_resolve_type(self, type) ParrotReflect_resolve_type_ex(self, type, NULL, NULL)
 /// 0< = Not found
 PARROT_API ptrdiff_t
-ParrotReflect_resolve_type_ex(ParrotReflect *self,
+ParrotReflect_resolve_type_ex(/* NULL = skip resolve, just parse */ ParrotReflect *self,
                               const char *type,
-                              /* NULL = unwritten, still written if resolve fails */ bool *out_is_ptr,
+                              /* NULL = unwritten, still written if resolve fails */ int *out_ptr_level,
                               /* NULL = unwritten, still written if resolve fails */ bool *out_is_const);
 /// 0< = Not found
 PARROT_API ptrdiff_t ParrotReflect_resolve_type_by_index(ParrotReflect *self, size_t index);

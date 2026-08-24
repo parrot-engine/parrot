@@ -317,12 +317,11 @@ size_t ParrotReflect_get_type_count(ParrotReflect *self) {
     return shlen(self->sh_types);
 }
 
-ptrdiff_t ParrotReflect_resolve_type_ex(ParrotReflect *self, const char *type, bool *out_is_ptr, bool *out_is_const) {
-    PARROT_FAIL_NULL(self);
+ptrdiff_t ParrotReflect_resolve_type_ex(ParrotReflect *self, const char *type, int *out_ptr_level, bool *out_is_const) {
     PARROT_FAIL_NULL(type);
 
-    if (out_is_ptr) {
-        *out_is_ptr = false;
+    if (out_ptr_level) {
+        *out_ptr_level = 0;
     }
 
     if (out_is_const) {
@@ -344,13 +343,17 @@ ptrdiff_t ParrotReflect_resolve_type_ex(ParrotReflect *self, const char *type, b
     }
 
     while (arr_type_str[arrlen(arr_type_str) - 1] == ' ' || arr_type_str[arrlen(arr_type_str) - 1] == '*') {
-        if (out_is_ptr && arr_type_str[arrlen(arr_type_str) - 1] == '*') {
-            *out_is_ptr = true;
+        if (out_ptr_level && arr_type_str[arrlen(arr_type_str) - 1] == '*') {
+            (*out_ptr_level)++;
         }
         arrdel(arr_type_str, arrlen(arr_type_str) - 1);
     }
 
     arrpush(arr_type_str, '\0');
+    if (!self) {
+        arrfree(arr_type_str);
+        return -1;
+    }
 
     type = arr_type_str;
     while (shgeti(self->sh_aliases, type) >= 0) {
