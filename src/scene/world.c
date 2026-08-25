@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define COMPONENT_DATA_BLOCK_SIZE (64)
+
 #define MIN_ARR_SIZE_VALUE(arr, size, fill)                                                                             \
     do {                                                                                                                \
         while (arrlen(arr) < size) {                                                                                    \
@@ -36,7 +38,7 @@ typedef struct {
 typedef struct {
     char *key;
 
-    uint8_t *arr_data;
+    uint8_t **arr_data_blocks;
 
     bool *arr_exists;
 
@@ -79,10 +81,10 @@ static void ParrotSceneWorld_invalidate_tree_queries(ParrotSceneWorld *self) {
 }
 
 static void ParrotSceneWorldRegisteredComponent_min_size(ParrotSceneWorldRegisteredComponent *self, size_t size) {
-    if (self->description.size * size > arrlen(self->arr_data)) {
-        arrsetlen(self->arr_data, self->description.size * size);
+    size_t required_block_count = PARROT_ALIGN_UP(size, COMPONENT_DATA_BLOCK_SIZE) / COMPONENT_DATA_BLOCK_SIZE;
+    while (arrlen(self->arr_data_blocks) < required_block_count) {
+        arrpush(self->arr_data_blocks, malloc(COMPONENT_DATA_BLOCK_SIZE * self->description.size));
     }
-
     MIN_ARR_SIZE_VALUE(self->arr_exists, size, false);
 }
 
@@ -302,7 +304,10 @@ void ParrotSceneWorld_unregister_component(ParrotSceneWorld *self, const char *n
     }
 
     {
-        arrfree(component->arr_data);
+        for (size_t i = 0; i < arrlen(component->arr_data_blocks); i++) {
+            free(component->arr_data_blocks[i]);
+        }
+        arrfree(component->arr_data_blocks);
 
         arrfree(component->arr_exists);
     }
@@ -330,7 +335,9 @@ void ParrotSceneWorld_add_component_name(ParrotSceneWorld *self, ParrotSceneWorl
     ParrotSceneWorldRegisteredComponent *component = shgetp_null(self->sh_registered_components, name);
     PARROT_FAIL_NULL(component);
 
-    void *data = &component->arr_data[component->description.size * ENTITY_INDEX(entity)];
+    void *data =
+        &component->arr_data_blocks[ENTITY_INDEX(entity) / COMPONENT_DATA_BLOCK_SIZE]
+                                   [(ENTITY_INDEX(entity) % COMPONENT_DATA_BLOCK_SIZE) * component->description.size];
     memset(data, 0, component->description.size);
 
     component->arr_exists[ENTITY_INDEX(entity)] = true;
@@ -352,9 +359,10 @@ void *ParrotSceneWorld_get_component_name(ParrotSceneWorld *self, ParrotSceneWor
     ParrotSceneWorldRegisteredComponent *component = shgetp_null(self->sh_registered_components, name);
     PARROT_FAIL_NULL(component);
 
-    return component->arr_exists[ENTITY_INDEX(entity)] ?
-               &component->arr_data[component->description.size * ENTITY_INDEX(entity)] :
-               NULL;
+    void *data =
+        &component->arr_data_blocks[ENTITY_INDEX(entity) / COMPONENT_DATA_BLOCK_SIZE]
+                                   [(ENTITY_INDEX(entity) % COMPONENT_DATA_BLOCK_SIZE) * component->description.size];
+    return component->arr_exists[ENTITY_INDEX(entity)] ? data : NULL;
 }
 
 void ParrotSceneWorld_delete_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name) {
@@ -365,9 +373,11 @@ void ParrotSceneWorld_delete_component_name(ParrotSceneWorld *self, ParrotSceneW
     PARROT_FAIL_NULL(component);
 
     if (component->description.destructor) {
-        component->description.destructor(entity,
-                                          &component->arr_data[component->description.size * ENTITY_INDEX(entity)],
-                                          component->description.user_data);
+        void *data =
+            &component
+                 ->arr_data_blocks[ENTITY_INDEX(entity) / COMPONENT_DATA_BLOCK_SIZE]
+                                  [(ENTITY_INDEX(entity) % COMPONENT_DATA_BLOCK_SIZE) * component->description.size];
+        component->description.destructor(entity, data, component->description.user_data);
     }
 
     component->arr_exists[ENTITY_INDEX(entity)] = false;

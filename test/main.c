@@ -89,11 +89,13 @@ static void init(ParrotMainLoopRunSettings *settings) {
     ParrotVideoSceneSystem_register_components(world);
 
     root = ParrotSceneWorld_create_entity(world);
+    ParrotVideoSceneRenderableComponent *root_renderable = NULL;
     ParrotSceneWorld_add_component(world, root, ParrotVideoSceneWindowComponent);
     ParrotSceneWorld_add_component(world, root, ParrotVideoSceneViewportComponent);
     ParrotSceneWorld_add_component(world, root, ParrotVideoSceneRenderableComponent);
-
     {
+        root_renderable = ParrotSceneWorld_get_component(world, root, ParrotVideoSceneRenderableComponent);
+
         ParrotVideoSceneWindowComponent *window =
             ParrotSceneWorld_get_component(world, root, ParrotVideoSceneWindowComponent);
 
@@ -127,7 +129,7 @@ static void init(ParrotMainLoopRunSettings *settings) {
     ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRectComponent);
     {
         ParrotTransform *transform = ParrotSceneWorld_get_component(world, object, ParrotTransform);
-        transform->origin = (ParrotVec3){RECT_SIZE / 2.0, RECT_SIZE / 2.0, 0};
+        // transform->origin = (ParrotVec3){RECT_SIZE / 2.0, RECT_SIZE / 2.0, 0};
         transform->rotation = (ParrotVec3){0, 0, 45};
 
         ParrotVideoSceneRenderableComponent *renderable =
@@ -142,11 +144,7 @@ static void init(ParrotMainLoopRunSettings *settings) {
     }
 
     ParrotVideoSceneSystem_update(world, ParrotVideo_get_root());
-    {
-        ParrotVideoSceneRenderableComponent *renderable =
-            ParrotSceneWorld_get_component(world, root, ParrotVideoSceneRenderableComponent);
-        root_handle = renderable->object_handle;
-    }
+    root_handle = root_renderable->object_handle;
 }
 
 static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should_close) {

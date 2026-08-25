@@ -228,9 +228,6 @@ typedef struct ParrotTransform ParrotTransform;
 struct ParrotTransform {
     ParrotTransform *parent;
 
-    /// Relative to position
-    ParrotVec3 origin;
-
     ParrotVec3 position;
     ParrotVec3 rotation;
     ParrotVec3 scale;
@@ -240,8 +237,6 @@ static const ParrotReflectDescription ParrotTransform_description[] = {
     PARROT_REFLECT_TYPE_HEADER(ParrotTransform),
 
     PARROT_REFLECT_TYPE_FIELD(ParrotTransform, ParrotTransform *, parent, ),
-
-    PARROT_REFLECT_TYPE_FIELD(ParrotTransform, ParrotVec3, origin, ),
 
     PARROT_REFLECT_TYPE_FIELD(ParrotTransform, ParrotVec3, position, ),
     PARROT_REFLECT_TYPE_FIELD(ParrotTransform, ParrotVec3, rotation, ),

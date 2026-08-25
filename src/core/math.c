@@ -356,10 +356,8 @@ ParrotMat ParrotTransform_calculate_matrix(const ParrotTransform *self) {
     }
 
     matrix = ParrotMat_mul(matrix, ParrotMat_translation(self->position));
-    matrix = ParrotMat_mul(matrix, ParrotMat_translation(self->origin));
     matrix = ParrotMat_mul(matrix, ParrotMat_rotation(self->rotation));
     matrix = ParrotMat_mul(matrix, ParrotMat_scale(self->scale));
-    matrix = ParrotMat_mul(matrix, ParrotMat_translation(ParrotVec3_scale(self->origin, -1)));
 
     return matrix;
 }

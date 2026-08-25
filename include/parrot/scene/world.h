@@ -139,7 +139,6 @@ PARROT_API bool ParrotSceneWorld_is_component_registered(ParrotSceneWorld *self,
 
 PARROT_API void
 ParrotSceneWorld_add_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name);
-// WARNING: The pointer returned from this function is unstable. Do not store long-term
 PARROT_API void *
 ParrotSceneWorld_get_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name);
 PARROT_API void
