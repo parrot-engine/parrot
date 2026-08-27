@@ -1,7 +1,6 @@
 #ifndef __SRC_PARROT_INCLUDE_PARROT_CORE_UTIL_H_
 #define __SRC_PARROT_INCLUDE_PARROT_CORE_UTIL_H_
 
-#include "parrot/core/api.h"
 #include <stdio.h>  // IWYU pragma: keep
 #include <stdlib.h> // IWYU pragma: keep
 
@@ -9,6 +8,14 @@
 typedef void (*ParrotCrashHandlerFunc)(const char *cause);
 
 extern ParrotCrashHandlerFunc Parrot_crash_handler;
+
+#ifdef __cplusplus
+#define PARROT_CPP(...) __VA_ARGS__
+#define PARROT_C(...)
+#else
+#define PARROT_CPP(...)
+#define PARROT_C(...) __VA_ARGS__
+#endif
 
 #define PARROT_DEPEND(...) __asm__ volatile("" ::__VA_ARGS__)
 

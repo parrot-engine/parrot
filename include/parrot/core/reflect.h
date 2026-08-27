@@ -65,15 +65,28 @@ struct ParrotReflectDescription {
     } data;
 };
 
+#ifndef __cplusplus
 #define PARROT_REFLECT_END()                                                                                            \
     {                                                                                                                   \
         .type = ParrotReflectEntryType_END,                                                                             \
+        .name = NULL,                                                                                                   \
+        .tags = NULL,                                                                                                   \
     }
+#else
+#define PARROT_REFLECT_END()                                                                                            \
+    {                                                                                                                   \
+        .type = ParrotReflectEntryType_END,                                                                             \
+        .name = NULL,                                                                                                   \
+        .tags = NULL,                                                                                                   \
+        .data = {},                                                                                                     \
+    }
+#endif
 
 #define PARROT_REFLECT_TYPE_HEADER(p_type)                                                                              \
     {                                                                                                                   \
         .type = ParrotReflectEntryType_TYPE_HEADER,                                                                     \
         .name = PARROT_STRING(p_type),                                                                                  \
+        .tags = NULL,                                                                                                   \
         .data =                                                                                                         \
             {                                                                                                           \
                 .type_header_data =                                                                                     \
@@ -99,6 +112,7 @@ struct ParrotReflectDescription {
     {                                                                                                                   \
         .type = ParrotReflectEntryType_TYPE_FIELD,                                                                      \
         .name = PARROT_STRING(p_field_name),                                                                            \
+        .tags = NULL,                                                                                                   \
         .data =                                                                                                         \
             {                                                                                                           \
                 .type_field_data =                                                                                      \
@@ -132,6 +146,7 @@ struct ParrotReflectDescription {
     {                                                                                                                   \
         .type = ParrotReflectEntryType_ALIAS,                                                                           \
         .name = PARROT_STRING(p_type),                                                                                  \
+        .tags = NULL,                                                                                                   \
         .data =                                                                                                         \
             {                                                                                                           \
                 .alias_data =                                                                                           \
@@ -142,13 +157,27 @@ struct ParrotReflectDescription {
             },                                                                                                          \
     }
 
+#ifndef __cplusplus
 #define PARROT_REFLECT_COLLECTION_HEADER()                                                                              \
     {                                                                                                                   \
         .type = ParrotReflectEntryType_COLLECTION_HEADER,                                                               \
+        .name = NULL,                                                                                                   \
+        .tags = NULL,                                                                                                   \
     }
+#else
+#define PARROT_REFLECT_COLLECTION_HEADER()                                                                              \
+    {                                                                                                                   \
+        .type = ParrotReflectEntryType_COLLECTION_HEADER,                                                               \
+        .name = NULL,                                                                                                   \
+        .tags = NULL,                                                                                                   \
+        .data = {},                                                                                                     \
+    }
+#endif
 #define PARROT_REFLECT_COLLECTION_DESCRIPTION(p_description)                                                            \
     {                                                                                                                   \
         .type = ParrotReflectEntryType_COLLECTION_DESCRIPTION,                                                          \
+        .name = NULL,                                                                                                   \
+        .tags = NULL,                                                                                                   \
         .data =                                                                                                         \
             {                                                                                                           \
                 .collection_description_data =                                                                          \

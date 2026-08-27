@@ -1,12 +1,8 @@
 #ifndef __SRC_PARROT_INCLUDE_PARROT_CORE_API_H_
 #define __SRC_PARROT_INCLUDE_PARROT_CORE_API_H_
 
-#ifdef __cplusplus
-#define PARROT_API_CXX extern "C"
-#else
-#define PARROT_API_CXX
-#endif
+#include "parrot/core/util.h"
 
-#define PARROT_API PARROT_API_CXX
+#define PARROT_API PARROT_CPP(extern "C")
 
 #endif // __SRC_PARROT_INCLUDE_PARROT_CORE_API_H_
