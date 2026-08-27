@@ -1,6 +1,7 @@
 #ifndef PARROT_PARROT_INCLUDE_PARROT_CORE_MODULE_H_
 #define PARROT_PARROT_INCLUDE_PARROT_CORE_MODULE_H_
 
+#include "parrot/core/binary.h"
 #include "parrot/core/main_loop.h"
 #include "parrot/core/math.h"
 #include "parrot/core/reflect.h"
