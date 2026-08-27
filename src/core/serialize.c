@@ -526,19 +526,28 @@ deserialize(ObjectEntry *objects, size_t object_count, ParrotReflect *reflect, s
             continue;
         }
 
-        if (hmgeti(shm_relocated, relocation.src_object) < 0) {
-            memcpy(pool_ptr,
-                   state.arr_objects[relocation.src_object].data,
-                   ParrotReflect_get_type_size(reflect, state.arr_objects[relocation.src_object].type));
-            free(state.arr_objects[relocation.src_object].data);
+        if (hmgeti(shm_relocated, relocation.src_object) >= 0) {
+            continue;
+        }
+        memcpy(pool_ptr,
+               state.arr_objects[relocation.src_object].data,
+               ParrotReflect_get_type_size(reflect, state.arr_objects[relocation.src_object].type));
+        free(state.arr_objects[relocation.src_object].data);
 
-            state.arr_objects[relocation.src_object].data = pool_ptr;
-            pool_ptr += ParrotReflect_get_type_size(reflect, state.arr_objects[relocation.src_object].type);
+        state.arr_objects[relocation.src_object].data = pool_ptr;
+        pool_ptr += ParrotReflect_get_type_size(reflect, state.arr_objects[relocation.src_object].type);
 
-            hmputs(shm_relocated,
-                   ((ParrotSizeSet){
-                       .key = relocation.src_object,
-                   }));
+        hmputs(shm_relocated,
+               ((ParrotSizeSet){
+                   .key = relocation.src_object,
+               }));
+    }
+
+    for (size_t i = 0; i < arrlen(state.arr_relocations); i++) {
+        DeserializeStateRelocation relocation = state.arr_relocations[i];
+
+        if (relocation.type != DeserializeStateRelocationType_POINT) {
+            continue;
         }
 
         memcpy(state.arr_objects[relocation.dest_object].data + relocation.dest_offset,
