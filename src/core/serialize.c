@@ -496,6 +496,14 @@ deserialize(ObjectEntry *objects, size_t object_count, ParrotReflect *reflect, s
     state.arr_objects[0].data = realloc(state.arr_objects[0].data, pool_size);
     uint8_t *pool_ptr = state.arr_objects[0].data + ParrotReflect_get_type_size(reflect, state.arr_objects[0].type);
 
+    ParrotSizeSet *shm_relocated = NULL;
+    ParrotScope_push_hmfree(scope, shm_relocated);
+
+    hmputs(shm_relocated,
+           ((ParrotSizeSet){
+               .key = 0,
+           }));
+
     for (size_t i = 0; i < arrlen(state.arr_relocations); i++) {
         DeserializeStateRelocation relocation = state.arr_relocations[i];
 
@@ -509,15 +517,12 @@ deserialize(ObjectEntry *objects, size_t object_count, ParrotReflect *reflect, s
         free(state.arr_objects[relocation.src_object].data);
         state.arr_objects[relocation.src_object].data =
             state.arr_objects[relocation.dest_object].data + relocation.dest_offset;
+
+        hmputs(shm_relocated,
+               ((ParrotSizeSet){
+                   .key = relocation.src_object,
+               }));
     }
-
-    ParrotSizeSet *shm_relocated = NULL;
-    ParrotScope_push_hmfree(scope, shm_relocated);
-
-    hmputs(shm_relocated,
-           ((ParrotSizeSet){
-               .key = 0,
-           }));
 
     for (size_t i = 0; i < arrlen(state.arr_relocations); i++) {
         DeserializeStateRelocation relocation = state.arr_relocations[i];
