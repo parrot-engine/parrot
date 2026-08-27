@@ -2,12 +2,21 @@
 #define PARROT_PARROT_INCLUDE_PARROT_CORE_SCOPE_H_
 
 #include "parrot/core/api.h"
+#include <stddef.h>
 #include <stdint.h>
 
 typedef struct ParrotScope ParrotScope;
 
 PARROT_API ParrotScope *ParrotScope_new(/* NULL = no parent */ ParrotScope *parent);
 PARROT_API void ParrotScope_delete(ParrotScope *self);
+
+PARROT_API void ParrotScope_set_ctx(ParrotScope *self, void *ctx);
+#define ParrotScope_alloc_ctx(self, type) ((type *)ParrotScope_alloc_ctx_raw(self, sizeof(type)))
+PARROT_API void *ParrotScope_alloc_ctx_raw(ParrotScope *self, size_t size);
+#define ParrotScope_get_ctx(self, type) ((type)ParrotScope_get_ctx_raw(self))
+PARROT_API void *ParrotScope_get_ctx_raw(ParrotScope *self);
+
+PARROT_API void ParrotScope_set_parent(ParrotScope *self, /* NULL = no parent */ ParrotScope *parent);
 
 PARROT_API uint32_t ParrotScope_push(ParrotScope *self, void (*func)(void *ctx), void *ctx);
 /// Pushes a free(ptr) function

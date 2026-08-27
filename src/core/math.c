@@ -345,21 +345,28 @@ ParrotMat ParrotMat_scale(ParrotVec3 scale) {
 
 ParrotTransform ParrotTransform_new(void) {
     return (ParrotTransform){
+        .matrix = ParrotMat_identity(),
+
         .scale = ParrotVec3_n(1),
     };
 }
 
-ParrotMat ParrotTransform_calculate_matrix(const ParrotTransform *self) {
+static ParrotMat ParrotTransform_calculate_matrix_impl(const ParrotTransform *root, const ParrotTransform *self) {
     ParrotMat matrix = ParrotMat_identity();
-    if (self->parent) {
-        matrix = ParrotTransform_calculate_matrix(self->parent);
+    if (self->parent && self->parent != root) {
+        matrix = ParrotTransform_calculate_matrix_impl(root, self->parent);
     }
 
     matrix = ParrotMat_mul(matrix, ParrotMat_translation(self->position));
     matrix = ParrotMat_mul(matrix, ParrotMat_rotation(self->rotation));
     matrix = ParrotMat_mul(matrix, ParrotMat_scale(self->scale));
+    matrix = ParrotMat_mul(matrix, self->matrix);
 
     return matrix;
+}
+
+ParrotMat ParrotTransform_calculate_matrix(const ParrotTransform *self) {
+    return ParrotTransform_calculate_matrix_impl(self, self);
 }
 
 ParrotMat ParrotGMatSet_combine(const ParrotGMatSet *self) {

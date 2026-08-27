@@ -7,50 +7,74 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/// 48.16 fixed point
+typedef int64_t ParrotFixed64i;
+#define ParrotFixed64i_MIN ((int64_t)-281474976710657)
+#define ParrotFixed64i_MAX ((int64_t)281474976710657)
+#define ParrotFixed64i_to_double(n) ((double)(n) / 65536.0f)
+#define ParrotFixed64i_from_double(n)                                                                                   \
+    ((ParrotFixed64i)(PARROT_CLAMP(ParrotFixed64i_MIN, n, ParrotFixed64i_MAX) * 65536.0f + 0.5f) - ((n) < 0))
+
+/// 32.32 fixed point
+typedef int64_t ParrotFixed64s;
+#define ParrotFixed64s_MIN ((int64_t)-2147483647)
+#define ParrotFixed64s_MAX ((int64_t)2147483647)
+#define ParrotFixed64s_to_double(n) ((double)(n) / 2147483648.0f)
+#define ParrotFixed64s_from_double(n)                                                                                   \
+    ((ParrotFixed64s)(PARROT_CLAMP(ParrotFixed64s_MIN, n, ParrotFixed64s_MAX) * 2147483648.0f + 0.5f) - ((n) < 0))
+
+/// 16.48 fixed point
+typedef int64_t ParrotFixed64f;
+#define ParrotFixed64f_MIN ((int64_t)-65535)
+#define ParrotFixed64f_MAX ((int64_t)65535)
+#define ParrotFixed64f_to_double(n) ((double)(n) / 281474976710658.0f)
+#define ParrotFixed64f_from_double(n)                                                                                   \
+    ((ParrotFixed64f)(PARROT_CLAMP(ParrotFixed64f_MIN, n, ParrotFixed64f_MAX) * 281474976710658.0f + 0.5f) - ((n) < 0))
+
 /// 24.8 fixed point
 typedef int32_t ParrotFixed32i;
-#define ParrotFixed32i_MIN (-8388607)
-#define ParrotFixed32i_MAX (8388607)
+#define ParrotFixed32i_MIN ((int32_t)-8388607)
+#define ParrotFixed32i_MAX ((int32_t)8388607)
 #define ParrotFixed32i_to_float(n) ((float)(n) / 256.0f)
 #define ParrotFixed32i_from_float(n)                                                                                    \
     ((ParrotFixed32i)(PARROT_CLAMP(ParrotFixed32i_MIN, n, ParrotFixed32i_MAX) * 256.0f + 0.5f) - ((n) < 0))
 
 /// 16.16 fixed point
 typedef int32_t ParrotFixed32s;
-#define ParrotFixed32s_MIN (-32767)
-#define ParrotFixed32s_MAX (32767)
+#define ParrotFixed32s_MIN ((int32_t)-32767)
+#define ParrotFixed32s_MAX ((int32_t)32767)
 #define ParrotFixed32s_to_float(n) ((float)(n) / 65536.0f)
 #define ParrotFixed32s_from_float(n)                                                                                    \
     ((ParrotFixed32s)(PARROT_CLAMP(ParrotFixed32s_MIN, n, ParrotFixed32s_MAX) * 65536.0f + 0.5f) - ((n) < 0))
 
 /// 8.24 fixed point
 typedef int32_t ParrotFixed32f;
-#define ParrotFixed32f_MIN (-127)
-#define ParrotFixed32f_MAX (127)
+#define ParrotFixed32f_MIN ((int32_t)-127)
+#define ParrotFixed32f_MAX ((int32_t)127)
 #define ParrotFixed32f_to_float(n) ((float)(n) / 8388608.0f)
 #define ParrotFixed32f_from_float(n)                                                                                    \
     ((ParrotFixed32f)(PARROT_CLAMP(ParrotFixed32f_MIN, n, ParrotFixed32f_MAX) * 8388608.0f + 0.5f) - ((n) < 0))
 
 /// 12.4 fixed point
 typedef int16_t ParrotFixed16i;
-#define ParrotFixed16i_MIN (-4095)
-#define ParrotFixed16i_MAX (4095)
+#define ParrotFixed16i_MIN ((int16_t)-4095)
+#define ParrotFixed16i_MAX ((int16_t)4095)
 #define ParrotFixed16i_to_float(n) ((float)(n) / 16.0f)
 #define ParrotFixed16i_from_float(n)                                                                                    \
     ((ParrotFixed16i)(PARROT_CLAMP(ParrotFixed16i_MIN, n, ParrotFixed16i_MAX) * 16.0f + 0.5f) - ((n) < 0))
 
 /// 8.8 fixed point
 typedef int16_t ParrotFixed16s;
-#define ParrotFixed16s_MIN (-255)
-#define ParrotFixed16s_MAX (255)
+#define ParrotFixed16s_MIN ((int16_t)-255)
+#define ParrotFixed16s_MAX ((int16_t)255)
 #define ParrotFixed16s_to_float(n) ((float)(n) / 256.0f)
 #define ParrotFixed16s_from_float(n)                                                                                    \
     ((ParrotFixed16s)(PARROT_CLAMP(ParrotFixed16s_MIN, n, ParrotFixed16s_MAX) * 256.0f + 0.5f) - ((n) < 0))
 
 /// 4.12 fixed point
 typedef int16_t ParrotFixed16f;
-#define ParrotFixed16f_MIN (-15)
-#define ParrotFixed16f_MAX (15)
+#define ParrotFixed16f_MIN ((int16_t)-15)
+#define ParrotFixed16f_MAX ((int16_t)15)
 #define ParrotFixed16f_to_float(n) ((float)(n) / 4096.0f)
 #define ParrotFixed16f_from_float(n)                                                                                    \
     ((ParrotFixed16f)(PARROT_CLAMP(ParrotFixed16f_MIN, n, ParrotFixed16f_MAX) * 4096.0f + 0.5f) - ((n) < 0))
@@ -227,6 +251,7 @@ typedef struct ParrotTransform ParrotTransform;
 
 struct ParrotTransform {
     ParrotTransform *parent;
+    ParrotMat matrix;
 
     ParrotVec3 position;
     ParrotVec3 rotation;
@@ -237,6 +262,7 @@ static const ParrotReflectDescription ParrotTransform_description[] = {
     PARROT_REFLECT_TYPE_HEADER(ParrotTransform),
 
     PARROT_REFLECT_TYPE_FIELD(ParrotTransform, ParrotTransform *, parent, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotTransform, ParrotMat, matrix, ),
 
     PARROT_REFLECT_TYPE_FIELD(ParrotTransform, ParrotVec3, position, ),
     PARROT_REFLECT_TYPE_FIELD(ParrotTransform, ParrotVec3, rotation, ),

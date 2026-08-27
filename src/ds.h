@@ -6,6 +6,10 @@
 #include <stddef.h>
 
 typedef struct {
+    const void *key;
+} ParrotPtrSet;
+
+typedef struct {
     size_t key;
 } ParrotSizeSet;
 

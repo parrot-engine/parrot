@@ -1,6 +1,7 @@
 #include "parrot/core/main_loop.h"
 #include "parrot/core/math.h"
 #include "parrot/core/reflect.h"
+#include "parrot/core/serialize.h"
 #include "parrot/drivers/gl_driver.h"
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
@@ -38,16 +39,6 @@ static void print_type(const char *typename) {
 
         printf("  Field \"%s\":\n", name);
         printf("    Type: %s", typename);
-        {
-            size_t j = 1;
-            for (;;) {
-                size_t size = ParrotReflect_get_type_field_dimension_size(reflect, type, i, j++);
-                if (size == 0) {
-                    break;
-                }
-                printf("[%td]", size);
-            }
-        }
         printf("\n");
         printf("    Offset: %td\n", ParrotReflect_get_type_field_offset(reflect, type, i));
         printf("    Size: %td\n", ParrotReflect_get_type_field_size(reflect, type, i));
@@ -129,7 +120,7 @@ static void init(ParrotMainLoopRunSettings *settings) {
     ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRectComponent);
     {
         ParrotTransform *transform = ParrotSceneWorld_get_component(world, object, ParrotTransform);
-        // transform->origin = (ParrotVec3){RECT_SIZE / 2.0, RECT_SIZE / 2.0, 0};
+        transform->parent = transform;
         transform->rotation = (ParrotVec3){0, 0, 45};
 
         ParrotVideoSceneRenderableComponent *renderable =

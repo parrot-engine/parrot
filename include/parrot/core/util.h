@@ -1,6 +1,7 @@
 #ifndef __SRC_PARROT_INCLUDE_PARROT_CORE_UTIL_H_
 #define __SRC_PARROT_INCLUDE_PARROT_CORE_UTIL_H_
 
+#include "parrot/core/api.h"
 #include <stdio.h>  // IWYU pragma: keep
 #include <stdlib.h> // IWYU pragma: keep
 

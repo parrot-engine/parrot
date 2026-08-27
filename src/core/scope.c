@@ -18,20 +18,15 @@ struct ParrotScope {
 
     ParrotScope *parent;
     uint32_t parent_delete_id;
-};
 
-static void scope_delete_wrapper(void *ctx) {
-    ParrotScope_delete((ParrotScope *)ctx);
-}
+    void *ctx;
+};
 
 ParrotScope *ParrotScope_new(ParrotScope *parent) {
     ParrotScope *self = malloc(sizeof(ParrotScope));
     memset(self, 0, sizeof(ParrotScope));
 
-    if (parent) {
-        self->parent = parent;
-        self->parent_delete_id = ParrotScope_push(parent, scope_delete_wrapper, self);
-    }
+    ParrotScope_set_parent(self, parent);
 
     return self;
 }
@@ -46,13 +41,49 @@ void ParrotScope_delete(ParrotScope *self) {
     while (hmlen(self->hm_stack) > 0) {
         size_t index = hmlen(self->hm_stack) - 1;
         ParrotScopeEntry entry = self->hm_stack[index];
-        hmdel(self->hm_stack, index);
+        hmdel(self->hm_stack, entry.key);
 
         entry.func(entry.ctx);
     }
 
     hmfree(self->hm_stack);
     free(self);
+}
+
+void ParrotScope_set_ctx(ParrotScope *self, void *ctx) {
+    PARROT_FAIL_NULL(self);
+
+    self->ctx = ctx;
+}
+
+void *ParrotScope_alloc_ctx_raw(ParrotScope *self, size_t size) {
+    PARROT_FAIL_NULL(self);
+
+    self->ctx = malloc(size);
+    memset(self->ctx, 0, size);
+    return self->ctx;
+}
+
+void *ParrotScope_get_ctx_raw(ParrotScope *self) {
+    PARROT_FAIL_NULL(self);
+    return self->ctx;
+}
+
+static void scope_delete_wrapper(void *ctx) {
+    ParrotScope_delete(ctx);
+}
+
+void ParrotScope_set_parent(ParrotScope *self, ParrotScope *parent) {
+    PARROT_FAIL_NULL(self);
+
+    if (self->parent) {
+        ParrotScope_cancel(self->parent, self->parent_delete_id);
+    }
+
+    self->parent = parent;
+    if (parent) {
+        self->parent_delete_id = ParrotScope_push(parent, scope_delete_wrapper, self);
+    }
 }
 
 uint32_t ParrotScope_push(ParrotScope *self, void (*func)(void *ctx), void *ctx) {
