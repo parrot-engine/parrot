@@ -8,3 +8,5 @@ compile_commands.json
 .vscode/
 
 **/*.pdebug.*
+**/.project.gf
+**/vgcore.*
