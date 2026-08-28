@@ -62,7 +62,7 @@ struct ParrotReflectDescription {
         struct {
             const ParrotReflectDescription *description;
         } collection_description_data;
-    } data;
+    } unique_data;
 };
 
 #ifndef __cplusplus
@@ -78,7 +78,7 @@ struct ParrotReflectDescription {
         .type = ParrotReflectEntryType_END,                                                                             \
         .name = NULL,                                                                                                   \
         .tags = NULL,                                                                                                   \
-        .data = {},                                                                                                     \
+        .unique_data = {},                                                                                              \
     }
 #endif
 
@@ -87,7 +87,7 @@ struct ParrotReflectDescription {
         .type = ParrotReflectEntryType_TYPE_HEADER,                                                                     \
         .name = PARROT_STRING(p_type),                                                                                  \
         .tags = NULL,                                                                                                   \
-        .data =                                                                                                         \
+        .unique_data =                                                                                                  \
             {                                                                                                           \
                 .type_header_data =                                                                                     \
                     {                                                                                                   \
@@ -100,7 +100,7 @@ struct ParrotReflectDescription {
         .type = ParrotReflectEntryType_TYPE_HEADER,                                                                     \
         .name = PARROT_STRING(p_type),                                                                                  \
         .tags = p_tags,                                                                                                 \
-        .data =                                                                                                         \
+        .unique_data =                                                                                                  \
             {                                                                                                           \
                 .type_header_data =                                                                                     \
                     {                                                                                                   \
@@ -113,7 +113,7 @@ struct ParrotReflectDescription {
         .type = ParrotReflectEntryType_TYPE_FIELD,                                                                      \
         .name = PARROT_STRING(p_field_name),                                                                            \
         .tags = NULL,                                                                                                   \
-        .data =                                                                                                         \
+        .unique_data =                                                                                                  \
             {                                                                                                           \
                 .type_field_data =                                                                                      \
                     {                                                                                                   \
@@ -129,7 +129,7 @@ struct ParrotReflectDescription {
         .type = ParrotReflectEntryType_TYPE_FIELD,                                                                      \
         .name = PARROT_STRING(p_field_name),                                                                            \
         .tags = p_tags,                                                                                                 \
-        .data =                                                                                                         \
+        .unique_data =                                                                                                  \
             {                                                                                                           \
                 .type_field_data =                                                                                      \
                     {                                                                                                   \
@@ -147,7 +147,7 @@ struct ParrotReflectDescription {
         .type = ParrotReflectEntryType_ALIAS,                                                                           \
         .name = PARROT_STRING(p_type),                                                                                  \
         .tags = NULL,                                                                                                   \
-        .data =                                                                                                         \
+        .unique_data =                                                                                                  \
             {                                                                                                           \
                 .alias_data =                                                                                           \
                     {                                                                                                   \
@@ -170,7 +170,7 @@ struct ParrotReflectDescription {
         .type = ParrotReflectEntryType_COLLECTION_HEADER,                                                               \
         .name = NULL,                                                                                                   \
         .tags = NULL,                                                                                                   \
-        .data = {},                                                                                                     \
+        .unique_data = {},                                                                                              \
     }
 #endif
 #define PARROT_REFLECT_COLLECTION_DESCRIPTION(p_description)                                                            \
@@ -178,7 +178,7 @@ struct ParrotReflectDescription {
         .type = ParrotReflectEntryType_COLLECTION_DESCRIPTION,                                                          \
         .name = NULL,                                                                                                   \
         .tags = NULL,                                                                                                   \
-        .data =                                                                                                         \
+        .unique_data =                                                                                                  \
             {                                                                                                           \
                 .collection_description_data =                                                                          \
                     {                                                                                                   \
