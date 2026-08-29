@@ -17,13 +17,12 @@ static void arrfree_wrapper(void *ctx_ptr) {
 }
 
 void ParrotScope_push_arrfree_raw(ParrotScope *self, void **arr, size_t element_size) {
-    STBDSFreeCtx *ctx = malloc(sizeof(STBDSFreeCtx));
-    memset(ctx, 0, sizeof(*ctx));
+    ParrotScope *scope = ParrotScope_new(self);
+    STBDSFreeCtx *ctx = ParrotScope_alloc_ctx(scope, STBDSFreeCtx);
     ctx->data = arr;
     ctx->element_size = element_size;
 
-    ParrotScope_push_free(self, ctx);
-    ParrotScope_push(self, arrfree_wrapper, ctx);
+    ParrotScope_push(scope, arrfree_wrapper, ctx);
 }
 
 static void hmfree_wrapper(void *ctx_ptr) {
@@ -35,11 +34,10 @@ static void hmfree_wrapper(void *ctx_ptr) {
 }
 
 void ParrotScope_push_hmfree_raw(ParrotScope *self, void **hm, size_t element_size) {
-    STBDSFreeCtx *ctx = malloc(sizeof(STBDSFreeCtx));
-    memset(ctx, 0, sizeof(*ctx));
+    ParrotScope *scope = ParrotScope_new(self);
+    STBDSFreeCtx *ctx = ParrotScope_alloc_ctx(scope, STBDSFreeCtx);
     ctx->data = hm;
     ctx->element_size = element_size;
 
-    ParrotScope_push_free(self, ctx);
-    ParrotScope_push(self, hmfree_wrapper, ctx);
+    ParrotScope_push(scope, hmfree_wrapper, ctx);
 }

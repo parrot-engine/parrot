@@ -44,7 +44,7 @@ typedef struct {
 } ObjectEntry;
 
 typedef struct {
-    const uint8_t *ptr;
+    uintptr_t ptr;
     size_t type;
 } ObjectPtrMapKey;
 
@@ -65,15 +65,14 @@ static uint32_t queue_object(ObjectEntry **p_arr_objects,
 
     ParrotScope *work_scope = ParrotScope_new(scope);
 
-    if (hmgeti(hm_ptr_map, data) >= 0) {
-        ParrotScope_delete(work_scope);
-        return hmgeti(hm_ptr_map, data);
-    }
-
     ObjectPtrMapKey entry_key = {
-        .ptr = data,
+        .ptr = (uintptr_t)data,
         .type = type,
     };
+    if (hmgeti(hm_ptr_map, entry_key) >= 0) {
+        ParrotScope_delete(work_scope);
+        return hmgeti(hm_ptr_map, entry_key);
+    }
 
     uint32_t entry_index = arrlen(arr_objects);
     {
@@ -469,6 +468,7 @@ deserialize(ObjectEntry *objects, size_t object_count, ParrotReflect *reflect, s
 
     DeserializeState state = {0};
     ParrotScope_push_arrfree(scope, state.arr_objects);
+    ParrotScope_push_arrfree(scope, state.arr_relocations);
 
     for (size_t i = 0; i < object_count; i++) {
         DeserializeStateObject object = {0};
@@ -606,7 +606,6 @@ void *Parrot_deserialize_bytes(ParrotBinaryImage image, ParrotReflect *reflect, 
         switch (entry.type) {
         case ObjectEntryType_OBJECT: {
             char *arr_object_type = NULL;
-            ParrotScope_push_arrfree(object_scope, arr_object_type);
             for (;;) {
                 uint8_t ascii = 0;
                 CHECK_FAIL(ParrotBuffer_read8(buffer, &ascii));
@@ -627,8 +626,9 @@ void *Parrot_deserialize_bytes(ParrotBinaryImage image, ParrotReflect *reflect, 
             CHECK_FAIL(ParrotBuffer_read32(buffer, &field_count));
 
             entry.data.object.p_arr_fields = malloc(sizeof(*entry.data.object.p_arr_fields));
-            ParrotScope_push_arrfree(entry.scope, *entry.data.object.p_arr_fields);
+            ParrotScope_push_free(entry.scope, entry.data.object.p_arr_fields);
             *entry.data.object.p_arr_fields = NULL;
+            ParrotScope_push_arrfree(entry.scope, *entry.data.object.p_arr_fields);
 
             for (size_t j = 0; j < field_count; j++) {
                 ParrotScope *field_scope = ParrotScope_new(object_scope);
@@ -661,6 +661,7 @@ void *Parrot_deserialize_bytes(ParrotBinaryImage image, ParrotReflect *reflect, 
 
                 ParrotScope_delete(field_scope);
             }
+            arrfree(arr_object_type);
         } break;
         case ObjectEntryType_SINT:
             ParrotBuffer_read64s(buffer, &entry.data.sint);
