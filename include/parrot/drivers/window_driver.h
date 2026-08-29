@@ -58,8 +58,10 @@ typedef struct {
 
     bool (*poll_events)(ParrotWindowDriverWindow *window, ParrotWindowDriverEvent *out_event);
 
+    /// NULL = unsupported
     void (*set_title)(ParrotWindowDriverWindow *window, const char *title);
 
+    /// NULL = unsupported
     void (*set_size)(ParrotWindowDriverWindow *window, int width, int height);
     int (*get_width)(ParrotWindowDriverWindow *window);
     int (*get_height)(ParrotWindowDriverWindow *window);
