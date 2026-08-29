@@ -228,8 +228,8 @@ static void register_type(ParrotReflect *self, const ParrotReflectDescription *d
                 field_info.size = description->unique_data.type_field_data.field_base_size;
 
                 field_info.sh_tags = malloc(sizeof(field_info.sh_tags));
-                *field_info.sh_tags = NULL;
                 ParrotScope_push_free(field_info.scope, field_info.sh_tags);
+                *field_info.sh_tags = NULL;
                 ParrotScope_push_shfree(field_info.scope, *field_info.sh_tags);
                 if (description->tags) {
                     for (size_t j = 0; description->tags[j][0]; j++) {

@@ -120,6 +120,8 @@ void ParrotVideo_init(void) {
 void ParrotVideo_shutdown(void) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
 
+    ParrotVideo_delete_object(self->root_object_handle);
+
     ParrotScope_delete(self->scope);
     free(self);
     self = NULL;
@@ -151,8 +153,8 @@ ParrotVideoObjectHandle ParrotVideo_create_object(void) {
         .index = index,
     };
 
-    object->parent = self->root_object_handle;
     if (self->root_object) {
+        object->parent = self->root_object_handle;
         hmputs(self->root_object->shm_children, (ParrotVideoObjectChild){handle});
     }
 
@@ -185,8 +187,13 @@ void ParrotVideo_delete_object(ParrotVideoObjectHandle handle) {
         ParrotVideo_object_remove_camera(handle);
     }
 
+    if (ParrotVideo_object_has_rect(handle)) {
+        ParrotVideo_object_remove_rect(handle);
+    }
+
     ParrotVideoObject *parent_object = hmget(self->hm_pointers, object->parent);
     hmdel(parent_object->shm_children, handle.index);
+    hmfree(object->shm_children);
 
     hmdel(self->hm_pointers, handle.index);
 
@@ -202,11 +209,12 @@ void ParrotVideo_set_object_parent(ParrotVideoObjectHandle handle, ParrotVideoOb
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(parent));
 
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    PARROT_FAIL_NULL(object);
 
     ParrotVideoObject *new_parent = hmget(self->hm_pointers, parent);
-    ParrotVideoObject *old_parent = hmget(self->hm_pointers, object->parent);
-
     PARROT_FAIL_NULL(new_parent);
+
+    ParrotVideoObject *old_parent = hmget(self->hm_pointers, object->parent);
     PARROT_FAIL_NULL(old_parent);
 
     hmdel(old_parent->shm_children, handle);

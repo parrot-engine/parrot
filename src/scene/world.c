@@ -382,7 +382,7 @@ void ParrotSceneWorld_delete_component_name(ParrotSceneWorld *self, ParrotSceneW
 
     component->arr_exists[ENTITY_INDEX(entity)] = false;
 
-    while (hmlen(component->shm_queries) > 0) {
+    for (size_t i = 0; i < hmlen(component->shm_queries); i++) {
         ParrotSceneWorld_invalidate_cached_query(self, component->shm_queries[0].key);
     }
     hmfree(component->shm_queries);
@@ -433,17 +433,17 @@ static ParrotCRC32 ParrotSceneWorld_query(ParrotSceneWorld *self, const ParrotSc
                 }
             }
 
-            ParrotCRC32Set *cache = NULL;
+            ParrotCRC32Set **cache = NULL;
 
             if (!component) {
                 if (hmgeti(self->sh_initial_cached_queries, filter->data.component.name) < 0) {
                     hmput(self->sh_initial_cached_queries, filter->data.component.name, NULL);
                 }
-                cache = shgetp(self->sh_initial_cached_queries, filter->data.component.name)->value;
+                cache = &shgetp(self->sh_initial_cached_queries, filter->data.component.name)->value;
             } else {
-                cache = component->shm_queries;
+                cache = &component->shm_queries;
             }
-            hmputs(cache, (ParrotCRC32Set){query_crc32});
+            hmputs(*cache, (ParrotCRC32Set){query_crc32});
 
             arrpush(cached_query.arr_components, filter->data.component.name);
         } break;

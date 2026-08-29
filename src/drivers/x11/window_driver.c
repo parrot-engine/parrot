@@ -141,6 +141,7 @@ static bool driver_poll_events(ParrotWindowDriverWindow *self, ParrotWindowDrive
 
                 XDestroyImage(self->image);
 
+                free(self->image_data);
                 self->image_data = calloc(attrs.width * attrs.height, sizeof(uint32_t));
                 self->image = XCreateImage(self->display,
                                            DefaultVisual(self->display, self->screen),
@@ -255,7 +256,8 @@ static void driver_set_image(ParrotWindowDriverWindow *self, const uint32_t *rgb
             uint8_t r = rgbx8888[y * attrs.width + x] & 0xFF;
             uint8_t g = (rgbx8888[y * attrs.width + x] >> 8) & 0xFF;
             uint8_t b = (rgbx8888[y * attrs.width + x] >> 16) & 0xFF;
-            self->image_data[y * attrs.width + x] = (0xFF << 24) | (r << 16) | (g << 8) | b;
+            self->image_data[y * attrs.width + x] =
+                ((uint32_t)0xFF << 24) | ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
         }
     }
     XPutImage(self->display, self->back_buffer, self->gc, self->image, 0, 0, 0, 0, attrs.width, attrs.height);

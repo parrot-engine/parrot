@@ -79,6 +79,10 @@ static ParrotGLDriverContext *driver_create_context(uint8_t version, int width, 
 }
 
 static void driver_delete_context(ParrotGLDriverContext *self) {
+    glXMakeContextCurrent(display, None, None, NULL);
+    glXDestroyPbuffer(display, self->pbuffer);
+    glXDestroyContext(display, self->context);
+
     free(self);
 }
 

@@ -61,6 +61,8 @@ void *ParrotScope_alloc_ctx_raw(ParrotScope *self, size_t size) {
 
     self->ctx = malloc(size);
     memset(self->ctx, 0, size);
+
+    ParrotScope_push_free(self, self->ctx);
     return self->ctx;
 }
 

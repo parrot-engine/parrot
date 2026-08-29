@@ -37,6 +37,14 @@ export BUILD_DIR_NAME ?= $(DEFAULT)
 # [set: default, x11] List of drivers to build. `default` includes platform default drivers
 export DRIVERS ?= default
 
+# [string] Extra CFLAGS to add to the build
+export EXTRA_CFLAGS ?= 
+
+# [string] Extra LDFLAGS to add to the build
+export EXTRA_LDFLAGS ?= 
+
+# [string] Extra CFLAGS and LDFLAGS to add to the build
+export EXTRA_CLDFLAGS ?= 
 
 #######################################################################################################################
 

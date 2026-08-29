@@ -61,6 +61,8 @@ static void print_type(const char *typename) {
 static void init(ParrotMainLoopRunSettings *settings) {
     settings->max_fps = 60;
 
+    reflect = ParrotReflect_new();
+
     Parrot_window_driver = &Parrot_x11_window_driver;
     Parrot_window_driver->init();
 
@@ -72,7 +74,6 @@ static void init(ParrotMainLoopRunSettings *settings) {
 
     ParrotVideo_init();
 
-    reflect = ParrotReflect_new();
     world = ParrotSceneWorld_new();
 
     ParrotReflect_register(reflect, Parrot_collection);
@@ -192,13 +193,14 @@ static void render(ParrotMainLoopRunSettings *settings) {
 
 static void shutdown(ParrotMainLoopRunSettings *settings) {
     ParrotSceneWorld_delete(world);
-    ParrotReflect_delete(reflect);
 
     ParrotVideo_shutdown();
 
     Parrot_video_driver->shutdown();
     Parrot_gl_driver->shutdown();
     Parrot_window_driver->shutdown();
+
+    ParrotReflect_delete(reflect);
 }
 
 int main(void) {
