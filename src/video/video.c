@@ -106,9 +106,7 @@ static ParrotVideo *self = NULL;
 void ParrotVideo_init(void) {
     PARROT_FAIL_COND(ParrotVideo_is_initialized());
 
-    self = malloc(sizeof(ParrotVideo));
-    PARROT_FAIL_NULL(self);
-    memset(self, 0, sizeof(ParrotVideo));
+    self = PARROT_ALLOC(ParrotVideo);
 
     self->scope = ParrotScope_new(NULL);
 
@@ -138,8 +136,7 @@ ParrotVideoObjectHandle ParrotVideo_get_root(void) {
 ParrotVideoObjectHandle ParrotVideo_create_object(void) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
 
-    ParrotVideoObject *object = malloc(sizeof(ParrotVideoObject));
-    memset(object, 0, sizeof(ParrotVideoObject));
+    ParrotVideoObject *object = PARROT_ALLOC(ParrotVideoObject);
 
     object->matrix = ParrotMat_identity();
 
@@ -273,8 +270,7 @@ void ParrotVideo_object_add_window(ParrotVideoObjectHandle handle, int width, in
     PARROT_FAIL_COND(height == 0);
 
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
-    object->window = malloc(sizeof(ParrotVideoObjectWindow));
-    memset(object->window, 0, sizeof(ParrotVideoObjectWindow));
+    object->window = PARROT_ALLOC(ParrotVideoObjectWindow);
 
     object->window->window = Parrot_window_driver->create_window(width, height);
 }
@@ -347,8 +343,7 @@ void ParrotVideo_object_add_viewport(ParrotVideoObjectHandle handle, int width, 
     PARROT_FAIL_COND(ParrotVideo_object_has_viewport(handle));
 
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
-    object->viewport = malloc(sizeof(ParrotVideoObjectViewport));
-    memset(object->viewport, 0, sizeof(ParrotVideoObjectViewport));
+    object->viewport = PARROT_ALLOC(ParrotVideoObjectViewport);
 
     PARROT_FAIL_COND(width == 0);
     PARROT_FAIL_COND(height == 0);
@@ -390,8 +385,7 @@ void ParrotVideo_object_add_camera(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(ParrotVideo_object_has_camera(handle));
 
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
-    object->camera = malloc(sizeof(ParrotVideoObjectCamera));
-    memset(object->camera, 0, sizeof(ParrotVideoObjectCamera));
+    object->camera = PARROT_ALLOC(ParrotVideoObjectCamera);
 
     object->camera->use_clear_color = true;
 }
@@ -680,8 +674,7 @@ void ParrotVideo_object_add_rect(ParrotVideoObjectHandle handle) {
 
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
-    object->rect = malloc(sizeof(ParrotVideoObjectRect));
-    memset(object->rect, 0, sizeof(ParrotVideoObjectRect));
+    object->rect = PARROT_ALLOC(ParrotVideoObjectRect);
 }
 
 void ParrotVideo_object_remove_rect(ParrotVideoObjectHandle handle) {
@@ -761,8 +754,7 @@ void ParrotVideo_object_set_text(ParrotVideoObjectHandle handle, ParrotVideoFont
         ParrotVideo_object_clear_text(handle);
     }
 
-    object->text = malloc(sizeof(ParrotVideoObjectText));
-    memset(object->text, 0, sizeof(*object->text));
+    object->text = PARROT_ALLOC(ParrotVideoObjectText);
 
     object->text->font = font;
     object->text->size = size;

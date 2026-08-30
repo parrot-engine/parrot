@@ -23,8 +23,7 @@ static void driver_shutdown(void) {
 }
 
 static ParrotGLDriverContext *driver_create_context(uint8_t version, int width, int height) {
-    ParrotGLDriverContext *self = malloc(sizeof(ParrotGLDriverContext));
-    memset(self, 0, sizeof(*self));
+    ParrotGLDriverContext *self = PARROT_ALLOC(ParrotGLDriverContext);
 
     int count = 0;
     int attribs[] = {

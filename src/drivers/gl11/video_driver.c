@@ -45,8 +45,7 @@ static void driver_shutdown(void) {
 }
 
 static ParrotVideoDriverViewport *driver_create_viewport(int width, int height) {
-    ParrotVideoDriverViewport *self = malloc(sizeof(ParrotVideoDriverViewport));
-    memset(self, 0, sizeof(*self));
+    ParrotVideoDriverViewport *self = PARROT_ALLOC(ParrotVideoDriverViewport);
 
     self->width = width;
     self->height = height;

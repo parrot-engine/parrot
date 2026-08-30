@@ -109,9 +109,7 @@ ParrotSceneWorld_ParrotColor_constructor(ParrotSceneWorldEntity entity, void *co
 }
 
 ParrotSceneWorld *ParrotSceneWorld_new(void) {
-    ParrotSceneWorld *self = malloc(sizeof(ParrotSceneWorld));
-    PARROT_RET_COND_V(!self, NULL);
-    memset(self, 0, sizeof(ParrotSceneWorld));
+    ParrotSceneWorld *self = PARROT_ALLOC(ParrotSceneWorld);
 
     self->next_new_index = 1;
 

@@ -103,8 +103,7 @@ static const ParrotReflectDescription builtin_collection[] = {
 };
 
 ParrotReflect *ParrotReflect_new(void) {
-    ParrotReflect *self = malloc(sizeof(ParrotReflect));
-    memset(self, 0, sizeof(ParrotReflect));
+    ParrotReflect *self = PARROT_ALLOC(ParrotReflect);
 
     self->scope = ParrotScope_new(NULL);
 

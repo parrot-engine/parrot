@@ -9,8 +9,7 @@ struct ParrotVideoFont {
 };
 
 ParrotVideoFont *ParrotVideoFont_new(ParrotBinaryImage font_data) {
-    ParrotVideoFont *self = malloc(sizeof(ParrotVideoFont));
-    memset(self, 0, sizeof(*self));
+    ParrotVideoFont *self = PARROT_ALLOC(ParrotVideoFont);
 
     stbtt_InitFont(&self->font, font_data.data, stbtt_GetFontOffsetForIndex(font_data.data, 0));
 

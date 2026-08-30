@@ -17,8 +17,7 @@ struct ParrotBuffer {
 };
 
 ParrotBuffer *ParrotBuffer_new(ParrotScope *scope, ParrotBufferRead read, ParrotBufferWrite write) {
-    ParrotBuffer *self = malloc(sizeof(ParrotBuffer));
-    memset(self, 0, sizeof(*self));
+    ParrotBuffer *self = PARROT_ALLOC(ParrotBuffer);
 
     self->read = read;
     self->write = write;

@@ -47,9 +47,7 @@ static void driver_shutdown(void) {
 }
 
 static ParrotWindowDriverWindow *driver_create_window(int width, int height) {
-    ParrotWindowDriverWindow *self = malloc(sizeof(ParrotWindowDriverWindow));
-    PARROT_RET_COND_V(!self, NULL);
-    memset(self, 0, sizeof(ParrotWindowDriverWindow));
+    ParrotWindowDriverWindow *self = PARROT_ALLOC(ParrotWindowDriverWindow);
 
     self->width = width;
     self->height = height;

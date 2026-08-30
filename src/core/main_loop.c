@@ -13,9 +13,7 @@ struct ParrotMainLoop {
 };
 
 ParrotMainLoop *ParrotMainLoop_new(void) {
-    ParrotMainLoop *self = malloc(sizeof(ParrotMainLoop));
-    PARROT_RET_COND_V(!self, NULL);
-    memset(self, 0, sizeof(ParrotMainLoop));
+    ParrotMainLoop *self = PARROT_ALLOC(ParrotMainLoop);
 
     return self;
 }

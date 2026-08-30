@@ -54,4 +54,6 @@ extern ParrotCrashHandlerFunc Parrot_crash_handler;
 #define PARROT_ALIGN_UP(n, align) (((n) + (align) - 1) & ~((align) - 1))
 #define PARROT_ALIGN_DOWN(n, align) ((n) & ~((align) - 1))
 
+#define PARROT_ALLOC(type_) (type_ *)memset(malloc(sizeof(type_)), 0, sizeof(type_))
+
 #endif // __SRC_PARROT_INCLUDE_PARROT_CORE_UTIL_H_

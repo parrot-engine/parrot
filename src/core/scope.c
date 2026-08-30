@@ -23,8 +23,7 @@ struct ParrotScope {
 };
 
 ParrotScope *ParrotScope_new(ParrotScope *parent) {
-    ParrotScope *self = malloc(sizeof(ParrotScope));
-    memset(self, 0, sizeof(ParrotScope));
+    ParrotScope *self = PARROT_ALLOC(ParrotScope);
 
     ParrotScope_set_parent(self, parent);
 
