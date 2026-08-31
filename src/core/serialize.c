@@ -228,6 +228,7 @@ Parrot_serialize_bytes(ParrotReflect *reflect, size_t type, const void *data_ptr
                 }                                                                                                       \
                 ParrotBuffer_write64(buffer, val);                                                                      \
             }                                                                                                           \
+            primitive = true;                                                                                           \
         }                                                                                                               \
     } while (0)
         X(short, true);
