@@ -5,21 +5,18 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define ParrotGLDriver_GL_VERSION(major, minor) ((((major) & 0xF) << 4) | ((minor) & 0xF))
-
 typedef struct ParrotGLDriverContext ParrotGLDriverContext;
+typedef struct ParrotGLDriver ParrotGLDriver;
 
-typedef struct {
-    void (*init)(void);
-    void (*shutdown)(void);
-
-    ParrotGLDriverContext *(*create_context)(uint8_t version, int width, int height);
+struct ParrotGLDriver {
+    /// Returns NULL if cannot create context
+    ParrotGLDriverContext *(*create_context)(ParrotGLDriver *self, int major, int minor, int width, int height);
     void (*delete_context)(ParrotGLDriverContext *context);
     void (*use_context)(ParrotGLDriverContext *context);
-} ParrotGLDriver;
+};
 
-extern const ParrotGLDriver *Parrot_gl_driver;
-
-extern const ParrotGLDriver Parrot_x11_gl_driver;
+/// Returns NULL if error
+PARROT_API ParrotGLDriver *Parrot_x11_gl_driver_new(void);
+PARROT_API void Parrot_x11_gl_driver_delete(ParrotGLDriver *self);
 
 #endif // PARROT_PARROT_INCLUDE_PARROT_DRIVERS_GL_DRIVER_H_

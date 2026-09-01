@@ -94,6 +94,9 @@ typedef struct ParrotVideoObjectPointer {
 typedef struct {
     ParrotScope *scope;
 
+    ParrotWindowDriver *window_driver;
+    ParrotVideoDriver *video_driver;
+
     ParrotVideoObjectPointer *hm_pointers;
     uint32_t next_pointer_id;
 
@@ -103,12 +106,14 @@ typedef struct {
 
 static ParrotVideo *self = NULL;
 
-void ParrotVideo_init(void) {
+void ParrotVideo_init(ParrotWindowDriver *window_driver, ParrotVideoDriver *video_driver) {
     PARROT_FAIL_COND(ParrotVideo_is_initialized());
 
     self = PARROT_ALLOC(ParrotVideo);
-
     self->scope = ParrotScope_new(NULL);
+
+    self->window_driver = window_driver;
+    self->video_driver = video_driver;
 
     ParrotScope_push_hmfree(self->scope, self->hm_pointers);
 
@@ -272,7 +277,7 @@ void ParrotVideo_object_add_window(ParrotVideoObjectHandle handle, int width, in
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
     object->window = PARROT_ALLOC(ParrotVideoObjectWindow);
 
-    object->window->window = Parrot_window_driver->create_window(width, height);
+    object->window->window = self->window_driver->create_window(self->window_driver, width, height);
 }
 
 void ParrotVideo_object_remove_window(ParrotVideoObjectHandle handle) {
@@ -280,7 +285,7 @@ void ParrotVideo_object_remove_window(ParrotVideoObjectHandle handle) {
 
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
-    Parrot_window_driver->delete_window(object->window->window);
+    self->window_driver->delete_window(object->window->window);
 
     free(object->window);
     object->window = NULL;
@@ -305,7 +310,7 @@ bool ParrotVideo_object_is_window_close_requested(ParrotVideoObjectHandle handle
 void ParrotVideo_object_set_window_title(ParrotVideoObjectHandle handle, const char *title) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
 
-    Parrot_window_driver->set_title(hmget(self->hm_pointers, handle.index)->window->window, title);
+    self->window_driver->set_title(hmget(self->hm_pointers, handle.index)->window->window, title);
 }
 
 void ParrotVideo_object_set_window_size(ParrotVideoObjectHandle handle, int width, int height) {
@@ -314,17 +319,17 @@ void ParrotVideo_object_set_window_size(ParrotVideoObjectHandle handle, int widt
     PARROT_FAIL_COND(width == 0);
     PARROT_FAIL_COND(height == 0);
 
-    Parrot_window_driver->set_size(hmget(self->hm_pointers, handle.index)->window->window, width, height);
+    self->window_driver->set_size(hmget(self->hm_pointers, handle.index)->window->window, width, height);
 }
 
 int ParrotVideo_object_get_window_width(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
-    return Parrot_window_driver->get_width(hmget(self->hm_pointers, handle.index)->window->window);
+    return self->window_driver->get_width(hmget(self->hm_pointers, handle.index)->window->window);
 }
 
 int ParrotVideo_object_get_window_height(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
-    return Parrot_window_driver->get_height(hmget(self->hm_pointers, handle.index)->window->window);
+    return self->window_driver->get_height(hmget(self->hm_pointers, handle.index)->window->window);
 }
 
 bool ParrotVideo_object_is_window_key_down(ParrotVideoObjectHandle handle, ParrotWindowDriverEventKey key) {
@@ -348,7 +353,7 @@ void ParrotVideo_object_add_viewport(ParrotVideoObjectHandle handle, int width, 
     PARROT_FAIL_COND(width == 0);
     PARROT_FAIL_COND(height == 0);
 
-    object->viewport->viewport = Parrot_video_driver->create_viewport(width, height);
+    object->viewport->viewport = self->video_driver->create_viewport(self->video_driver, width, height);
     object->viewport->width = width;
     object->viewport->height = height;
 }
@@ -359,10 +364,10 @@ void ParrotVideo_object_remove_viewport(ParrotVideoObjectHandle handle) {
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
     if (ParrotVideo_object_has_window(handle)) {
-        Parrot_window_driver->set_image(object->window->window, NULL);
+        self->window_driver->set_image(object->window->window, NULL);
     }
 
-    Parrot_video_driver->delete_viewport(object->viewport->viewport);
+    self->video_driver->delete_viewport(object->viewport->viewport);
 
     free(object->viewport);
     object->viewport = NULL;
@@ -464,7 +469,7 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
 
     if (ParrotVideo_object_has_window(handle)) {
         ParrotWindowDriverEvent event = {0};
-        while (Parrot_window_driver->poll_events(object->window->window, &event)) {
+        while (self->window_driver->poll_events(object->window->window, &event)) {
             switch (event.type) {
             case ParrotWindowDriverEventType_QUIT: {
                 object->window->close_requested = true;
@@ -494,7 +499,7 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
             ParrotVideoObject *camera_object = hmget(self->hm_pointers, camera_handle.index);
 
             if (camera->use_clear_color) {
-                Parrot_video_driver->clear_viewport(object->viewport->viewport, camera->clear_color);
+                self->video_driver->clear_viewport(object->viewport->viewport, camera->clear_color);
             }
 
             view_matrix = ParrotMat_inverse(camera_object->matrix);
@@ -515,8 +520,8 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
     }
 
     if (ParrotVideo_object_has_viewport(handle) && ParrotVideo_object_has_window(handle)) {
-        Parrot_window_driver->set_image(object->window->window,
-                                        Parrot_video_driver->get_viewport_pixels(object->viewport->viewport));
+        self->window_driver->set_image(object->window->window,
+                                       self->video_driver->get_viewport_pixels(object->viewport->viewport));
     }
 
     PARROT_RET_COND(!viewport);
@@ -548,21 +553,21 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
         };
 
         if (object->rect->texture_rgba8888) {
-            Parrot_video_driver->set_viewport_texture(viewport,
-                                                      object->rect->texture_width,
-                                                      object->rect->texture_height,
-                                                      object->rect->texture_rgba8888,
-                                                      object->rect->texture_nearest_filter);
+            self->video_driver->set_viewport_texture(viewport,
+                                                     object->rect->texture_width,
+                                                     object->rect->texture_height,
+                                                     object->rect->texture_rgba8888,
+                                                     object->rect->texture_nearest_filter);
         }
-        Parrot_video_driver->draw_viewport_vertices(viewport,
-                                                    (ParrotGMatSet){
-                                                        .model = object->matrix,
-                                                        .view = view_matrix,
-                                                        .projection = projection_matrix,
-                                                    },
-                                                    vertices,
-                                                    6);
-        Parrot_video_driver->clear_viewport_texture(viewport);
+        self->video_driver->draw_viewport_vertices(viewport,
+                                                   (ParrotGMatSet){
+                                                       .model = object->matrix,
+                                                       .view = view_matrix,
+                                                       .projection = projection_matrix,
+                                                   },
+                                                   vertices,
+                                                   6);
+        self->video_driver->clear_viewport_texture(viewport);
     }
 
     if (object->text) {
@@ -650,16 +655,16 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
                 }
                 free(character.bitmap);
 
-                Parrot_video_driver->set_viewport_texture(viewport, w, h, rgba8888, false);
-                Parrot_video_driver->draw_viewport_vertices(viewport,
-                                                            (ParrotGMatSet){
-                                                                .model = object->matrix,
-                                                                .view = view_matrix,
-                                                                .projection = projection_matrix,
-                                                            },
-                                                            arr_vertices,
-                                                            arrlen(arr_vertices));
-                Parrot_video_driver->clear_viewport_texture(viewport);
+                self->video_driver->set_viewport_texture(viewport, w, h, rgba8888, false);
+                self->video_driver->draw_viewport_vertices(viewport,
+                                                           (ParrotGMatSet){
+                                                               .model = object->matrix,
+                                                               .view = view_matrix,
+                                                               .projection = projection_matrix,
+                                                           },
+                                                           arr_vertices,
+                                                           arrlen(arr_vertices));
+                self->video_driver->clear_viewport_texture(viewport);
             }
             free(rgba8888);
 

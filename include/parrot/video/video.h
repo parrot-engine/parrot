@@ -3,17 +3,18 @@
 
 #include "parrot/core/api.h"
 #include "parrot/core/math.h"
+#include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
 #include "parrot/video/font.h"
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct {
+struct ParrotVideoVertex {
     ParrotVec3 position;
     ParrotVec3 normal;
     ParrotVec2 uv;
     ParrotColor tint;
-} ParrotVideoVertex;
+};
 
 typedef enum {
     ParrotVideoObjectEventType_WINDOW = 0,
@@ -30,7 +31,7 @@ typedef struct {
     uint32_t index;
 } ParrotVideoObjectHandle;
 
-PARROT_API void ParrotVideo_init(void);
+PARROT_API void ParrotVideo_init(ParrotWindowDriver *window_driver, ParrotVideoDriver *video_driver);
 PARROT_API void ParrotVideo_shutdown(void);
 PARROT_API bool ParrotVideo_is_initialized(void);
 

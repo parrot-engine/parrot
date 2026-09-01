@@ -1,29 +1,53 @@
 #include "parrot/drivers/gl_driver.h"
+#include "parrot/core/scope.h"
 #include "parrot/core/util.h"
 #include <GL/glx.h>
 #include <X11/Xlib.h>
 #include <stdint.h>
 #include <string.h>
 
+typedef struct Driver Driver;
+
 struct ParrotGLDriverContext {
+    Driver *driver;
+    ParrotScope *scope;
+
     GLXPbuffer pbuffer;
 
     GLXContext context;
 };
 
-Display *display = NULL;
+struct Driver {
+    ParrotGLDriver base;
 
-static void driver_init(void) {
-    display = XOpenDisplay(NULL);
-    PARROT_FAIL_NULL_MSG(display, "Failed to open X11 display");
+    ParrotScope *scope;
+
+    Display *display;
+};
+
+static void scope_XFree_wrapper(void *ctx) {
+    XFree(ctx);
 }
 
-static void driver_shutdown(void) {
-    XCloseDisplay(display);
+static void scope_context_destroy_pbuffer_wrapper(void *ctx) {
+    ParrotGLDriverContext *self = ctx;
+
+    glXDestroyPbuffer(self->driver->display, self->pbuffer);
 }
 
-static ParrotGLDriverContext *driver_create_context(uint8_t version, int width, int height) {
+static void scope_context_destroy_context_wrapper(void *ctx) {
+    ParrotGLDriverContext *self = ctx;
+
+    glXDestroyContext(self->driver->display, self->context);
+}
+
+static ParrotGLDriverContext *driver_create_context(ParrotGLDriver *base, int major, int minor, int width, int height) {
     ParrotGLDriverContext *self = PARROT_ALLOC(ParrotGLDriverContext);
+
+    self->driver = (Driver *)base;
+
+    self->scope = ParrotScope_new(self->driver->scope);
+    ParrotScope_push_free(self->scope, self);
 
     int count = 0;
     int attribs[] = {
@@ -42,13 +66,15 @@ static ParrotGLDriverContext *driver_create_context(uint8_t version, int width, 
         24,
         None,
     };
-    GLXFBConfig *configs = glXChooseFBConfig(display, XDefaultScreen(display), attribs, &count);
+
+    GLXFBConfig *configs =
+        glXChooseFBConfig(self->driver->display, XDefaultScreen(self->driver->display), attribs, &count);
+    ParrotScope_push(self->scope, scope_XFree_wrapper, configs);
     if (count == 0) {
-        PARROT_FAIL_MSG("Your platform does not support the requirements for display");
-        XFree(configs);
+        ParrotScope_delete(self->scope);
+        return NULL;
     }
     GLXFBConfig config = configs[0];
-    XFree(configs);
 
     int pb_attribs[] = {
         GLX_PBUFFER_WIDTH,
@@ -58,42 +84,57 @@ static ParrotGLDriverContext *driver_create_context(uint8_t version, int width, 
         None,
     };
 
-    self->pbuffer = glXCreatePbuffer(display, config, pb_attribs);
-    self->context = glXCreateNewContext(display, config, GLX_RGBA_TYPE, NULL, True);
+    self->pbuffer = glXCreatePbuffer(self->driver->display, config, pb_attribs);
+    ParrotScope_push(self->scope, scope_context_destroy_pbuffer_wrapper, self);
+    self->context = glXCreateNewContext(self->driver->display, config, GLX_RGBA_TYPE, NULL, True);
+    ParrotScope_push(self->scope, scope_context_destroy_context_wrapper, self);
 
-    glXMakeContextCurrent(display, self->pbuffer, self->pbuffer, self->context);
+    glXMakeContextCurrent(self->driver->display, self->pbuffer, self->pbuffer, self->context);
 
-    int major, minor;
-    glGetIntegerv(GL_MAJOR_VERSION, &major);
-    glGetIntegerv(GL_MINOR_VERSION, &minor);
+    int actual_major, actual_minor;
+    glGetIntegerv(GL_MAJOR_VERSION, &actual_major);
+    glGetIntegerv(GL_MINOR_VERSION, &actual_minor);
 
-    int target_major = version >> 4;
-    int target_minor = version & 0xF;
-    PARROT_FAIL_COND_FMT(major < target_major || (major == target_major && minor < target_minor),
-                         "Unsupported OpenGL version %d.%d",
-                         target_major,
-                         target_minor);
+    if (actual_major < major || (actual_major == major && actual_minor < minor)) {
+        ParrotScope_delete(self->scope);
+        return NULL;
+    }
 
     return self;
 }
 
 static void driver_delete_context(ParrotGLDriverContext *self) {
-    glXMakeContextCurrent(display, None, None, NULL);
-    glXDestroyPbuffer(display, self->pbuffer);
-    glXDestroyContext(display, self->context);
-
-    free(self);
+    ParrotScope_delete(self->scope);
 }
 
 static void driver_use_context(ParrotGLDriverContext *self) {
-    glXMakeContextCurrent(display, self->pbuffer, self->pbuffer, self->context);
+    glXMakeContextCurrent(self->driver->display, self->pbuffer, self->pbuffer, self->context);
 }
 
-const ParrotGLDriver Parrot_x11_gl_driver = {
-    .init = driver_init,
-    .shutdown = driver_shutdown,
+static void scope_XCloseDisplay_wrapper(void *ctx) {
+    XCloseDisplay(ctx);
+}
 
-    .create_context = driver_create_context,
-    .delete_context = driver_delete_context,
-    .use_context = driver_use_context,
-};
+ParrotGLDriver *Parrot_x11_gl_driver_new(void) {
+    Driver *self = PARROT_ALLOC(Driver);
+
+    self->scope = ParrotScope_new(NULL);
+    ParrotScope_push_free(self->scope, self);
+
+    self->base.create_context = driver_create_context;
+    self->base.delete_context = driver_delete_context;
+    self->base.use_context = driver_use_context;
+
+    self->display = XOpenDisplay(NULL);
+    if (!self->display) {
+        ParrotScope_delete(self->scope);
+        return NULL;
+    }
+    ParrotScope_push(self->scope, scope_XCloseDisplay_wrapper, self->display);
+
+    return &self->base;
+}
+
+void Parrot_x11_gl_driver_delete(ParrotGLDriver *base) {
+    ParrotScope_delete(((Driver *)base)->scope);
+}

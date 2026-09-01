@@ -25,6 +25,10 @@ ParrotSceneWorldEntity object;
 
 ParrotVideoObjectHandle root_handle;
 
+ParrotWindowDriver *window_driver;
+ParrotGLDriver *gl_driver;
+ParrotVideoDriver *video_driver;
+
 float fps_update_timer = 0;
 
 static void print_type(const char *typename) {
@@ -62,16 +66,11 @@ static void init(ParrotMainLoopRunSettings *settings) {
 
     reflect = ParrotReflect_new();
 
-    Parrot_window_driver = &Parrot_x11_window_driver;
-    Parrot_window_driver->init();
+    window_driver = Parrot_x11_window_driver_new();
+    gl_driver = Parrot_x11_gl_driver_new();
+    video_driver = Parrot_gl11_video_driver_new(gl_driver);
 
-    Parrot_gl_driver = &Parrot_x11_gl_driver;
-    Parrot_gl_driver->init();
-
-    Parrot_video_driver = &Parrot_gl11_video_driver;
-    Parrot_video_driver->init();
-
-    ParrotVideo_init();
+    ParrotVideo_init(window_driver, video_driver);
 
     world = ParrotSceneWorld_new();
 
@@ -195,9 +194,9 @@ static void shutdown(ParrotMainLoopRunSettings *settings) {
 
     ParrotVideo_shutdown();
 
-    Parrot_video_driver->shutdown();
-    Parrot_gl_driver->shutdown();
-    Parrot_window_driver->shutdown();
+    Parrot_gl11_video_driver_delete(video_driver);
+    Parrot_x11_gl_driver_delete(gl_driver);
+    Parrot_x11_window_driver_delete(window_driver);
 
     ParrotReflect_delete(reflect);
 }

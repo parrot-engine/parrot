@@ -1,4 +1,5 @@
 #include "parrot/drivers/window_driver.h"
+#include "parrot/core/scope.h"
 #include "parrot/core/util.h"
 #include "parrot/drivers/window_driver.keys.h"
 #include <X11/X.h>
@@ -11,8 +12,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct Driver Driver;
+
 struct ParrotWindowDriverWindow {
-    Display *display;
+    ParrotScope *scope;
+    Driver *driver;
 
     int screen;
     Window window;
@@ -38,49 +42,79 @@ struct ParrotWindowDriverWindow {
     bool mod_ralt;
 };
 
+struct Driver {
+    ParrotWindowDriver base;
+    ParrotScope *scope;
+
+    Display *display;
+};
+
+static void driver_window_scope_destroy_window_wrapper(void *ctx) {
+    ParrotWindowDriverWindow *self = ctx;
+    XDestroyWindow(self->driver->display, self->window);
+}
+
+static void driver_window_scope_destroy_gc_wrapper(void *ctx) {
+    ParrotWindowDriverWindow *self = ctx;
+    XFreeGC(self->driver->display, self->gc);
+}
+
+static void driver_window_scope_destroy_backbuffer_wrapper(void *ctx) {
+    ParrotWindowDriverWindow *self = ctx;
+    XdbeDeallocateBackBufferName(self->driver->display, self->back_buffer);
+}
+
+static void scope_XCloseDisplay_wrapper(void *ctx) {
+    XCloseDisplay(ctx);
+}
+
+static void scope_XDestroyImage_wrapper(void *ctx) {
+    XDestroyImage((XImage *)ctx);
+}
+
 static ParrotWindowDriverEventKey x_keysym_to_driver_key(KeySym keysym);
 
-static void driver_init(void) {
-}
-
-static void driver_shutdown(void) {
-}
-
-static ParrotWindowDriverWindow *driver_create_window(int width, int height) {
+static ParrotWindowDriverWindow *driver_create_window(ParrotWindowDriver *base, int width, int height) {
     ParrotWindowDriverWindow *self = PARROT_ALLOC(ParrotWindowDriverWindow);
+
+    self->driver = (Driver *)base;
+    self->scope = ParrotScope_new(self->driver->scope);
+
+    ParrotScope_push_free(self->scope, self);
 
     self->width = width;
     self->height = height;
 
-    self->display = XOpenDisplay(NULL);
-    PARROT_FAIL_NULL_MSG(self->display, "Failed to open X11 display");
+    self->screen = DefaultScreen(self->driver->display);
+    Window root = RootWindow(self->driver->display, self->screen);
 
-    self->screen = DefaultScreen(self->display);
-    Window root = RootWindow(self->display, self->screen);
-
-    self->window = XCreateSimpleWindow(self->display,
+    self->window = XCreateSimpleWindow(self->driver->display,
                                        root,
                                        0,
                                        0,
                                        width,
                                        height,
                                        1,
-                                       BlackPixel(self->display, self->screen),
-                                       BlackPixel(self->display, self->screen));
-    XSelectInput(self->display, self->window, ExposureMask | KeyPress | KeyRelease);
+                                       BlackPixel(self->driver->display, self->screen),
+                                       BlackPixel(self->driver->display, self->screen));
+    ParrotScope_push(self->scope, driver_window_scope_destroy_window_wrapper, self);
+    XSelectInput(self->driver->display, self->window, ExposureMask | KeyPress | KeyRelease);
 
-    XMapWindow(self->display, self->window);
+    XMapWindow(self->driver->display, self->window);
 
-    self->wm_delete = XInternAtom(self->display, "WM_DELETE_WINDOW", False);
-    XSetWMProtocols(self->display, self->window, &self->wm_delete, 1);
+    self->wm_delete = XInternAtom(self->driver->display, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(self->driver->display, self->window, &self->wm_delete, 1);
 
-    self->gc = XCreateGC(self->display, self->window, 0, NULL);
-    self->back_buffer = XdbeAllocateBackBufferName(self->display, self->window, XdbeBackground);
+    self->gc = XCreateGC(self->driver->display, self->window, 0, NULL);
+    ParrotScope_push(self->scope, driver_window_scope_destroy_gc_wrapper, self);
+
+    self->back_buffer = XdbeAllocateBackBufferName(self->driver->display, self->window, XdbeBackground);
+    ParrotScope_push(self->scope, driver_window_scope_destroy_backbuffer_wrapper, self);
 
     self->image_data = calloc(width * height, sizeof(uint32_t));
-    self->image = XCreateImage(self->display,
-                               DefaultVisual(self->display, self->screen),
-                               DefaultDepth(self->display, self->screen),
+    self->image = XCreateImage(self->driver->display,
+                               DefaultVisual(self->driver->display, self->screen),
+                               DefaultDepth(self->driver->display, self->screen),
                                ZPixmap,
                                0,
                                (char *)self->image_data,
@@ -88,30 +122,26 @@ static ParrotWindowDriverWindow *driver_create_window(int width, int height) {
                                height,
                                32,
                                0);
+    ParrotScope_push(self->scope, scope_XDestroyImage_wrapper, self->image);
 
-    XPutImage(self->display, self->window, self->gc, self->image, 0, 0, 0, 0, width, height);
-    XFlush(self->display);
+    XPutImage(self->driver->display, self->window, self->gc, self->image, 0, 0, 0, 0, width, height);
+    XFlush(self->driver->display);
 
     return self;
 }
 
 static void driver_delete_window(ParrotWindowDriverWindow *self) {
-    XDestroyImage(self->image);
+    PARROT_FAIL_NULL(self);
 
-    XdbeDeallocateBackBufferName(self->display, self->back_buffer);
-    XFreeGC(self->display, self->gc);
-
-    XDestroyWindow(self->display, self->window);
-
-    XCloseDisplay(self->display);
-
-    free(self);
+    ParrotScope_delete(self->scope);
 }
 
 static bool driver_poll_events(ParrotWindowDriverWindow *self, ParrotWindowDriverEvent *out_event) {
+    PARROT_FAIL_NULL(self);
+
     XEvent event;
-    while (XPending(self->display)) {
-        XNextEvent(self->display, &event);
+    while (XPending(self->driver->display)) {
+        XNextEvent(self->driver->display, &event);
         switch (event.type) {
         case ClientMessage: {
             if ((Atom)event.xclient.data.l[0] == self->wm_delete) {
@@ -123,7 +153,7 @@ static bool driver_poll_events(ParrotWindowDriverWindow *self, ParrotWindowDrive
         } break;
         case Expose: {
             XWindowAttributes attrs;
-            XGetWindowAttributes(self->display, self->window, &attrs);
+            XGetWindowAttributes(self->driver->display, self->window, &attrs);
 
             if (attrs.width != self->width || attrs.height != self->height) {
                 *out_event = (ParrotWindowDriverEvent){
@@ -141,9 +171,9 @@ static bool driver_poll_events(ParrotWindowDriverWindow *self, ParrotWindowDrive
 
                 free(self->image_data);
                 self->image_data = calloc(attrs.width * attrs.height, sizeof(uint32_t));
-                self->image = XCreateImage(self->display,
-                                           DefaultVisual(self->display, self->screen),
-                                           DefaultDepth(self->display, self->screen),
+                self->image = XCreateImage(self->driver->display,
+                                           DefaultVisual(self->driver->display, self->screen),
+                                           DefaultDepth(self->driver->display, self->screen),
                                            ZPixmap,
                                            0,
                                            (char *)self->image_data,
@@ -219,9 +249,11 @@ static bool driver_poll_events(ParrotWindowDriverWindow *self, ParrotWindowDrive
 }
 
 static void driver_set_title(ParrotWindowDriverWindow *self, const char *title) {
-    Atom netWmName = XInternAtom(self->display, "_NET_WM_NAME", False);
-    Atom utf8 = XInternAtom(self->display, "UTF8_STRING", False);
-    XChangeProperty(self->display,
+    PARROT_FAIL_NULL(self);
+
+    Atom netWmName = XInternAtom(self->driver->display, "_NET_WM_NAME", False);
+    Atom utf8 = XInternAtom(self->driver->display, "UTF8_STRING", False);
+    XChangeProperty(self->driver->display,
                     self->window,
                     netWmName,
                     utf8,
@@ -232,14 +264,20 @@ static void driver_set_title(ParrotWindowDriverWindow *self, const char *title) 
 }
 
 static void driver_set_size(ParrotWindowDriverWindow *self, int width, int height) {
-    XResizeWindow(self->display, self->window, width, height);
+    PARROT_FAIL_NULL(self);
+
+    XResizeWindow(self->driver->display, self->window, width, height);
 }
 
 static int driver_get_width(ParrotWindowDriverWindow *self) {
+    PARROT_FAIL_NULL(self);
+
     return self->width;
 }
 
 static int driver_get_height(ParrotWindowDriverWindow *self) {
+    PARROT_FAIL_NULL(self);
+
     return self->height;
 }
 
@@ -247,7 +285,7 @@ static void driver_set_image(ParrotWindowDriverWindow *self, const uint32_t *rgb
     PARROT_FAIL_NULL(self);
 
     XWindowAttributes attrs;
-    XGetWindowAttributes(self->display, self->window, &attrs);
+    XGetWindowAttributes(self->driver->display, self->window, &attrs);
 
     for (int y = 0; y < attrs.height; y++) {
         for (int x = 0; x < attrs.width; x++) {
@@ -258,10 +296,10 @@ static void driver_set_image(ParrotWindowDriverWindow *self, const uint32_t *rgb
                 ((uint32_t)0xFF << 24) | ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
         }
     }
-    XPutImage(self->display, self->back_buffer, self->gc, self->image, 0, 0, 0, 0, attrs.width, attrs.height);
+    XPutImage(self->driver->display, self->back_buffer, self->gc, self->image, 0, 0, 0, 0, attrs.width, attrs.height);
 
     XdbeSwapInfo swap_info = {self->window, XdbeBackground};
-    XdbeSwapBuffers(self->display, &swap_info, 1);
+    XdbeSwapBuffers(self->driver->display, &swap_info, 1);
 }
 
 static ParrotWindowDriverEventKey x_keysym_to_driver_key(KeySym keysym) {
@@ -517,20 +555,35 @@ static ParrotWindowDriverEventKey x_keysym_to_driver_key(KeySym keysym) {
     }
 }
 
-const ParrotWindowDriver Parrot_x11_window_driver = {
-    .init = driver_init,
-    .shutdown = driver_shutdown,
+ParrotWindowDriver *Parrot_x11_window_driver_new(void) {
+    Driver *self = PARROT_ALLOC(Driver);
 
-    .create_window = driver_create_window,
-    .delete_window = driver_delete_window,
+    self->scope = ParrotScope_new(NULL);
+    ParrotScope_push_free(self->scope, self);
 
-    .poll_events = driver_poll_events,
+    self->base.create_window = driver_create_window;
+    self->base.delete_window = driver_delete_window;
 
-    .set_title = driver_set_title,
+    self->base.poll_events = driver_poll_events;
 
-    .set_size = driver_set_size,
-    .get_width = driver_get_width,
-    .get_height = driver_get_height,
+    self->base.set_title = driver_set_title;
 
-    .set_image = driver_set_image,
-};
+    self->base.set_size = driver_set_size;
+    self->base.get_width = driver_get_width;
+    self->base.get_height = driver_get_height;
+
+    self->base.set_image = driver_set_image;
+
+    self->display = XOpenDisplay(NULL);
+    if (!self->display) {
+        ParrotScope_delete(self->scope);
+        return NULL;
+    }
+    ParrotScope_push(self->scope, scope_XCloseDisplay_wrapper, self->display);
+
+    return &self->base;
+}
+
+void Parrot_x11_window_driver_delete(ParrotWindowDriver *self) {
+    ParrotScope_delete(((Driver *)self)->scope);
+}

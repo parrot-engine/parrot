@@ -1,4 +1,4 @@
-SRCS=$(shell echo *.c)
+SRCS=# $(shell echo *.c)
 OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
 
 .PHONY: all

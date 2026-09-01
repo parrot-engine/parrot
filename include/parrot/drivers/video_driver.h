@@ -1,17 +1,19 @@
 #ifndef PARROT_PARROT_INCLUDE_PARROT_DRIVERS_VIDEO_DRIVER_H_
 #define PARROT_PARROT_INCLUDE_PARROT_DRIVERS_VIDEO_DRIVER_H_
 
+#include "parrot/core/api.h"
 #include "parrot/core/math.h"
-#include "parrot/video/video.h"
+#include "parrot/drivers/gl_driver.h"
 #include <stdbool.h>
 #include <stdint.h>
+
+typedef struct ParrotVideoDriver ParrotVideoDriver;
 typedef struct ParrotVideoDriverViewport ParrotVideoDriverViewport;
 
-typedef struct {
-    void (*init)(void);
-    void (*shutdown)(void);
+typedef struct ParrotVideoVertex ParrotVideoVertex;
 
-    ParrotVideoDriverViewport *(*create_viewport)(int width, int height);
+struct ParrotVideoDriver {
+    ParrotVideoDriverViewport *(*create_viewport)(ParrotVideoDriver *self, int width, int height);
     void (*delete_viewport)(ParrotVideoDriverViewport *viewport);
 
     /**
@@ -30,10 +32,9 @@ typedef struct {
                                    ParrotGMatSet matrix_set,
                                    const ParrotVideoVertex *vertices,
                                    size_t count);
-} ParrotVideoDriver;
+};
 
-extern const ParrotVideoDriver Parrot_gl11_video_driver;
-
-extern const ParrotVideoDriver *Parrot_video_driver;
+PARROT_API ParrotVideoDriver *Parrot_gl11_video_driver_new(ParrotGLDriver *gl_driver);
+PARROT_API void Parrot_gl11_video_driver_delete(ParrotVideoDriver *self);
 
 #endif // PARROT_PARROT_INCLUDE_PARROT_DRIVERS_VIDEO_DRIVER_H_

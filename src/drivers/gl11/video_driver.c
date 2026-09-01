@@ -1,6 +1,7 @@
 #include "parrot/drivers/video_driver.h"
 #include "parrot/core/hash.h"
 #include "parrot/core/math.h"
+#include "parrot/core/scope.h"
 #include "parrot/drivers/gl_driver.h"
 #include "parrot/video/video.h"
 #include "stb_ds.h"
@@ -9,74 +10,70 @@
 #include <X11/Xlib.h>
 #include <string.h>
 
-#define MAX_TEXTURE_CACHE_SIZE 16
+#define MAX_TEXTURE_CACHE_SIZE 256
+
+typedef struct Driver Driver;
 
 typedef struct {
     GLuint handle;
     uint32_t crc32;
-} ParrotVideoDriverViewportTextureCacheEntry;
+} ViewportTextureCacheEntry;
 
 struct ParrotVideoDriverViewport {
-    ParrotGLDriverContext *context;
+    Driver *driver;
+    ParrotScope *scope;
+
+    ParrotGLDriverContext *gl_context;
 
     int width;
     int height;
 
     uint32_t *framebuffer;
 
-    ParrotVideoDriverViewportTextureCacheEntry texture_cache[MAX_TEXTURE_CACHE_SIZE];
+    ViewportTextureCacheEntry texture_cache[MAX_TEXTURE_CACHE_SIZE];
 };
 
-struct {
-    ParrotVideoDriverViewport **arr_viewports;
-    uint32_t next_viewport_id;
-} data;
+struct Driver {
+    ParrotVideoDriver base;
+    ParrotScope *scope;
 
-static void driver_init(void) {
-    memset(&data, 0, sizeof(data));
+    ParrotGLDriver *gl_driver;
+};
+
+static void driver_viewport_scope_delete_context_wrapper(void *ctx) {
+    ParrotVideoDriverViewport *self = ctx;
+
+    self->driver->gl_driver->delete_context(self->gl_context);
 }
 
-static void driver_shutdown(void) {
-    for (size_t i = 0; i < arrlen(data.arr_viewports); i++) {
-        Parrot_gl11_video_driver.delete_viewport(data.arr_viewports[i]);
-    }
-
-    arrfree(data.arr_viewports);
-}
-
-static ParrotVideoDriverViewport *driver_create_viewport(int width, int height) {
+static ParrotVideoDriverViewport *driver_create_viewport(ParrotVideoDriver *base, int width, int height) {
     ParrotVideoDriverViewport *self = PARROT_ALLOC(ParrotVideoDriverViewport);
+
+    self->driver = (Driver *)base;
+    self->scope = ParrotScope_new(self->driver->scope);
+    ParrotScope_push_free(self->scope, self);
 
     self->width = width;
     self->height = height;
 
-    self->context = Parrot_gl_driver->create_context(ParrotGLDriver_GL_VERSION(1, 1), width, height);
     self->framebuffer = calloc(width * height, sizeof(uint32_t));
+    ParrotScope_push_free(self->scope, self->framebuffer);
+
+    self->gl_context = self->driver->gl_driver->create_context(self->driver->gl_driver, 1, 1, width, height);
+    ParrotScope_push(self->scope, driver_viewport_scope_delete_context_wrapper, self);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    arrpush(data.arr_viewports, self);
     return self;
 }
 
 static void driver_delete_viewport(ParrotVideoDriverViewport *self) {
-    for (size_t i = 0; i < arrlen(data.arr_viewports); i++) {
-        if (data.arr_viewports[i] == self) {
-            arrdel(data.arr_viewports, i);
-            break;
-        }
-    }
-
-    free(self->framebuffer);
-
-    Parrot_gl_driver->delete_context(self->context);
-
-    free(self);
+    ParrotScope_delete(self->scope);
 }
 
 static void use_viewport(ParrotVideoDriverViewport *self) {
-    Parrot_gl_driver->use_context(self->context);
+    self->driver->gl_driver->use_context(self->gl_context);
 
     glViewport(0, 0, self->width, self->height);
 }
@@ -106,7 +103,7 @@ static void driver_set_viewport_texture(
         glDeleteTextures(1, &self->texture_cache[index].handle);
     }
 
-    self->texture_cache[index] = (ParrotVideoDriverViewportTextureCacheEntry){0};
+    self->texture_cache[index] = (ViewportTextureCacheEntry){0};
     self->texture_cache[index].crc32 = crc32;
 
     glGenTextures(1, &self->texture_cache[index].handle);
@@ -114,7 +111,7 @@ static void driver_set_viewport_texture(
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba8888);
 
 apply_texture: {
-    ParrotVideoDriverViewportTextureCacheEntry entry = self->texture_cache[index];
+    ViewportTextureCacheEntry entry = self->texture_cache[index];
     glBindTexture(GL_TEXTURE_2D, entry.handle);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, !nearest_filter ? GL_LINEAR : GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, !nearest_filter ? GL_LINEAR : GL_NEAREST);
@@ -178,19 +175,29 @@ static void driver_draw_viewport_vertices(ParrotVideoDriverViewport *self,
     glEnd();
 }
 
-const ParrotVideoDriver Parrot_gl11_video_driver = {
-    .init = driver_init,
-    .shutdown = driver_shutdown,
+ParrotVideoDriver *Parrot_gl11_video_driver_new(ParrotGLDriver *gl_driver) {
+    Driver *self = PARROT_ALLOC(Driver);
 
-    .create_viewport = driver_create_viewport,
-    .delete_viewport = driver_delete_viewport,
+    self->scope = ParrotScope_new(NULL);
+    ParrotScope_push_free(self->scope, self);
 
-    .get_viewport_pixels = driver_get_viewport_pixels,
+    self->base.create_viewport = driver_create_viewport;
+    self->base.delete_viewport = driver_delete_viewport;
 
-    .set_viewport_texture = driver_set_viewport_texture,
-    .clear_viewport_texture = driver_clear_viewport_texture,
+    self->base.get_viewport_pixels = driver_get_viewport_pixels;
 
-    .clear_viewport = driver_clear_viewport,
+    self->base.set_viewport_texture = driver_set_viewport_texture;
+    self->base.clear_viewport_texture = driver_clear_viewport_texture;
 
-    .draw_viewport_vertices = driver_draw_viewport_vertices,
-};
+    self->base.clear_viewport = driver_clear_viewport;
+
+    self->base.draw_viewport_vertices = driver_draw_viewport_vertices;
+
+    self->gl_driver = gl_driver;
+
+    return &self->base;
+}
+
+void Parrot_gl11_video_driver_delete(ParrotVideoDriver *base) {
+    ParrotScope_delete(((Driver *)base)->scope);
+}
