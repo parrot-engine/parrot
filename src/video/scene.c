@@ -40,18 +40,6 @@ ParrotVideoSceneRenderableComponent_constructor(ParrotSceneWorldEntity entity, v
     self->tint = ParrotColor_WHITE;
 }
 
-static void
-ParrotVideoSceneRectTextureComponent_destructor(ParrotSceneWorldEntity entity, void *self_ptr, void *user_data) {
-    (void)entity;
-    (void)user_data;
-
-    ParrotVideoSceneRectTextureComponent *self = self_ptr;
-
-    if (self->_rgba8888) {
-        stbi_image_free(self->_rgba8888);
-    }
-}
-
 void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
     ParrotSceneWorld_register_component(world,
                                         PARROT_TYPE_STRING(ParrotVideoSceneRenderableComponent),
@@ -65,13 +53,6 @@ void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
                                         (ParrotSceneWorldComponentDescription){
                                             .size = sizeof(ParrotVideoSceneCameraComponent),
                                             .constructor = ParrotVideoSceneCameraComponent_constructor,
-                                        });
-
-    ParrotSceneWorld_register_component(world,
-                                        PARROT_TYPE_STRING(ParrotVideoSceneRectTextureComponent),
-                                        (ParrotSceneWorldComponentDescription){
-                                            .size = sizeof(ParrotVideoSceneRectTextureComponent),
-                                            .destructor = ParrotVideoSceneRectTextureComponent_destructor,
                                         });
 }
 
@@ -242,6 +223,12 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
         }
 
         ParrotVideo_object_set_rect_size(renderable->object_handle, rect->width, rect->height);
+
+        if (ParrotSceneWorld_is_component_deletion_queued(world, entity, ParrotVideoSceneRectTextureComponent)) {
+            if (texture->_rgba8888) {
+                stbi_image_free(texture->_rgba8888);
+            }
+        }
     } else {
         if (ParrotVideo_object_has_rect(renderable->object_handle)) {
             ParrotVideo_object_remove_rect(renderable->object_handle);

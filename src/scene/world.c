@@ -41,6 +41,7 @@ typedef struct {
     uint8_t **arr_data_blocks;
 
     bool *arr_exists;
+    bool *arr_delete_queued;
 
     ParrotSceneWorldComponentDescription description;
 
@@ -53,6 +54,7 @@ struct ParrotSceneWorld {
     ParrotSceneWorldEntity *arr_entity_parents;
 
     bool *arr_entity_exists;
+    bool *arr_entity_delete_queued;
     uint32_t *arr_entity_gens;
 
     uint32_t *arr_free_indices;
@@ -85,7 +87,9 @@ static void ParrotSceneWorldRegisteredComponent_min_size(ParrotSceneWorldRegiste
     while (arrlen(self->arr_data_blocks) < required_block_count) {
         arrpush(self->arr_data_blocks, malloc(COMPONENT_DATA_BLOCK_SIZE * self->description.size));
     }
+
     MIN_ARR_SIZE_VALUE(self->arr_exists, size, false);
+    MIN_ARR_SIZE_VALUE(self->arr_delete_queued, size, false);
 }
 
 static void ParrotSceneWorld_ParrotMat_constructor(ParrotSceneWorldEntity entity, void *component_ptr, void *user_data) {
@@ -145,8 +149,9 @@ void ParrotSceneWorld_delete(ParrotSceneWorld *self) {
 
     for (size_t i = 0; i < arrlen(self->arr_entity_gens); i++) {
         ParrotSceneWorldEntity entity = MAKE_ENTITY(i, self->arr_entity_gens[i]);
-        ParrotSceneWorld_delete_entity(self, entity);
+        ParrotSceneWorld_queue_delete_entity(self, entity);
     }
+    ParrotSceneWorld_delete_queued(self);
 
     while (shlen(self->sh_registered_components) > 0) {
         ParrotSceneWorld_unregister_component(self, self->sh_registered_components[0].key);
@@ -156,6 +161,7 @@ void ParrotSceneWorld_delete(ParrotSceneWorld *self) {
     arrfree(self->arr_entity_parents);
 
     arrfree(self->arr_entity_exists);
+    arrfree(self->arr_entity_delete_queued);
     arrfree(self->arr_entity_gens);
 
     arrfree(self->arr_free_indices);
@@ -172,6 +178,47 @@ void ParrotSceneWorld_delete(ParrotSceneWorld *self) {
     free(self);
 }
 
+void ParrotSceneWorld_delete_queued(ParrotSceneWorld *self) {
+    for (size_t i = 0; i < shlen(self->sh_registered_components); i++) {
+        ParrotSceneWorldRegisteredComponent *component = &self->sh_registered_components[i];
+        for (size_t j = 0; j < arrlen(self->arr_entity_gens); j++) {
+            if (!component->arr_delete_queued[j]) {
+                continue;
+            }
+
+            component->arr_exists[j] = false;
+            component->arr_delete_queued[j] = false;
+
+            for (size_t i = 0; i < hmlen(component->shm_queries); i++) {
+                ParrotSceneWorld_invalidate_cached_query(self, component->shm_queries[0].key);
+            }
+            hmfree(component->shm_queries);
+        }
+    }
+
+    for (size_t i = 0; i < arrlen(self->arr_entity_gens); i++) {
+        if (!self->arr_entity_delete_queued[i]) {
+            continue;
+        }
+
+        ParrotSceneWorld_set_entity_parent(self, MAKE_ENTITY(i, self->arr_entity_gens[i]), ParrotSceneWorldEntity_NULL);
+
+        self->arr_entity_exists[i] = false;
+
+        ParrotSceneWorld_invalidate_tree_queries(self);
+        arrpush(self->arr_free_indices, i);
+
+        self->arr_entity_delete_queued[i] = false;
+    }
+}
+
+bool ParrotSceneWorld_is_entity_deletion_queued(ParrotSceneWorld *self, ParrotSceneWorldEntity entity) {
+    PARROT_FAIL_NULL(self);
+    PARROT_RET_COND_V(!ParrotSceneWorld_does_entity_exist(self, entity), false);
+
+    return self->arr_entity_delete_queued[ENTITY_INDEX(entity)];
+}
+
 ParrotSceneWorldEntity ParrotSceneWorld_create_entity(ParrotSceneWorld *self) {
     PARROT_FAIL_NULL(self);
 
@@ -186,6 +233,7 @@ ParrotSceneWorldEntity ParrotSceneWorld_create_entity(ParrotSceneWorld *self) {
     MIN_ARR_SIZE_VALUE(self->arr_entity_parents, index + 1, ParrotSceneWorldEntity_NULL);
 
     MIN_ARR_SIZE_VALUE(self->arr_entity_exists, index + 1, false);
+    MIN_ARR_SIZE_VALUE(self->arr_entity_delete_queued, index + 1, false);
     MIN_ARR_SIZE_VALUE(self->arr_entity_gens, index + 1, 0);
 
     for (size_t i = 0; i < shlen(self->sh_registered_components); i++) {
@@ -201,30 +249,26 @@ ParrotSceneWorldEntity ParrotSceneWorld_create_entity(ParrotSceneWorld *self) {
     return MAKE_ENTITY(index, self->arr_entity_gens[index]);
 }
 
-void ParrotSceneWorld_delete_entity(ParrotSceneWorld *self, ParrotSceneWorldEntity entity) {
+void ParrotSceneWorld_queue_delete_entity(ParrotSceneWorld *self, ParrotSceneWorldEntity entity) {
     PARROT_RET_COND(!ParrotSceneWorld_does_entity_exist(self, entity));
 
     ParrotSceneWorldQuery child_query[] = {
         PARROT_SCENE_WORLD_QUERY_WITH_PARENT(entity),
         PARROT_SCENE_WORLD_QUERY_END(),
     };
+
     for (size_t i = ParrotSceneWorld_query_result_count(self, child_query); i > 0; i--) {
-        ParrotSceneWorld_delete_entity(self, ParrotSceneWorld_query_result_at(self, child_query, i - 1));
+        ParrotSceneWorld_queue_delete_entity(self, ParrotSceneWorld_query_result_at(self, child_query, i - 1));
     }
 
     for (size_t i = 0; i < shlen(self->sh_registered_components); i++) {
         ParrotSceneWorldRegisteredComponent *component = &self->sh_registered_components[i];
         if (component->arr_exists && component->arr_exists[ENTITY_INDEX(entity)]) {
-            ParrotSceneWorld_delete_component_name(self, entity, component->key);
+            ParrotSceneWorld_queue_delete_component_name(self, entity, component->key);
         }
     }
 
-    ParrotSceneWorld_set_entity_parent(self, entity, ParrotSceneWorldEntity_NULL);
-
-    self->arr_entity_exists[ENTITY_INDEX(entity)] = false;
-
-    ParrotSceneWorld_invalidate_tree_queries(self);
-    arrpush(self->arr_free_indices, ENTITY_INDEX(entity));
+    self->arr_entity_delete_queued[ENTITY_INDEX(entity)] = true;
 }
 
 bool ParrotSceneWorld_does_entity_exist(ParrotSceneWorld *self, ParrotSceneWorldEntity entity) {
@@ -297,7 +341,7 @@ void ParrotSceneWorld_unregister_component(ParrotSceneWorld *self, const char *n
 
     for (size_t i = 0; i < arrlen(component->arr_exists); i++) {
         if (component->arr_exists[i]) {
-            ParrotSceneWorld_delete_component_name(self, MAKE_ENTITY(i, self->arr_entity_gens[i]), component->key);
+            ParrotSceneWorld_queue_delete_component_name(self, MAKE_ENTITY(i, self->arr_entity_gens[i]), component->key);
         }
     }
 
@@ -308,6 +352,7 @@ void ParrotSceneWorld_unregister_component(ParrotSceneWorld *self, const char *n
         arrfree(component->arr_data_blocks);
 
         arrfree(component->arr_exists);
+        arrfree(component->arr_delete_queued);
     }
 
     hmfree(component->shm_queries);
@@ -328,7 +373,7 @@ bool ParrotSceneWorld_is_component_registered(ParrotSceneWorld *self, const char
 
 void ParrotSceneWorld_add_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name) {
     PARROT_FAIL_COND(!ParrotSceneWorld_is_component_registered(self, name));
-    PARROT_FAIL_COND(!ParrotSceneWorld_does_entity_exist(self, entity));
+    PARROT_RET_COND(!ParrotSceneWorld_does_entity_exist(self, entity));
 
     ParrotSceneWorldRegisteredComponent *component = shgetp_null(self->sh_registered_components, name);
     PARROT_FAIL_NULL(component);
@@ -363,27 +408,28 @@ void *ParrotSceneWorld_get_component_name(ParrotSceneWorld *self, ParrotSceneWor
     return component->arr_exists[ENTITY_INDEX(entity)] ? data : NULL;
 }
 
-void ParrotSceneWorld_delete_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name) {
+bool ParrotSceneWorld_is_component_deletion_queued_name(ParrotSceneWorld *self,
+                                                        ParrotSceneWorldEntity entity,
+                                                        const char *name) {
+    PARROT_RET_COND_V(!ParrotSceneWorld_is_component_registered(self, name), false);
+    PARROT_RET_COND_V(!ParrotSceneWorld_does_entity_exist(self, entity), false);
+
+    ParrotSceneWorldRegisteredComponent *component = shgetp_null(self->sh_registered_components, name);
+    PARROT_FAIL_NULL(component);
+
+    return component->arr_delete_queued[ENTITY_INDEX(entity)];
+}
+
+void ParrotSceneWorld_queue_delete_component_name(ParrotSceneWorld *self,
+                                                  ParrotSceneWorldEntity entity,
+                                                  const char *name) {
     PARROT_RET_COND(!ParrotSceneWorld_is_component_registered(self, name));
     PARROT_RET_COND(!ParrotSceneWorld_does_entity_exist(self, entity));
 
     ParrotSceneWorldRegisteredComponent *component = shgetp_null(self->sh_registered_components, name);
     PARROT_FAIL_NULL(component);
 
-    if (component->description.destructor) {
-        void *data =
-            &component
-                 ->arr_data_blocks[ENTITY_INDEX(entity) / COMPONENT_DATA_BLOCK_SIZE]
-                                  [(ENTITY_INDEX(entity) % COMPONENT_DATA_BLOCK_SIZE) * component->description.size];
-        component->description.destructor(entity, data, component->description.user_data);
-    }
-
-    component->arr_exists[ENTITY_INDEX(entity)] = false;
-
-    for (size_t i = 0; i < hmlen(component->shm_queries); i++) {
-        ParrotSceneWorld_invalidate_cached_query(self, component->shm_queries[0].key);
-    }
-    hmfree(component->shm_queries);
+    component->arr_delete_queued[ENTITY_INDEX(entity)] = true;
 }
 
 static ParrotCRC32 ParrotSceneWorld_query(ParrotSceneWorld *self, const ParrotSceneWorldQuery *query) {

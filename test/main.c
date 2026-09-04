@@ -181,6 +181,7 @@ static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should
         fps_update_timer += delta;
     }
 
+    ParrotSceneWorld_delete_queued(world);
     return should_close;
 }
 

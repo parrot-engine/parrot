@@ -77,21 +77,22 @@ typedef struct {
     PARROT_SCENE_WORLD_QUERY_WITH_COMPONENT_NAME(PARROT_TYPE_STRING(type))
 
 typedef void (*ParrotSceneWorldComponentConstructor)(ParrotSceneWorldEntity entity, void *component, void *user_data);
-typedef void (*ParrotSceneWorldComponentDestructor)(ParrotSceneWorldEntity entity, void *component, void *user_data);
 
 typedef struct {
     size_t size;
 
     ParrotSceneWorldComponentConstructor constructor;
-    ParrotSceneWorldComponentDestructor destructor;
     void *user_data;
 } ParrotSceneWorldComponentDescription;
 
 PARROT_API ParrotSceneWorld *ParrotSceneWorld_new(void);
 PARROT_API void ParrotSceneWorld_delete(ParrotSceneWorld *self);
 
+PARROT_API void ParrotSceneWorld_delete_queued(ParrotSceneWorld *self);
+
 PARROT_API ParrotSceneWorldEntity ParrotSceneWorld_create_entity(ParrotSceneWorld *self);
-PARROT_API void ParrotSceneWorld_delete_entity(ParrotSceneWorld *self, ParrotSceneWorldEntity entity);
+PARROT_API void ParrotSceneWorld_queue_delete_entity(ParrotSceneWorld *self, ParrotSceneWorldEntity entity);
+PARROT_API bool ParrotSceneWorld_is_entity_deletion_queued(ParrotSceneWorld *self, ParrotSceneWorldEntity entity);
 
 PARROT_API bool ParrotSceneWorld_does_entity_exist(ParrotSceneWorld *self, ParrotSceneWorldEntity entity);
 PARROT_API size_t ParrotSceneWorld_get_entity_count(ParrotSceneWorld *self);
@@ -124,25 +125,22 @@ PARROT_API bool ParrotSceneWorld_is_component_registered(ParrotSceneWorld *self,
         ParrotSceneWorld_add_component_name(self, entity, #type);                                                       \
     } while (0)
 
-// WARNING: The pointer returned from this function-style macro is unstable. Do not store long-term
 #define ParrotSceneWorld_get_component(self, entity, type)                                                              \
-    ((type *)(ParrotSceneWorld_is_component_registered(self, #type) ?                                                   \
-                  ParrotSceneWorld_get_component_name(self, entity, #type) :                                            \
-                  NULL))
-
-#define ParrotSceneWorld_delete_component(self, entity, type)                                                           \
-    do {                                                                                                                \
-        if (ParrotSceneWorld_is_component_registered(self, PARROT_TYPE_STRING(type))) {                                 \
-            ParrotSceneWorld_delete_component_name(self, entity, PARROT_TYPE_STRING(type));                             \
-        }                                                                                                               \
-    } while (0)
+    ((type *)ParrotSceneWorld_get_component_name(self, entity, #type))
+#define ParrotSceneWorld_is_component_deletion_queued(self, entity, type)                                               \
+    ParrotSceneWorld_is_component_deletion_queued_name(self, entity, PARROT_TYPE_STRING(type))
+#define ParrotSceneWorld_queue_delete_component(self, entity, type)                                                     \
+    ParrotSceneWorld_delete_component_name(self, entity, PARROT_TYPE_STRING(type))
 
 PARROT_API void
 ParrotSceneWorld_add_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name);
 PARROT_API void *
 ParrotSceneWorld_get_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name);
+PARROT_API bool ParrotSceneWorld_is_component_deletion_queued_name(ParrotSceneWorld *self,
+                                                                   ParrotSceneWorldEntity entity,
+                                                                   const char *name);
 PARROT_API void
-ParrotSceneWorld_delete_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name);
+ParrotSceneWorld_queue_delete_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name);
 
 PARROT_API size_t ParrotSceneWorld_query_result_count(ParrotSceneWorld *self, const ParrotSceneWorldQuery *query);
 PARROT_API ParrotSceneWorldEntity ParrotSceneWorld_query_result_at(ParrotSceneWorld *self,
