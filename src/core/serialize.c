@@ -6,8 +6,8 @@
 #include "parrot/core/reflect.h"
 #include "parrot/core/scope.h"
 #include "parrot/core/util.h"
+#include "parrot/stb_ds.h"
 #include "src/ds.h"
-#include "stb_ds.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>

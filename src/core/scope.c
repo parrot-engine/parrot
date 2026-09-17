@@ -1,6 +1,6 @@
 #include "parrot/core/scope.h"
 #include "parrot/core/util.h"
-#include "stb_ds.h"
+#include "parrot/stb_ds.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -105,6 +105,45 @@ static void free_wrapper(void *ctx) {
 
 uint32_t ParrotScope_push_free(ParrotScope *self, void *ptr) {
     return ParrotScope_push(self, free_wrapper, ptr);
+}
+
+typedef struct {
+    void **data;
+    size_t element_size;
+} STBDSFreeCtx;
+
+static void arrfree_wrapper(void *ctx_ptr) {
+    STBDSFreeCtx *ctx = ctx_ptr;
+    if (*ctx->data) {
+        stbds_arrfreef(*ctx->data);
+        *ctx->data = NULL;
+    }
+}
+
+void ParrotScope_push_arrfree_raw(ParrotScope *self, void **arr, size_t element_size) {
+    ParrotScope *scope = ParrotScope_new(self);
+    STBDSFreeCtx *ctx = ParrotScope_alloc_ctx(scope, STBDSFreeCtx);
+    ctx->data = arr;
+    ctx->element_size = element_size;
+
+    ParrotScope_push(scope, arrfree_wrapper, ctx);
+}
+
+static void hmfree_wrapper(void *ctx_ptr) {
+    STBDSFreeCtx *ctx = ctx_ptr;
+    if (*ctx->data) {
+        stbds_hmfree_func(((uint8_t *)*ctx->data) - ctx->element_size, ctx->element_size);
+        *ctx->data = NULL;
+    }
+}
+
+void ParrotScope_push_hmfree_raw(ParrotScope *self, void **hm, size_t element_size) {
+    ParrotScope *scope = ParrotScope_new(self);
+    STBDSFreeCtx *ctx = ParrotScope_alloc_ctx(scope, STBDSFreeCtx);
+    ctx->data = hm;
+    ctx->element_size = element_size;
+
+    ParrotScope_push(scope, hmfree_wrapper, ctx);
 }
 
 void ParrotScope_cancel(ParrotScope *self, uint32_t id) {

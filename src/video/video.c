@@ -4,9 +4,9 @@
 #include "parrot/core/util.h"
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
+#include "parrot/stb_ds.h"
 #include "parrot/video/font.h"
 #include "src/ds.h"
-#include "stb_ds.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

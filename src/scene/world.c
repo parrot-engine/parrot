@@ -2,8 +2,8 @@
 #include "parrot/core/hash.h"
 #include "parrot/core/math.h"
 #include "parrot/core/util.h"
+#include "parrot/stb_ds.h"
 #include "src/ds.h"
-#include "stb_ds.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>

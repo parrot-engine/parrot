@@ -1,8 +1,7 @@
 #include "parrot/core/reflect.h"
 #include "parrot/core/scope.h"
 #include "parrot/core/util.h"
-#include "src/ds.h"
-#include "stb_ds.h"
+#include "parrot/stb_ds.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>

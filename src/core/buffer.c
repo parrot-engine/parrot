@@ -1,8 +1,7 @@
 #include "parrot/core/buffer.h"
 #include "parrot/core/scope.h"
 #include "parrot/core/util.h"
-#include "src/core/buffer.h"
-#include "stb_ds.h"
+#include "parrot/stb_ds.h"
 #include <string.h>
 
 struct ParrotBuffer {

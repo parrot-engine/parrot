@@ -3,8 +3,8 @@
 #include "parrot/core/math.h"
 #include "parrot/core/scope.h"
 #include "parrot/drivers/gl_driver.h"
+#include "parrot/stb_ds.h"
 #include "parrot/video/video.h"
-#include "stb_ds.h"
 #include <GL/gl.h>
 #include <GL/glx.h>
 #include <X11/Xlib.h>
