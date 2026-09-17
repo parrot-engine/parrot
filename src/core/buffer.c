@@ -6,8 +6,6 @@
 #include <string.h>
 
 struct ParrotBuffer {
-    ParrotBufferEndian endian;
-
     ParrotBufferRead read;
     ParrotBufferWrite write;
     ParrotScope *scope;
@@ -103,18 +101,6 @@ void ParrotBuffer_delete(ParrotBuffer *self) {
     free(self);
 }
 
-void ParrotBuffer_set_endian(ParrotBuffer *self, ParrotBufferEndian endian) {
-    PARROT_FAIL_NULL(self);
-
-    self->endian = endian;
-}
-
-ParrotBufferEndian ParrotBuffer_get_endian(ParrotBuffer *self) {
-    PARROT_FAIL_NULL(self);
-
-    return self->endian;
-}
-
 void ParrotBuffer_rseek(ParrotBuffer *self, size_t position) {
     PARROT_FAIL_NULL(self);
 
@@ -143,7 +129,7 @@ void ParrotBuffer_pad_until(ParrotBuffer *self, uint8_t data, size_t until_posit
     }
 }
 
-size_t ParrotBuffer_read(ParrotBuffer *self, void *out_ptr, size_t size) {
+size_t ParrotBuffer_read(ParrotBuffer *self, ParrotBufferEndian endian, void *out_ptr, size_t size) {
     uint8_t *out = out_ptr;
 
     PARROT_FAIL_NULL(self);
@@ -158,13 +144,13 @@ size_t ParrotBuffer_read(ParrotBuffer *self, void *out_ptr, size_t size) {
         self->read_position++;
     }
 
-    if (self->endian != ParrotBufferEndian_HOST) {
+    if (endian != ParrotBufferEndian_HOST) {
         uint16_t endian_test_big = 1;
         uint8_t endian_test = 0;
         memcpy(&endian_test, &endian_test_big, sizeof(uint8_t));
 
         ParrotBufferEndian host_endian = endian_test == 1 ? ParrotBufferEndian_LITTLE : ParrotBufferEndian_BIG;
-        if (self->endian != host_endian) {
+        if (endian != host_endian) {
             for (size_t i = 0; i < size / 2; i++) {
                 uint8_t tmp = out[i];
                 out[i] = out[size - 1 - i];
@@ -176,7 +162,7 @@ size_t ParrotBuffer_read(ParrotBuffer *self, void *out_ptr, size_t size) {
     return size;
 }
 
-void ParrotBuffer_write(ParrotBuffer *self, const void *data_ptr, size_t size) {
+void ParrotBuffer_write(ParrotBuffer *self, ParrotBufferEndian endian, const void *data_ptr, size_t size) {
     const uint8_t *data = data_ptr;
 
     PARROT_FAIL_NULL(self);
@@ -189,7 +175,7 @@ void ParrotBuffer_write(ParrotBuffer *self, const void *data_ptr, size_t size) {
     memcpy(&endian_test, &endian_test_big, sizeof(uint8_t));
 
     ParrotBufferEndian host_endian = endian_test == 1 ? ParrotBufferEndian_LITTLE : ParrotBufferEndian_BIG;
-    if (self->endian != ParrotBufferEndian_HOST && self->endian != host_endian) {
+    if (endian != ParrotBufferEndian_HOST && endian != host_endian) {
         for (size_t i = size; i > 0; i--) {
             self->write(self->scope, data[i - 1]);
             self->bytes_written++;
@@ -203,35 +189,35 @@ void ParrotBuffer_write(ParrotBuffer *self, const void *data_ptr, size_t size) {
 }
 
 bool ParrotBuffer_read8(ParrotBuffer *self, uint8_t *out) {
-    return ParrotBuffer_read(self, out, sizeof(*out));
+    return ParrotBuffer_read(self, ParrotBufferEndian_HOST, out, sizeof(*out));
 }
 
-bool ParrotBuffer_read16(ParrotBuffer *self, uint16_t *out) {
-    return ParrotBuffer_read(self, out, sizeof(*out));
+bool ParrotBuffer_read16(ParrotBuffer *self, ParrotBufferEndian endian, uint16_t *out) {
+    return ParrotBuffer_read(self, endian, out, sizeof(*out));
 }
 
-bool ParrotBuffer_read32(ParrotBuffer *self, uint32_t *out) {
-    return ParrotBuffer_read(self, out, sizeof(*out));
+bool ParrotBuffer_read32(ParrotBuffer *self, ParrotBufferEndian endian, uint32_t *out) {
+    return ParrotBuffer_read(self, endian, out, sizeof(*out));
 }
 
-bool ParrotBuffer_read64(ParrotBuffer *self, uint64_t *out) {
-    return ParrotBuffer_read(self, out, sizeof(*out));
+bool ParrotBuffer_read64(ParrotBuffer *self, ParrotBufferEndian endian, uint64_t *out) {
+    return ParrotBuffer_read(self, endian, out, sizeof(*out));
 }
 
 void ParrotBuffer_write8(ParrotBuffer *self, uint8_t data) {
-    ParrotBuffer_write(self, &data, sizeof(data));
+    ParrotBuffer_write(self, ParrotBufferEndian_HOST, &data, sizeof(data));
 }
 
-void ParrotBuffer_write16(ParrotBuffer *self, uint16_t data) {
-    ParrotBuffer_write(self, &data, sizeof(data));
+void ParrotBuffer_write16(ParrotBuffer *self, ParrotBufferEndian endian, uint16_t data) {
+    ParrotBuffer_write(self, endian, &data, sizeof(data));
 }
 
-void ParrotBuffer_write32(ParrotBuffer *self, uint32_t data) {
-    ParrotBuffer_write(self, &data, sizeof(data));
+void ParrotBuffer_write32(ParrotBuffer *self, ParrotBufferEndian endian, uint32_t data) {
+    ParrotBuffer_write(self, endian, &data, sizeof(data));
 }
 
-void ParrotBuffer_write64(ParrotBuffer *self, uint64_t data) {
-    ParrotBuffer_write(self, &data, sizeof(data));
+void ParrotBuffer_write64(ParrotBuffer *self, ParrotBufferEndian endian, uint64_t data) {
+    ParrotBuffer_write(self, endian, &data, sizeof(data));
 }
 
 bool ParrotBuffer_read8s(ParrotBuffer *self, int8_t *out) {
@@ -253,13 +239,13 @@ bool ParrotBuffer_read8s(ParrotBuffer *self, int8_t *out) {
     return true;
 }
 
-bool ParrotBuffer_read16s(ParrotBuffer *self, int16_t *out) {
+bool ParrotBuffer_read16s(ParrotBuffer *self, ParrotBufferEndian endian, int16_t *out) {
     PARROT_FAIL_NULL(self);
     PARROT_FAIL_NULL(out);
 
     uint16_t value;
 
-    if (!ParrotBuffer_read16(self, &value)) {
+    if (!ParrotBuffer_read16(self, endian, &value)) {
         return false;
     }
 
@@ -272,13 +258,13 @@ bool ParrotBuffer_read16s(ParrotBuffer *self, int16_t *out) {
     return true;
 }
 
-bool ParrotBuffer_read32s(ParrotBuffer *self, int32_t *out) {
+bool ParrotBuffer_read32s(ParrotBuffer *self, ParrotBufferEndian endian, int32_t *out) {
     PARROT_FAIL_NULL(self);
     PARROT_FAIL_NULL(out);
 
     uint32_t value;
 
-    if (!ParrotBuffer_read32(self, &value)) {
+    if (!ParrotBuffer_read32(self, endian, &value)) {
         return false;
     }
 
@@ -291,13 +277,13 @@ bool ParrotBuffer_read32s(ParrotBuffer *self, int32_t *out) {
     return true;
 }
 
-bool ParrotBuffer_read64s(ParrotBuffer *self, int64_t *out) {
+bool ParrotBuffer_read64s(ParrotBuffer *self, ParrotBufferEndian endian, int64_t *out) {
     PARROT_FAIL_NULL(self);
     PARROT_FAIL_NULL(out);
 
     uint64_t value;
 
-    if (!ParrotBuffer_read64(self, &value)) {
+    if (!ParrotBuffer_read64(self, endian, &value)) {
         return false;
     }
 
@@ -324,7 +310,7 @@ void ParrotBuffer_write8s(ParrotBuffer *self, int8_t data) {
     ParrotBuffer_write8(self, value);
 }
 
-void ParrotBuffer_write16s(ParrotBuffer *self, int16_t data) {
+void ParrotBuffer_write16s(ParrotBuffer *self, ParrotBufferEndian endian, int16_t data) {
     PARROT_FAIL_NULL(self);
 
     uint16_t value;
@@ -335,10 +321,10 @@ void ParrotBuffer_write16s(ParrotBuffer *self, int16_t data) {
         value = (uint16_t)data;
     }
 
-    ParrotBuffer_write16(self, value);
+    ParrotBuffer_write16(self, endian, value);
 }
 
-void ParrotBuffer_write32s(ParrotBuffer *self, int32_t data) {
+void ParrotBuffer_write32s(ParrotBuffer *self, ParrotBufferEndian endian, int32_t data) {
     PARROT_FAIL_NULL(self);
 
     uint32_t value;
@@ -349,10 +335,10 @@ void ParrotBuffer_write32s(ParrotBuffer *self, int32_t data) {
         value = (uint32_t)data;
     }
 
-    ParrotBuffer_write32(self, value);
+    ParrotBuffer_write32(self, endian, value);
 }
 
-void ParrotBuffer_write64s(ParrotBuffer *self, int64_t data) {
+void ParrotBuffer_write64s(ParrotBuffer *self, ParrotBufferEndian endian, int64_t data) {
     PARROT_FAIL_NULL(self);
 
     uint64_t value;
@@ -363,7 +349,7 @@ void ParrotBuffer_write64s(ParrotBuffer *self, int64_t data) {
         value = (uint64_t)data;
     }
 
-    ParrotBuffer_write64(self, value);
+    ParrotBuffer_write64(self, endian, value);
 }
 
 void ParrotBuffer_write_ascii(ParrotBuffer *self, const char *str) {

@@ -36,15 +36,6 @@ static const ParrotReflectDescription ParrotBinaryImage_description[] = {
     PARROT_REFLECT_END(),
 };
 
-static const ParrotReflectDescription Parrot_core_binary_collection[] = {
-    PARROT_REFLECT_COLLECTION_HEADER(),
-
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotMutableBinaryImage_description),
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotBinaryImage_description),
-
-    PARROT_REFLECT_END(),
-};
-
 /**
  * The C99 standard does not guarntee ASCII repersentation of `char`. While most platforms do use ASCII for `char`, it
  * is not guarnteed.
@@ -55,5 +46,14 @@ PARROT_API uint8_t Parrot_char_to_ascii(char c);
  * is not guarnteed.
  */
 PARROT_API char Parrot_ascii_to_char(uint8_t ascii);
+
+static const ParrotReflectDescription Parrot_core_binary_collection[] = {
+    PARROT_REFLECT_COLLECTION_HEADER(),
+
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotMutableBinaryImage_description),
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotBinaryImage_description),
+
+    PARROT_REFLECT_END(),
+};
 
 #endif // PARROT_PARROT_INCLUDE_PARROT_CORE_BINARY_H_

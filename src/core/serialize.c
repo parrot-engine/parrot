@@ -6,7 +6,6 @@
 #include "parrot/core/reflect.h"
 #include "parrot/core/scope.h"
 #include "parrot/core/util.h"
-#include "src/core/buffer.h"
 #include "src/ds.h"
 #include "stb_ds.h"
 #include <stdint.h>
@@ -151,12 +150,8 @@ static void generate_object_queue(ObjectEntry **p_arr_objects,
     hmfree(hm_ptr_map);
 }
 
-static void scope_ParrotBuffer_free_wrapper(void *ctx) {
-    ParrotBuffer_delete(ctx);
-}
-
-ParrotMutableBinaryImage
-Parrot_serialize_bytes(ParrotReflect *reflect, size_t type, const void *data_ptr, bool with_ptrs) {
+void Parrot_serialize_bytes(
+    ParrotBuffer *output, ParrotReflect *reflect, size_t type, const void *data_ptr, bool with_ptrs) {
     PARROT_FAIL_NULL(reflect);
     PARROT_FAIL_NULL(data_ptr);
 
@@ -166,16 +161,8 @@ Parrot_serialize_bytes(ParrotReflect *reflect, size_t type, const void *data_ptr
     ParrotScope_push_arrfree(scope, arr_objects);
     generate_object_queue(&arr_objects, scope, reflect, type, data_ptr, with_ptrs);
 
-    uint8_t *arr_data = NULL;
-    ParrotScope_push_arrfree(scope, arr_data);
-
-    ParrotBuffer *buffer = ParrotBuffer_new_stbds_array(arr_data);
-    ParrotScope_push(scope, scope_ParrotBuffer_free_wrapper, buffer);
-
-    ParrotBuffer_set_endian(buffer, ParrotBufferEndian_BIG);
-
     uint32_t object_count = arrlen(arr_objects);
-    ParrotBuffer_write32(buffer, object_count);
+    ParrotBuffer_write32(output, ParrotBufferEndian_BIG, object_count);
 
     for (size_t i = 0; i < arrlen(arr_objects); i++) {
         char *typename = ParrotReflect_get_type_name(reflect, arr_objects[i].data.object.type);
@@ -186,7 +173,8 @@ Parrot_serialize_bytes(ParrotReflect *reflect, size_t type, const void *data_ptr
 #define X(type_, signed_)                                                                                               \
     do {                                                                                                                \
         if (strcmp(typename, #type_) == 0) {                                                                            \
-            ParrotBuffer_write16(buffer, (signed_) ? ObjectEntryType_SINT : ObjectEntryType_UINT);                      \
+            ParrotBuffer_write16(                                                                                       \
+                output, ParrotBufferEndian_BIG, (signed_) ? ObjectEntryType_SINT : ObjectEntryType_UINT);               \
             if (signed_) {                                                                                              \
                 int64_t val = 0;                                                                                        \
                 switch (sizeof(type_)) {                                                                                \
@@ -206,7 +194,7 @@ Parrot_serialize_bytes(ParrotReflect *reflect, size_t type, const void *data_ptr
                     val = 0;                                                                                            \
                     break;                                                                                              \
                 }                                                                                                       \
-                ParrotBuffer_write64s(buffer, val);                                                                     \
+                ParrotBuffer_write64s(output, ParrotBufferEndian_BIG, val);                                             \
             } else {                                                                                                    \
                 uint64_t val = 0;                                                                                       \
                 switch (sizeof(type_)) {                                                                                \
@@ -226,7 +214,7 @@ Parrot_serialize_bytes(ParrotReflect *reflect, size_t type, const void *data_ptr
                     val = 0;                                                                                            \
                     break;                                                                                              \
                 }                                                                                                       \
-                ParrotBuffer_write64(buffer, val);                                                                      \
+                ParrotBuffer_write64(output, ParrotBufferEndian_BIG, val);                                              \
             }                                                                                                           \
             primitive = true;                                                                                           \
         }                                                                                                               \
@@ -259,37 +247,40 @@ Parrot_serialize_bytes(ParrotReflect *reflect, size_t type, const void *data_ptr
 
         if (strcmp(typename, "char") == 0 || strcmp(typename, "signed char") == 0 ||
             strcmp(typename, "unsigned char") == 0) {
-            ParrotBuffer_write16(buffer, ObjectEntryType_ASCII);
-            ParrotBuffer_write8(buffer, Parrot_char_to_ascii(*(char *)arr_objects[i].data.object.data));
+            ParrotBuffer_write16(output, ParrotBufferEndian_BIG, ObjectEntryType_ASCII);
+            ParrotBuffer_write8(output, Parrot_char_to_ascii(*(char *)arr_objects[i].data.object.data));
         }
 
         if (strcmp(typename, "float") == 0) {
             primitive = true;
-            ParrotBuffer_write16(buffer, ObjectEntryType_NUMBER);
-            ParrotBuffer_write64(buffer, ParrotFixed64i_from_double((double)*(float *)arr_objects[i].data.object.data));
+            ParrotBuffer_write16(output, ParrotBufferEndian_BIG, ObjectEntryType_NUMBER);
+            ParrotBuffer_write64(output,
+                                 ParrotBufferEndian_BIG,
+                                 ParrotFixed64i_from_double((double)*(float *)arr_objects[i].data.object.data));
         }
 
         if (strcmp(typename, "double") == 0) {
             primitive = true;
-            ParrotBuffer_write16(buffer, ObjectEntryType_NUMBER);
-            ParrotBuffer_write64(buffer, ParrotFixed64i_from_double(*(double *)arr_objects[i].data.object.data));
+            ParrotBuffer_write16(output, ParrotBufferEndian_BIG, ObjectEntryType_NUMBER);
+            ParrotBuffer_write64(
+                output, ParrotBufferEndian_BIG, ParrotFixed64i_from_double(*(double *)arr_objects[i].data.object.data));
         }
 
         if (primitive) {
             continue;
         }
 
-        ParrotBuffer_write16(buffer, ObjectEntryType_OBJECT);
+        ParrotBuffer_write16(output, ParrotBufferEndian_BIG, ObjectEntryType_OBJECT);
 
-        ParrotBuffer_write_ascii(buffer, typename);
+        ParrotBuffer_write_ascii(output, typename);
         size_t field_count = arrlen(*arr_objects[i].data.object.p_arr_fields);
-        ParrotBuffer_write32(buffer, field_count);
+        ParrotBuffer_write32(output, ParrotBufferEndian_BIG, field_count);
 
         for (size_t j = 0; j < field_count; j++) {
             ObjectEntryFieldEntry *field = (*arr_objects[i].data.object.p_arr_fields) + j;
 
-            ParrotBuffer_write_ascii(buffer, field->name);
-            ParrotBuffer_write32(buffer, field->index);
+            ParrotBuffer_write_ascii(output, field->name);
+            ParrotBuffer_write32(output, ParrotBufferEndian_BIG, field->index);
         }
     }
 
@@ -320,13 +311,7 @@ Parrot_serialize_bytes(ParrotReflect *reflect, size_t type, const void *data_ptr
     }
 #endif
 
-    ParrotMutableBinaryImage ret = {
-        .data = memcpy(malloc(arrlen(arr_data)), arr_data, arrlen(arr_data)),
-        .size = arrlen(arr_data),
-    };
-
     ParrotScope_delete(scope);
-    return ret;
 }
 
 typedef struct {
@@ -566,20 +551,13 @@ deserialize(ObjectEntry *objects, size_t object_count, ParrotReflect *reflect, s
     return ret;
 }
 
-void *Parrot_deserialize_bytes(ParrotBinaryImage image, ParrotReflect *reflect, size_t *out_type, bool with_ptrs) {
-    PARROT_FAIL_NULL(image.data);
-    PARROT_FAIL_NULL(reflect);
+void *Parrot_deserialize_bytes(ParrotBuffer *input, ParrotReflect *reflect, size_t *out_type, bool with_ptrs) {
     PARROT_FAIL_NULL(out_type);
 
     ParrotScope *scope = ParrotScope_new(NULL);
 
-    ParrotBuffer *buffer = ParrotBuffer_new_bytearray(NULL, image.data, image.size, NULL);
-    ParrotScope_push(scope, scope_ParrotBuffer_free_wrapper, buffer);
-
     ObjectEntry *arr_objects = NULL;
     ParrotScope_push_arrfree(scope, arr_objects);
-
-    ParrotBuffer_set_endian(buffer, ParrotBufferEndian_BIG);
 
 #define FAIL()                                                                                                          \
     do {                                                                                                                \
@@ -594,7 +572,7 @@ void *Parrot_deserialize_bytes(ParrotBinaryImage image, ParrotReflect *reflect, 
     } while (0)
 
     uint32_t object_count = 0;
-    CHECK_FAIL(ParrotBuffer_read32(buffer, &object_count));
+    CHECK_FAIL(ParrotBuffer_read32(input, ParrotBufferEndian_BIG, &object_count));
 
     for (size_t i = 0; i < object_count; i++) {
         ParrotScope *object_scope = ParrotScope_new(scope);
@@ -602,14 +580,14 @@ void *Parrot_deserialize_bytes(ParrotBinaryImage image, ParrotReflect *reflect, 
         ObjectEntry entry = {0};
         entry.scope = ParrotScope_new(object_scope);
 
-        CHECK_FAIL(ParrotBuffer_read(buffer, &entry.type, sizeof(entry.type)));
+        CHECK_FAIL(ParrotBuffer_read(input, ParrotBufferEndian_BIG, &entry.type, sizeof(entry.type)));
 
         switch (entry.type) {
         case ObjectEntryType_OBJECT: {
             char *arr_object_type = NULL;
             for (;;) {
                 uint8_t ascii = 0;
-                CHECK_FAIL(ParrotBuffer_read8(buffer, &ascii));
+                CHECK_FAIL(ParrotBuffer_read8(input, &ascii));
 
                 arrpush(arr_object_type, Parrot_ascii_to_char(ascii));
 
@@ -624,7 +602,7 @@ void *Parrot_deserialize_bytes(ParrotBinaryImage image, ParrotReflect *reflect, 
             }
 
             uint32_t field_count = 0;
-            CHECK_FAIL(ParrotBuffer_read32(buffer, &field_count));
+            CHECK_FAIL(ParrotBuffer_read32(input, ParrotBufferEndian_BIG, &field_count));
 
             entry.data.object.p_arr_fields = malloc(sizeof(*entry.data.object.p_arr_fields));
             ParrotScope_push_free(entry.scope, entry.data.object.p_arr_fields);
@@ -638,7 +616,7 @@ void *Parrot_deserialize_bytes(ParrotBinaryImage image, ParrotReflect *reflect, 
                 ParrotScope_push_arrfree(field_scope, arr_field_name);
                 for (;;) {
                     uint8_t ascii = 0;
-                    CHECK_FAIL(ParrotBuffer_read8(buffer, &ascii));
+                    CHECK_FAIL(ParrotBuffer_read8(input, &ascii));
 
                     arrpush(arr_field_name, Parrot_ascii_to_char(ascii));
 
@@ -648,7 +626,7 @@ void *Parrot_deserialize_bytes(ParrotBinaryImage image, ParrotReflect *reflect, 
                 }
 
                 uint32_t index = 0;
-                CHECK_FAIL(ParrotBuffer_read32(buffer, &index));
+                CHECK_FAIL(ParrotBuffer_read32(input, ParrotBufferEndian_BIG, &index));
 
                 ObjectEntryFieldEntry field_entry = {0};
 
@@ -665,21 +643,21 @@ void *Parrot_deserialize_bytes(ParrotBinaryImage image, ParrotReflect *reflect, 
             arrfree(arr_object_type);
         } break;
         case ObjectEntryType_SINT:
-            ParrotBuffer_read64s(buffer, &entry.data.sint);
+            ParrotBuffer_read64s(input, ParrotBufferEndian_BIG, &entry.data.sint);
             break;
 
         case ObjectEntryType_UINT:
-            ParrotBuffer_read64(buffer, &entry.data.uint);
+            ParrotBuffer_read64(input, ParrotBufferEndian_BIG, &entry.data.uint);
             break;
         case ObjectEntryType_ASCII: {
             uint8_t ascii = 0;
-            ParrotBuffer_read8(buffer, &ascii);
+            ParrotBuffer_read8(input, &ascii);
             entry.data.ascii = Parrot_ascii_to_char(ascii);
             break;
         }
         case ObjectEntryType_NUMBER: {
             ParrotFixed64i number = 0;
-            CHECK_FAIL(ParrotBuffer_read64s(buffer, &number));
+            CHECK_FAIL(ParrotBuffer_read64s(input, ParrotBufferEndian_BIG, &number));
             entry.data.number = ParrotFixed64i_to_double(number);
         } break;
         default:
