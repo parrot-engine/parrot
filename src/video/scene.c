@@ -246,6 +246,10 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
 void ParrotVideoSceneSystem_update(ParrotSceneWorld *world, ParrotVideoObjectHandle root_handle) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
 
+    // A common mistake is forgetting to call ParrotVideoSceneSystem_register_components() before the system
+    PARROT_FAIL_COND_MSG(!ParrotSceneWorld_is_component_registered(world, "ParrotVideoSceneRenderableComponent"),
+                         "Video components were not registered");
+
     ParrotSceneWorldQuery query[] = {
         PARROT_SCENE_WORLD_QUERY_WITH_COMPONENT(ParrotVideoSceneRenderableComponent),
 
