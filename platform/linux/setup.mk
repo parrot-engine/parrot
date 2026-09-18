@@ -6,6 +6,6 @@ export PLATFORM_HAS_OS ?= 1
 export PLATFORM_UNIX ?= 1
 
 export CFLAGS += -march=x86-64
-export LDFLAGS += -lX11 -lXext -lGL
+export LDLIBS += -lX11 -lXext -lGL
 
 include $(ROOT_DIR)/make/platform_base/os/setup.mk

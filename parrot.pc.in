@@ -1,0 +1,11 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: parrot
+Description: A simple 2D game engine
+Version: 1.0.0 
+Libs: -L${libdir}
+Libs.private: @LDLIBS@
+Cflags: -I${includedir}

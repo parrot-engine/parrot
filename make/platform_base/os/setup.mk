@@ -1,1 +1,1 @@
-export LDFLAGS += -lm
+export LDLIBS += -lm
