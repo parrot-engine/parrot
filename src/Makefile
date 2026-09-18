@@ -3,6 +3,8 @@
 export PACK_BEGIN = _Pragma(\"pack(push, 1)\")
 export PACK_END = _Pragma(\"pack(pop)\")
 
+export CFLAGS += $(EXTRA_CFLAGS) $(EXTRA_CLDFLAGS)
+export LDFLAGS += $(EXTRA_LDFLAGS) $(EXTRA_CLDFLAGS)
 export CFLAGS += -std=c99 -Wall -Wextra -pedantic-errors -MMD -MP -I$(ROOT_DIR) -I$(shell pwd)/lib
 
 ifeq ($(DEBUG),1)

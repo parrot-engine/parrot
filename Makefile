@@ -20,9 +20,6 @@ export BUILD_DIR=$(ROOT_BUILD_DIR)/$(BUILD_DIR_NAME)
 export INCLUDE_DIR=$(ROOT_DIR)/include
 export BUILD_INCLUDE_DIR=$(BUILD_DIR)/include
 
-export CFLAGS += $(EXTRA_CFLAGS) $(EXTRA_CLDFLAGS)
-export LDFLAGS += $(EXTRA_LDFLAGS) $(EXTRA_CLDFLAGS)
-
 export CFLAGS += -I$(INCLUDE_DIR) -I$(BUILD_INCLUDE_DIR) -I$(ROOT_DIR)/platform/$(PLATFORM)/include
 
 export OUTPUT_NAME=libparrot
@@ -38,9 +35,16 @@ endif
 
 include platform/$(PLATFORM)/setup.mk
 
-.PHONY: all src compile-db test build-test install uninstall clean clean-all
+.PHONY: all
+.PHONY: src
+.PHONY: compile-db test build-test
+.PHONY: install uninstall
+.PHONY: clean clean-all
 
-all: src
+all: $(LIB_OUTPUT_STATIC)
+	echo "$(CFLAGS)" > $(BUILD_DIR)/$(OUTPUT_NAME).cflags 
+	echo "$(LDFLAGS)" > $(BUILD_DIR)/$(OUTPUT_NAME).ldflags 
+	echo "$(LDLIBS)" > $(BUILD_DIR)/$(OUTPUT_NAME).ldlibs
 
 $(LIB_OUTPUT_STATIC): src
 
