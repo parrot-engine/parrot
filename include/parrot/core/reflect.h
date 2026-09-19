@@ -191,6 +191,7 @@ typedef struct ParrotReflect ParrotReflect;
 
 PARROT_API ParrotReflect *ParrotReflect_new(void);
 PARROT_API void ParrotReflect_delete(ParrotReflect *self);
+PARROT_API void ParrotReflect_vdelete(void *self);
 
 PARROT_API void ParrotReflect_register(ParrotReflect *self, const ParrotReflectDescription *description);
 /// Does not error on unregister of not registered type

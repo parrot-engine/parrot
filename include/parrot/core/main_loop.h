@@ -34,6 +34,7 @@ typedef struct ParrotMainLoop ParrotMainLoop;
 
 PARROT_API ParrotMainLoop *ParrotMainLoop_new(void);
 PARROT_API void ParrotMainLoop_delete(ParrotMainLoop *self);
+PARROT_API void ParrotMainLoop_vdelete(void *self);
 
 /// Clears on next frame
 PARROT_API void ParrotMainLoop_request_close(ParrotMainLoop *self);

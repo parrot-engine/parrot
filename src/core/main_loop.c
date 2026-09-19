@@ -24,6 +24,10 @@ void ParrotMainLoop_delete(ParrotMainLoop *self) {
     free(self);
 }
 
+void ParrotMainLoop_vdelete(void *self) {
+    ParrotMainLoop_delete((ParrotMainLoop *)self);
+}
+
 void ParrotMainLoop_request_close(ParrotMainLoop *self) {
     PARROT_FAIL_NULL(self);
 

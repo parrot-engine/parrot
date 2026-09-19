@@ -18,5 +18,6 @@ struct ParrotGLDriver {
 /// Returns NULL if error
 PARROT_API ParrotGLDriver *Parrot_x11_gl_driver_new(void);
 PARROT_API void Parrot_x11_gl_driver_delete(ParrotGLDriver *self);
+PARROT_API void ParrotGLDriver_vdelete(void *self);
 
 #endif // PARROT_PARROT_INCLUDE_PARROT_DRIVERS_GL_DRIVER_H_

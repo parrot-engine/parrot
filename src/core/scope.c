@@ -49,6 +49,10 @@ void ParrotScope_delete(ParrotScope *self) {
     free(self);
 }
 
+void ParrotScope_vdelete(void *self) {
+    ParrotScope_delete((ParrotScope *)self);
+}
+
 void ParrotScope_set_ctx(ParrotScope *self, void *ctx) {
     PARROT_FAIL_NULL(self);
 

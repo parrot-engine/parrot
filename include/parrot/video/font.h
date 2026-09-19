@@ -21,6 +21,7 @@ typedef struct ParrotVideoFont ParrotVideoFont;
 
 PARROT_API ParrotVideoFont *ParrotVideoFont_new(ParrotBinaryImage font_data);
 PARROT_API void ParrotVideoFont_delete(ParrotVideoFont *self);
+PARROT_API void ParrotVideoFont_vdelete(void *self);
 
 PARROT_API ParrotVideoFontChar ParrotVideoFont_char(ParrotVideoFont *self, float size, char c);
 

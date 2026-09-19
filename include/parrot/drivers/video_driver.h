@@ -36,5 +36,6 @@ struct ParrotVideoDriver {
 
 PARROT_API ParrotVideoDriver *Parrot_gl11_video_driver_new(ParrotGLDriver *gl_driver);
 PARROT_API void Parrot_gl11_video_driver_delete(ParrotVideoDriver *self);
+PARROT_API void ParrotVideoDriver_vdelete(void *self);
 
 #endif // PARROT_PARROT_INCLUDE_PARROT_DRIVERS_VIDEO_DRIVER_H_

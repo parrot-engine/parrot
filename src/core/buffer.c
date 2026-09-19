@@ -100,6 +100,10 @@ void ParrotBuffer_delete(ParrotBuffer *self) {
     free(self);
 }
 
+void ParrotBuffer_vdelete(void *self) {
+    ParrotBuffer_delete((ParrotBuffer *)self);
+}
+
 void ParrotBuffer_rseek(ParrotBuffer *self, size_t position) {
     PARROT_FAIL_NULL(self);
 

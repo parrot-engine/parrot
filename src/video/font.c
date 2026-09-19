@@ -22,6 +22,10 @@ void ParrotVideoFont_delete(ParrotVideoFont *self) {
     free(self);
 }
 
+void ParrotVideoFont_vdelete(void *self) {
+    ParrotVideoFont_delete((ParrotVideoFont *)self);
+}
+
 ParrotVideoFontChar ParrotVideoFont_char(ParrotVideoFont *self, float size, char c) {
     PARROT_FAIL_NULL(self);
 

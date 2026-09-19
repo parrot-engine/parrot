@@ -9,6 +9,7 @@ typedef struct ParrotScope ParrotScope;
 
 PARROT_API ParrotScope *ParrotScope_new(/* NULL = no parent */ ParrotScope *parent);
 PARROT_API void ParrotScope_delete(ParrotScope *self);
+PARROT_API void ParrotScope_vdelete(void *self);
 
 PARROT_API void ParrotScope_set_ctx(ParrotScope *self, void *ctx);
 #define ParrotScope_alloc_ctx(self, type) ((type *)ParrotScope_alloc_ctx_raw(self, sizeof(type)))

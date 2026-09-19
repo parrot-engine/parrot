@@ -120,6 +120,10 @@ void ParrotReflect_delete(ParrotReflect *self) {
     free(self);
 }
 
+void ParrotReflect_vdelete(void *self) {
+    ParrotReflect_delete((ParrotReflect *)self);
+}
+
 static void register_type(ParrotReflect *self, const ParrotReflectDescription *description) {
     ParrotReflectTypeInfo type_info = {0};
     type_info.scope = ParrotScope_new(self->scope);

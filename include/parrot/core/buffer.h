@@ -29,6 +29,7 @@ PARROT_API ParrotBuffer *ParrotBuffer_new_bytearray(/* Auto-deleted at end if no
 #define ParrotBuffer_new_stbds_array(p_arr_data) ParrotBuffer_new_stbds_array_raw(&(p_arr_data));
 ParrotBuffer *ParrotBuffer_new_stbds_array_raw(uint8_t **p_arr_data);
 PARROT_API void ParrotBuffer_delete(ParrotBuffer *self);
+PARROT_API void ParrotBuffer_vdelete(void *self);
 
 PARROT_API void ParrotBuffer_rseek(ParrotBuffer *self, size_t position);
 PARROT_API size_t ParrotBuffer_rtell(ParrotBuffer *self);

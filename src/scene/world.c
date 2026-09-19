@@ -178,6 +178,10 @@ void ParrotSceneWorld_delete(ParrotSceneWorld *self) {
     free(self);
 }
 
+void ParrotSceneWorld_vdelete(void *self) {
+    ParrotSceneWorld_delete((ParrotSceneWorld *)self);
+}
+
 void ParrotSceneWorld_delete_queued(ParrotSceneWorld *self) {
     for (size_t i = 0; i < shlen(self->sh_registered_components); i++) {
         ParrotSceneWorldRegisteredComponent *component = &self->sh_registered_components[i];

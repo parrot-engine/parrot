@@ -87,6 +87,7 @@ typedef struct {
 
 PARROT_API ParrotSceneWorld *ParrotSceneWorld_new(void);
 PARROT_API void ParrotSceneWorld_delete(ParrotSceneWorld *self);
+PARROT_API void ParrotSceneWorld_vdelete(void *self);
 
 PARROT_API void ParrotSceneWorld_delete_queued(ParrotSceneWorld *self);
 
