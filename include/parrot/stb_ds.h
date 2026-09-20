@@ -393,6 +393,7 @@ CREDITS
 #define INCLUDE_STB_DS_H
 
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 #ifndef STBDS_NO_SHORT_NAMES
@@ -1085,8 +1086,9 @@ static size_t stbds_siphash_bytes(void *p, size_t len, size_t seed) {
     } while (0)
 
     for (i = 0; i + sizeof(size_t) <= len; i += sizeof(size_t), d += sizeof(size_t)) {
-        data = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
-        data |= (size_t)(d[4] | (d[5] << 8) | (d[6] << 16) | (d[7] << 24)) << 16 << 16; // discarded if size_t == 4
+        data = d[0] | ((uint32_t)d[1] << 8) | ((uint32_t)d[2] << 16) | ((uint32_t)d[3] << 24);
+        data |= (size_t)(d[4] | ((uint32_t)d[5] << 8) | ((uint32_t)d[6] << 16) | ((uint32_t)d[7] << 24))
+                << 16 << 16; // discarded if size_t == 4
 
         v3 ^= data;
         for (j = 0; j < STBDS_SIPHASH_C_ROUNDS; ++j)
