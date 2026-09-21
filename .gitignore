@@ -10,3 +10,6 @@ compile_commands.json
 **/*.pdebug.*
 **/.project.gf
 **/vgcore.*
+
+run_project.sh
+build_project.sh

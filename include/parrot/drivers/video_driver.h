@@ -4,17 +4,17 @@
 #include "parrot/core/api.h"
 #include "parrot/core/math.h"
 #include "parrot/drivers/gl_driver.h"
+#include "parrot/video/vertex.h"
 #include <stdbool.h>
 #include <stdint.h>
 
 typedef struct ParrotVideoDriver ParrotVideoDriver;
 typedef struct ParrotVideoDriverViewport ParrotVideoDriverViewport;
 
-typedef struct ParrotVideoVertex ParrotVideoVertex;
-
 struct ParrotVideoDriver {
     ParrotVideoDriverViewport *(*create_viewport)(ParrotVideoDriver *self, int width, int height);
     void (*delete_viewport)(ParrotVideoDriverViewport *viewport);
+    void (*vdelete_viewport)(void *viewport);
 
     /**
      * Return value is RGBA8888 and guarnteed to live at least as long as the viewport which updates every call to this

@@ -51,6 +51,8 @@ static const ParrotReflectDescription ParrotVideoSceneWindowComponent_descriptio
     PARROT_REFLECT_END(),
 };
 
+typedef ParrotVideoSceneWindowComponent ParrotVideoSceneVirtualWindowComponent;
+
 typedef struct {
     int width;
     int height;
@@ -157,6 +159,30 @@ static const ParrotReflectDescription ParrotVideoSceneTextComponent_description[
     PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneTextComponent, float, size, ),
     PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneTextComponent, ParrotVideoFont *, font, ),
     PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneTextComponent, const char *, text, ),
+
+    PARROT_REFLECT_END(),
+};
+
+typedef struct {
+    const char *title;
+
+    int width;
+    int height;
+    bool resize;
+
+    bool close_requested;
+} ParrotVideoSceneUIWindowComponent;
+
+static const ParrotReflectDescription ParrotVideoSceneUIWindowComponent_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneUIWindowComponent),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneUIWindowComponent, const char *, title, ),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneUIWindowComponent, int, width, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneUIWindowComponent, int, height, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneUIWindowComponent, bool, resize, ),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneUIWindowComponent, bool, close_requested, ),
 
     PARROT_REFLECT_END(),
 };

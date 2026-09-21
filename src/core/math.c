@@ -415,21 +415,21 @@ uint32_t ParrotColor_to_rgba8888(ParrotColor self) {
     uint8_t g = PARROT_CLAMP(0.0, self.g, 1.0) * 255;
     uint8_t b = PARROT_CLAMP(0.0, self.b, 1.0) * 255;
     uint8_t a = PARROT_CLAMP(0.0, self.a, 1.0) * 255;
-    return (a << 24) | (r << 16) | (g << 8) | b;
+    return ((uint32_t)a << 24) | ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
 }
 
 uint16_t ParrotColor_to_rgba5551(ParrotColor self) {
     uint8_t r = (uint8_t)(PARROT_CLAMP(0.0, self.r, 1.0) * 31) & 0x1F;
     uint8_t g = (uint8_t)(PARROT_CLAMP(0.0, self.g, 1.0) * 31) & 0x1F;
     uint8_t b = (uint8_t)(PARROT_CLAMP(0.0, self.b, 1.0) * 31) & 0x1F;
-    return (r << 8) | (g << 3) | (b << 1) | (self.a > 0);
+    return ((uint16_t)r << 8) | ((uint16_t)g << 3) | ((uint16_t)b << 1) | (self.a > 0);
 }
 
 uint16_t ParrotColor_to_rgb565(ParrotColor self) {
     uint8_t r = (uint8_t)(PARROT_CLAMP(0.0, self.r, 1.0) * 31) & 0x1F;
     uint8_t g = (uint8_t)(PARROT_CLAMP(0.0, self.g, 1.0) * 63) & 0x3F;
     uint8_t b = (uint8_t)(PARROT_CLAMP(0.0, self.b, 1.0) * 31) & 0x1F;
-    return (r << 11) | (g << 5) | b;
+    return ((uint16_t)r << 11) | ((uint16_t)g << 5) | b;
 }
 
 ParrotColor ParrotColor_mul(ParrotColor a, ParrotColor b) {

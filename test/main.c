@@ -11,19 +11,19 @@
 #include "parrot/video/video.h"
 #include <stdio.h>
 
-#define SCREEN_WIDTH 640
-#define SCREEN_HEIGHT 480
+#define SCREEN_WIDTH 1280
+#define SCREEN_HEIGHT 720
 
 #define RECT_SIZE 150
 
 ParrotReflect *reflect = NULL;
 ParrotSceneWorld *world = NULL;
 
-ParrotSceneWorldEntity root;
-ParrotSceneWorldEntity camera;
-ParrotSceneWorldEntity object;
-
 ParrotVideoObjectHandle root_handle;
+ParrotVideoSceneWindowComponent *window;
+
+ParrotTransform *object_transform;
+ParrotTransform *camera_transform;
 
 ParrotWindowDriver *window_driver;
 ParrotGLDriver *gl_driver;
@@ -78,7 +78,7 @@ static void init(ParrotMainLoopRunSettings *settings) {
 
     ParrotVideoSceneSystem_register_components(world);
 
-    root = ParrotSceneWorld_create_entity(world);
+    ParrotSceneWorldEntity root = ParrotSceneWorld_create_entity(world);
     ParrotVideoSceneRenderableComponent *root_renderable = NULL;
     ParrotSceneWorld_add_component(world, root, ParrotVideoSceneWindowComponent);
     ParrotSceneWorld_add_component(world, root, ParrotVideoSceneViewportComponent);
@@ -86,8 +86,7 @@ static void init(ParrotMainLoopRunSettings *settings) {
     {
         root_renderable = ParrotSceneWorld_get_component(world, root, ParrotVideoSceneRenderableComponent);
 
-        ParrotVideoSceneWindowComponent *window =
-            ParrotSceneWorld_get_component(world, root, ParrotVideoSceneWindowComponent);
+        window = ParrotSceneWorld_get_component(world, root, ParrotVideoSceneWindowComponent);
 
         window->title = "Test Window";
         window->width = SCREEN_WIDTH;
@@ -102,25 +101,25 @@ static void init(ParrotMainLoopRunSettings *settings) {
         viewport->height = SCREEN_HEIGHT;
     }
 
-    camera = ParrotSceneWorld_create_entity(world);
+    ParrotSceneWorldEntity camera = ParrotSceneWorld_create_entity(world);
     ParrotSceneWorld_set_entity_parent(world, camera, root);
     ParrotSceneWorld_add_component(world, camera, ParrotTransform);
     ParrotSceneWorld_add_component(world, camera, ParrotVideoSceneRenderableComponent);
     ParrotSceneWorld_add_component(world, camera, ParrotVideoSceneCameraComponent);
     {
-        ParrotTransform *transform = ParrotSceneWorld_get_component(world, camera, ParrotTransform);
-        transform->position = (ParrotVec3){RECT_SIZE / 2.0, RECT_SIZE / 2.0, 0};
+        camera_transform = ParrotSceneWorld_get_component(world, camera, ParrotTransform);
+        camera_transform->position = (ParrotVec3){RECT_SIZE / 2.0, RECT_SIZE / 2.0, 0};
     }
 
-    object = ParrotSceneWorld_create_entity(world);
+    ParrotSceneWorldEntity object = ParrotSceneWorld_create_entity(world);
     ParrotSceneWorld_set_entity_parent(world, object, root);
     ParrotSceneWorld_add_component(world, object, ParrotTransform);
     ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRenderableComponent);
     ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRectComponent);
     {
-        ParrotTransform *transform = ParrotSceneWorld_get_component(world, object, ParrotTransform);
-        transform->parent = transform;
-        transform->rotation = (ParrotVec3){0, 0, 45};
+        object_transform = ParrotSceneWorld_get_component(world, object, ParrotTransform);
+        object_transform->parent = object_transform;
+        object_transform->rotation = (ParrotVec3){0, 0, 45};
 
         ParrotVideoSceneRenderableComponent *renderable =
             ParrotSceneWorld_get_component(world, object, ParrotVideoSceneRenderableComponent);
@@ -133,23 +132,35 @@ static void init(ParrotMainLoopRunSettings *settings) {
         rect->height = RECT_SIZE;
     }
 
+    ParrotSceneWorldEntity window = ParrotSceneWorld_create_entity(world);
+    ParrotSceneWorld_set_entity_parent(world, window, root);
+    ParrotSceneWorld_add_component(world, window, ParrotTransform);
+    ParrotSceneWorld_add_component(world, window, ParrotVideoSceneRenderableComponent);
+    ParrotSceneWorld_add_component(world, window, ParrotVideoSceneUIWindowComponent);
+    {
+        ParrotVideoSceneUIWindowComponent *ui_window =
+            ParrotSceneWorld_get_component(world, window, ParrotVideoSceneUIWindowComponent);
+
+        ui_window->width = 640;
+        ui_window->height = 480;
+        ui_window->title = "Test window";
+    }
+
     ParrotVideoSceneSystem_update(world, ParrotVideo_get_root());
     root_handle = root_renderable->object_handle;
 }
 
 static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should_close) {
     if (!should_close) {
-        should_close = ParrotSceneWorld_get_component(world, root, ParrotVideoSceneWindowComponent)->close_requested;
+        should_close = window->close_requested;
     }
 
     {
-        ParrotTransform *transform = ParrotSceneWorld_get_component(world, object, ParrotTransform);
-        transform->position.x += delta * 50;
-        transform->rotation.z += delta;
+        object_transform->position.x += delta * 50;
+        object_transform->rotation.z += delta;
     }
 
     {
-        ParrotTransform *transform = ParrotSceneWorld_get_component(world, camera, ParrotTransform);
         ParrotVec2 direction = {
             ParrotVideo_object_is_window_key_down(root_handle, ParrotWindowDriverEventKey_D) -
                 ParrotVideo_object_is_window_key_down(root_handle, ParrotWindowDriverEventKey_A),
@@ -157,8 +168,8 @@ static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should
                 ParrotVideo_object_is_window_key_down(root_handle, ParrotWindowDriverEventKey_W),
         };
 
-        transform->position =
-            ParrotVec3_add(transform->position, ParrotVec3_upgrade(ParrotVec2_scale(direction, delta * 500)));
+        camera_transform->position =
+            ParrotVec3_add(camera_transform->position, ParrotVec3_upgrade(ParrotVec2_scale(direction, delta * 500)));
     }
 
     ParrotVideoObjectEvent event = {0};

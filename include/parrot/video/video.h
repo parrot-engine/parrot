@@ -9,13 +9,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-struct ParrotVideoVertex {
-    ParrotVec3 position;
-    ParrotVec3 normal;
-    ParrotVec2 uv;
-    ParrotColor tint;
-};
-
 typedef enum {
     ParrotVideoObjectEventType_WINDOW = 0,
 } ParrotVideoObjectEventType;
@@ -88,6 +81,19 @@ PARROT_API void ParrotVideo_object_set_rect_size(ParrotVideoObjectHandle handle,
 PARROT_API void
 ParrotVideo_object_set_text(ParrotVideoObjectHandle handle, ParrotVideoFont *font, float size, const char *text);
 PARROT_API void ParrotVideo_object_clear_text(ParrotVideoObjectHandle handle);
+
+PARROT_API void ParrotVideo_object_add_ui_window(ParrotVideoObjectHandle handle, int width, int height);
+PARROT_API void ParrotVideo_object_remove_ui_window(ParrotVideoObjectHandle handle);
+PARROT_API bool ParrotVideo_object_has_ui_window(ParrotVideoObjectHandle handle);
+PARROT_API bool ParrotVideo_object_is_ui_window_close_requested(ParrotVideoObjectHandle handle);
+PARROT_API void ParrotVideo_object_set_ui_window_title(ParrotVideoObjectHandle handle, const char *title);
+PARROT_API void ParrotVideo_object_set_ui_window_size(ParrotVideoObjectHandle handle, int width, int height);
+PARROT_API int ParrotVideo_object_get_ui_window_width(ParrotVideoObjectHandle handle);
+PARROT_API int ParrotVideo_object_get_ui_window_height(ParrotVideoObjectHandle handle);
+
+PARROT_API void ParrotVideo_object_add_ui_(ParrotVideoObjectHandle handle);
+PARROT_API void ParrotVideo_object_remove_ui_(ParrotVideoObjectHandle handle);
+PARROT_API bool ParrotVideo_object_has_ui_(ParrotVideoObjectHandle handle);
 
 PARROT_API void ParrotVideo_render(void);
 

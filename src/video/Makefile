@@ -1,4 +1,4 @@
-SRCS=$(shell find . -name "*.c")
+SRCS=$(shell find . -name "*.c") $(shell find . -name "*.S")
 OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
 
 .PHONY: all

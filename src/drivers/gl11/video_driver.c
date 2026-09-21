@@ -72,6 +72,10 @@ static void driver_delete_viewport(ParrotVideoDriverViewport *self) {
     ParrotScope_delete(self->scope);
 }
 
+static void driver_vdelete_viewport(void *self) {
+    driver_delete_viewport(self);
+}
+
 static void use_viewport(ParrotVideoDriverViewport *self) {
     self->driver->gl_driver->use_context(self->gl_context);
 
@@ -183,6 +187,7 @@ ParrotVideoDriver *Parrot_gl11_video_driver_new(ParrotGLDriver *gl_driver) {
 
     self->base.create_viewport = driver_create_viewport;
     self->base.delete_viewport = driver_delete_viewport;
+    self->base.vdelete_viewport = driver_vdelete_viewport;
 
     self->base.get_viewport_pixels = driver_get_viewport_pixels;
 

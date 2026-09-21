@@ -53,6 +53,7 @@ typedef struct ParrotWindowDriverWindow ParrotWindowDriverWindow;
 struct ParrotWindowDriver {
     ParrotWindowDriverWindow *(*create_window)(ParrotWindowDriver *self, int width, int height);
     void (*delete_window)(ParrotWindowDriverWindow *window);
+    void (*vdelete_window)(void *window);
 
     bool (*poll_events)(ParrotWindowDriverWindow *window, ParrotWindowDriverEvent *out_event);
 

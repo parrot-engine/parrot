@@ -1,0 +1,7 @@
+.text
+
+.global ParrotVideoFont_default_jupiteroid_font
+.global ParrotVideoFont_default_jupiteroid_font_len
+
+ParrotVideoFont_default_jupiteroid_font: .incbin "jupiteroid.ttf"
+ParrotVideoFont_default_jupiteroid_font_len: .long . - ParrotVideoFont_default_jupiteroid_font
