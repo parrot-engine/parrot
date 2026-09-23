@@ -31,6 +31,8 @@ typedef struct {
     int height;
     bool resize;
 
+    bool immovable;
+
     bool close_requested;
 } ParrotUIWindowComponent;
 
@@ -42,6 +44,8 @@ static const ParrotReflectDescription ParrotUIWindowComponent_description[] = {
     PARROT_REFLECT_TYPE_FIELD(ParrotUIWindowComponent, int, width, ),
     PARROT_REFLECT_TYPE_FIELD(ParrotUIWindowComponent, int, height, ),
     PARROT_REFLECT_TYPE_FIELD(ParrotUIWindowComponent, bool, resize, ),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotUIWindowComponent, bool, immovable, ),
 
     PARROT_REFLECT_TYPE_FIELD(ParrotUIWindowComponent, bool, close_requested, ),
 
