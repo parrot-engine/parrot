@@ -833,8 +833,7 @@ static void draw_text(ParrotVideoDriverViewport *viewport,
         {
             for (int y = 0; y < h; y++) {
                 for (int x = 0; x < w; x++) {
-                    rgba8888[y * w + x] =
-                        ParrotColor_to_rgba8888(ParrotColor_newa(255, 255, 255, character.bitmap[y * w + x]));
+                    rgba8888[y * w + x] = ((uint32_t)character.bitmap[y * w + x] << 24) | 0xFFFFFF;
                 }
             }
             free(character.bitmap);
@@ -933,8 +932,10 @@ static void render_object(ParrotVideoObjectHandle handle,
     }
 
     if (ParrotVideo_object_has_viewport(handle) && ParrotVideo_object_has_window(handle)) {
-        self->window_driver->set_image(object->window->window,
-                                       self->video_driver->get_viewport_pixels(object->viewport->viewport));
+        self->window_driver->set_image_native(
+            object->window->window,
+            self->video_driver->get_viewport_pixels(
+                object->viewport->viewport, self->window_driver->get_native_image_format(object->window->window)));
     }
 
     PARROT_RET_COND(!viewport);

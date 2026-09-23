@@ -277,6 +277,11 @@ ParrotMat ParrotTransform_calculate_matrix(const ParrotTransform *self);
 
 PARROT_API ParrotMat ParrotGMatSet_combine(const ParrotGMatSet *self);
 
+typedef enum {
+    ParrotColorFormat_RGBA8888 = 0,
+    ParrotColorFormat_BGRA8888,
+} ParrotColorFormat;
+
 typedef struct {
     // [0.0, 1.0]
     float r;
@@ -304,13 +309,8 @@ PARROT_API ParrotColor ParrotColor_newf(float r, float g, float b);
 PARROT_API ParrotColor ParrotColor_newa(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 PARROT_API ParrotColor ParrotColor_newaf(float r, float g, float b, float a);
 
-PARROT_API ParrotColor ParrotColor_from_rgba8888(uint32_t color);
-PARROT_API ParrotColor ParrotColor_from_rgba5551(uint16_t color);
-PARROT_API ParrotColor ParrotColor_from_rgba565(uint16_t color);
-
-PARROT_API uint32_t ParrotColor_to_rgba8888(ParrotColor self);
-PARROT_API uint16_t ParrotColor_to_rgba5551(ParrotColor self);
-PARROT_API uint16_t ParrotColor_to_rgb565(ParrotColor self);
+PARROT_API ParrotColor ParrotColor_from(ParrotColorFormat format, uint32_t color);
+PARROT_API uint32_t ParrotColor_to(ParrotColor self, ParrotColorFormat format);
 
 PARROT_API ParrotColor ParrotColor_mul(ParrotColor a, ParrotColor b);
 PARROT_API ParrotColor ParrotColor_blend(ParrotColor a, ParrotColor b);

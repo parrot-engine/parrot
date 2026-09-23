@@ -317,8 +317,7 @@ static void draw_text(ParrotVideoDriver *driver,
         {
             for (int y = 0; y < h; y++) {
                 for (int x = 0; x < w; x++) {
-                    rgba8888[y * w + x] =
-                        ParrotColor_to_rgba8888(ParrotColor_newa(255, 255, 255, character.bitmap[y * w + x]));
+                    rgba8888[y * w + x] = ((uint32_t)character.bitmap[y * w + x] << 24) | 0xFFFFFF;
                 }
             }
             free(character.bitmap);
@@ -423,7 +422,6 @@ draw_entity(ParrotScope *scope, ParrotVideoDriver *driver, ParrotVideoDriverView
                     .view = matrix.view,
                     .projection = matrix.projection,
                 },
-
             .on_click = window_on_click,
         };
         arrpush(ui_internal->arr_hit_zones, close_zone);

@@ -86,6 +86,8 @@ struct ParrotWindowDriver {
     int (*get_height)(ParrotWindowDriverWindow *window);
 
     void (*set_image)(ParrotWindowDriverWindow *window, const uint32_t *rgbx8888);
+    void (*set_image_native)(ParrotWindowDriverWindow *window, const uint8_t *image);
+    ParrotColorFormat (*get_native_image_format)(ParrotWindowDriverWindow *window);
 };
 
 /// Returns NULL if error

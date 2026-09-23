@@ -27,7 +27,7 @@ struct ParrotVideoDriverViewport {
     int width;
     int height;
 
-    uint32_t *framebuffer;
+    uint8_t *framebuffer;
 
     ViewportTextureCacheEntry texture_cache[MAX_TEXTURE_CACHE_SIZE];
 };
@@ -78,9 +78,16 @@ static void use_viewport(ParrotVideoDriverViewport *self) {
     glViewport(0, 0, self->width, self->height);
 }
 
-static const uint32_t *driver_get_viewport_pixels(ParrotVideoDriverViewport *self) {
+static const uint8_t *driver_get_viewport_pixels(ParrotVideoDriverViewport *self, ParrotColorFormat format) {
     use_viewport(self);
-    glReadPixels(0, 0, self->width, self->height, GL_RGBA, GL_UNSIGNED_BYTE, self->framebuffer);
+    switch (format) {
+    case ParrotColorFormat_RGBA8888:
+        glReadPixels(0, 0, self->width, self->height, GL_RGBA, GL_UNSIGNED_BYTE, self->framebuffer);
+        break;
+    case ParrotColorFormat_BGRA8888:
+        glReadPixels(0, 0, self->width, self->height, GL_BGRA, GL_UNSIGNED_BYTE, self->framebuffer);
+        break;
+    }
     return self->framebuffer;
 }
 

@@ -17,10 +17,9 @@ struct ParrotVideoDriver {
     void (*vdelete_viewport)(void *viewport);
 
     /**
-     * Return value is RGBA8888 and guarnteed to live at least as long as the viewport which updates every call to this
-     * function.
+     * Return value is guarnteed to live at least as long as the viewport which updates every call to this function.
      */
-    const uint32_t *(*get_viewport_pixels)(ParrotVideoDriverViewport *viewport);
+    const uint8_t *(*get_viewport_pixels)(ParrotVideoDriverViewport *viewport, ParrotColorFormat format);
 
     void (*set_viewport_texture)(
         ParrotVideoDriverViewport *viewport, int width, int height, const uint32_t *rgba8888, bool nearest_filter);

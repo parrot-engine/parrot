@@ -1,4 +1,5 @@
 #include "parrot/drivers/window_driver.h"
+#include "parrot/core/math.h"
 #include "parrot/core/scope.h"
 #include "parrot/core/util.h"
 #include "parrot/drivers/window_driver.keys.h"
@@ -434,6 +435,7 @@ static void convert_pixels(uint32_t *restrict bgrx8888, const uint32_t *restrict
 
 static void driver_set_image(ParrotWindowDriverWindow *self, const uint32_t *rgbx8888) {
     PARROT_FAIL_NULL(self);
+    PARROT_FAIL_NULL(rgbx8888);
 
     XWindowAttributes attrs;
     XGetWindowAttributes(self->driver->display, self->window, &attrs);
@@ -443,6 +445,26 @@ static void driver_set_image(ParrotWindowDriverWindow *self, const uint32_t *rgb
 
     XdbeSwapInfo swap_info = {self->window, XdbeBackground};
     XdbeSwapBuffers(self->driver->display, &swap_info, 1);
+}
+
+static void driver_set_image_native(ParrotWindowDriverWindow *self, const uint8_t *image) {
+    PARROT_FAIL_NULL(self);
+    PARROT_FAIL_NULL(image);
+
+    XWindowAttributes attrs;
+    XGetWindowAttributes(self->driver->display, self->window, &attrs);
+
+    memcpy(self->image_data, image, attrs.width * attrs.height * sizeof(uint32_t));
+    XPutImage(self->driver->display, self->back_buffer, self->gc, self->image, 0, 0, 0, 0, attrs.width, attrs.height);
+
+    XdbeSwapInfo swap_info = {self->window, XdbeBackground};
+    XdbeSwapBuffers(self->driver->display, &swap_info, 1);
+}
+
+static ParrotColorFormat driver_get_native_image_format(ParrotWindowDriverWindow *self) {
+    PARROT_FAIL_NULL(self);
+
+    return ParrotColorFormat_BGRA8888;
 }
 
 static ParrotWindowDriverEventKey x_keysym_to_driver_key(KeySym keysym) {
@@ -717,6 +739,8 @@ ParrotWindowDriver *Parrot_x11_window_driver_new(void) {
     self->base.get_height = driver_get_height;
 
     self->base.set_image = driver_set_image;
+    self->base.set_image_native = driver_set_image_native;
+    self->base.get_native_image_format = driver_get_native_image_format;
 
     self->display = XOpenDisplay(NULL);
     if (!self->display) {
