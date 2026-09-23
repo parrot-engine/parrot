@@ -1,5 +1,4 @@
 #include "parrot/core/serialize.h"
-#include "parrot/core/binary.h"
 #include "parrot/core/buffer.h"
 #include "parrot/core/file.h"
 #include "parrot/core/math.h"
@@ -28,17 +27,16 @@ typedef struct {
     ParrotScope *scope;
 
     ObjectEntryType type;
-
     union {
         struct {
             ptrdiff_t type;
             const uint8_t *data;
             ObjectEntryFieldEntry **p_arr_fields;
         } object;
-        int64_t sint;
-        uint64_t uint;
-        char ascii;
-        double number;
+        int64_t **p_arr_sint;
+        uint64_t **p_arr_uint;
+        char **p_arr_ascii;
+        double **p_arr_number;
     } data;
 } ObjectEntry;
 
@@ -58,6 +56,7 @@ static uint32_t queue_object(ObjectEntry **p_arr_objects,
                              ParrotReflect *reflect,
                              size_t type,
                              const uint8_t *data,
+                             size_t count,
                              bool with_ptrs) {
 #define arr_objects (*p_arr_objects)
 #define hm_ptr_map (*p_hm_ptr_map)
@@ -73,20 +72,150 @@ static uint32_t queue_object(ObjectEntry **p_arr_objects,
         return hmgeti(hm_ptr_map, entry_key);
     }
 
+    char *typename = ParrotReflect_get_type_name(reflect, type);
+    ParrotScope_push_free(work_scope, typename);
+
     uint32_t entry_index = arrlen(arr_objects);
     {
         ObjectEntry entry_temp = {0};
 
         entry_temp.scope = ParrotScope_new(scope);
 
-        entry_temp.type = ObjectEntryType_OBJECT;
-        entry_temp.data.object.type = type;
-        entry_temp.data.object.data = data;
-
         entry_temp.data.object.p_arr_fields = malloc(sizeof(*entry_temp.data.object.p_arr_fields));
         ParrotScope_push_free(entry_temp.scope, entry_temp.data.object.p_arr_fields);
         *entry_temp.data.object.p_arr_fields = NULL;
         ParrotScope_push_arrfree(entry_temp.scope, *entry_temp.data.object.p_arr_fields);
+
+        bool primitive = false;
+
+#define X(type_, signed_)                                                                                               \
+    do {                                                                                                                \
+        if (strcmp(typename, #type_) == 0) {                                                                            \
+            entry_temp.type = (signed_) ? ObjectEntryType_SINT : ObjectEntryType_UINT;                                  \
+            if (signed_) {                                                                                              \
+                entry_temp.data.p_arr_sint = malloc(sizeof(*entry_temp.data.p_arr_sint));                               \
+                ParrotScope_push_free(entry_temp.scope, entry_temp.data.p_arr_sint);                                    \
+                *entry_temp.data.p_arr_sint = NULL;                                                                     \
+                ParrotScope_push_arrfree(entry_temp.scope, *entry_temp.data.p_arr_sint);                                \
+                                                                                                                        \
+                for (size_t i = 0; i < count; i++) {                                                                    \
+                    switch (sizeof(type_)) {                                                                            \
+                    case 1:                                                                                             \
+                        arrpush(*entry_temp.data.p_arr_sint, ((int8_t *)data)[i]);                                      \
+                        break;                                                                                          \
+                    case 2:                                                                                             \
+                        arrpush(*entry_temp.data.p_arr_sint, ((int16_t *)data)[i]);                                     \
+                        break;                                                                                          \
+                    case 4:                                                                                             \
+                        arrpush(*entry_temp.data.p_arr_sint, ((int32_t *)data)[i]);                                     \
+                        break;                                                                                          \
+                    case 8:                                                                                             \
+                        arrpush(*entry_temp.data.p_arr_sint, ((int64_t *)data)[i]);                                     \
+                        break;                                                                                          \
+                    default:                                                                                            \
+                        arrpush(*entry_temp.data.p_arr_sint, 0);                                                        \
+                        break;                                                                                          \
+                    }                                                                                                   \
+                }                                                                                                       \
+            } else {                                                                                                    \
+                entry_temp.data.p_arr_uint = malloc(sizeof(*entry_temp.data.p_arr_uint));                               \
+                ParrotScope_push_free(entry_temp.scope, entry_temp.data.p_arr_uint);                                    \
+                *entry_temp.data.p_arr_uint = NULL;                                                                     \
+                ParrotScope_push_arrfree(entry_temp.scope, *entry_temp.data.p_arr_uint);                                \
+                                                                                                                        \
+                for (size_t i = 0; i < count; i++) {                                                                    \
+                    switch (sizeof(type_)) {                                                                            \
+                    case 1:                                                                                             \
+                        arrpush(*entry_temp.data.p_arr_uint, ((uint8_t *)data)[i]);                                     \
+                        break;                                                                                          \
+                    case 2:                                                                                             \
+                        arrpush(*entry_temp.data.p_arr_uint, ((uint16_t *)data)[i]);                                    \
+                        break;                                                                                          \
+                    case 4:                                                                                             \
+                        arrpush(*entry_temp.data.p_arr_uint, ((uint32_t *)data)[i]);                                    \
+                        break;                                                                                          \
+                    case 8:                                                                                             \
+                        arrpush(*entry_temp.data.p_arr_uint, ((uint64_t *)data)[i]);                                    \
+                        break;                                                                                          \
+                    default:                                                                                            \
+                        arrpush(*entry_temp.data.p_arr_uint, 0);                                                        \
+                        break;                                                                                          \
+                    }                                                                                                   \
+                }                                                                                                       \
+            }                                                                                                           \
+            primitive = true;                                                                                           \
+        }                                                                                                               \
+    } while (0)
+        X(short, true);
+        X(int, true);
+        X(long, true);
+        X(long long, true);
+
+        X(signed short, true);
+        X(signed int, true);
+        X(signed long, true);
+        X(signed long long, true);
+
+        X(unsigned short, false);
+        X(unsigned int, false);
+        X(unsigned long, false);
+        X(unsigned long long, false);
+
+        X(int8_t, true);
+        X(int16_t, true);
+        X(int32_t, true);
+        X(int64_t, true);
+
+        X(uint8_t, false);
+        X(uint16_t, false);
+        X(uint32_t, false);
+        X(uint64_t, false);
+#undef X
+
+        if (strcmp(typename, "char") == 0 || strcmp(typename, "signed char") == 0 ||
+            strcmp(typename, "unsigned char") == 0) {
+            entry_temp.type = ObjectEntryType_ASCII;
+
+            entry_temp.data.p_arr_ascii = malloc(sizeof(*entry_temp.data.p_arr_ascii));
+            ParrotScope_push_free(entry_temp.scope, entry_temp.data.p_arr_ascii);
+            *entry_temp.data.p_arr_ascii = NULL;
+            ParrotScope_push_arrfree(entry_temp.scope, *entry_temp.data.p_arr_ascii);
+            for (size_t i = 0; i < count; i++) {
+                arrpush(*entry_temp.data.p_arr_ascii, ((char *)data)[i]);
+            }
+        }
+
+        if (strcmp(typename, "float") == 0) {
+            primitive = true;
+            entry_temp.type = ObjectEntryType_NUMBER;
+
+            entry_temp.data.p_arr_number = malloc(sizeof(*entry_temp.data.p_arr_number));
+            ParrotScope_push_free(entry_temp.scope, entry_temp.data.p_arr_number);
+            *entry_temp.data.p_arr_number = NULL;
+            ParrotScope_push_arrfree(entry_temp.scope, *entry_temp.data.p_arr_number);
+            for (size_t i = 0; i < count; i++) {
+                arrpush(*entry_temp.data.p_arr_number, ((float *)data)[i]);
+            }
+        }
+
+        if (strcmp(typename, "double") == 0) {
+            primitive = true;
+            entry_temp.type = ObjectEntryType_NUMBER;
+
+            entry_temp.data.p_arr_number = malloc(sizeof(*entry_temp.data.p_arr_number));
+            ParrotScope_push_free(entry_temp.scope, entry_temp.data.p_arr_number);
+            *entry_temp.data.p_arr_number = NULL;
+            ParrotScope_push_arrfree(entry_temp.scope, *entry_temp.data.p_arr_number);
+            for (size_t i = 0; i < count; i++) {
+                arrpush(*entry_temp.data.p_arr_number, ((double *)data)[i]);
+            }
+        }
+
+        if (!primitive) {
+            entry_temp.type = ObjectEntryType_OBJECT;
+            entry_temp.data.object.type = type;
+            entry_temp.data.object.data = data;
+        }
 
         arrpush(arr_objects, entry_temp);
     }
@@ -125,9 +254,19 @@ static uint32_t queue_object(ObjectEntry **p_arr_objects,
         field.name = ParrotReflect_get_type_field_name(reflect, type, i);
         ParrotScope_push_free(arr_objects[entry_index].scope, field.name);
 
-        field.index = queue_object(p_arr_objects, p_hm_ptr_map, scope, reflect, field_type, field_data, with_ptrs);
+        char *basename = ParrotReflect_get_type_field_basename(reflect, type, i);
+        ParrotScope_push_free(work_scope, basename);
+
+        size_t count = ParrotReflect_get_type_field_array_size(reflect, type, i);
+        if (count == 0) {
+            count = 1;
+        }
+
+        field.index =
+            queue_object(p_arr_objects, p_hm_ptr_map, scope, reflect, field_type, field_data, count, with_ptrs);
 
         arrpush(*arr_objects[entry_index].data.object.p_arr_fields, field);
+        i += count - 1;
     }
 
     ParrotScope_delete(work_scope);
@@ -145,7 +284,7 @@ static void generate_object_queue(ObjectEntry **p_arr_objects,
                                   bool with_ptrs) {
     ObjectPtrMap *hm_ptr_map = NULL;
 
-    queue_object(p_arr_objects, &hm_ptr_map, scope, reflect, type, data, with_ptrs);
+    queue_object(p_arr_objects, &hm_ptr_map, scope, reflect, type, data, 1, with_ptrs);
 
     hmfree(hm_ptr_map);
 }
@@ -165,151 +304,50 @@ void Parrot_serialize_bytes(
     ParrotBuffer_write32(output, ParrotBufferEndian_BIG, object_count);
 
     for (size_t i = 0; i < arrlen(arr_objects); i++) {
-        char *typename = ParrotReflect_get_type_name(reflect, arr_objects[i].data.object.type);
-        ParrotScope_push_free(scope, typename);
+        ParrotBuffer_write16(output, ParrotBufferEndian_BIG, arr_objects[i].type);
 
-        bool primitive = false;
+        switch (arr_objects[i].type) {
+        case ObjectEntryType_OBJECT: {
+            char *typename = ParrotReflect_get_type_name(reflect, arr_objects[i].data.object.type);
+            ParrotScope_push_free(scope, typename);
+            ParrotBuffer_write_ascii(output, typename);
 
-#define X(type_, signed_)                                                                                               \
-    do {                                                                                                                \
-        if (strcmp(typename, #type_) == 0) {                                                                            \
-            ParrotBuffer_write16(                                                                                       \
-                output, ParrotBufferEndian_BIG, (signed_) ? ObjectEntryType_SINT : ObjectEntryType_UINT);               \
-            if (signed_) {                                                                                              \
-                int64_t val = 0;                                                                                        \
-                switch (sizeof(type_)) {                                                                                \
-                case 1:                                                                                                 \
-                    val = (int64_t)*(int8_t *)arr_objects[i].data.object.data;                                          \
-                    break;                                                                                              \
-                case 2:                                                                                                 \
-                    val = (int64_t)*(int16_t *)arr_objects[i].data.object.data;                                         \
-                    break;                                                                                              \
-                case 4:                                                                                                 \
-                    val = (int64_t)*(int32_t *)arr_objects[i].data.object.data;                                         \
-                    break;                                                                                              \
-                case 8:                                                                                                 \
-                    val = (int64_t)*(int64_t *)arr_objects[i].data.object.data;                                         \
-                    break;                                                                                              \
-                default:                                                                                                \
-                    val = 0;                                                                                            \
-                    break;                                                                                              \
-                }                                                                                                       \
-                ParrotBuffer_write64s(output, ParrotBufferEndian_BIG, val);                                             \
-            } else {                                                                                                    \
-                uint64_t val = 0;                                                                                       \
-                switch (sizeof(type_)) {                                                                                \
-                case 1:                                                                                                 \
-                    val = (uint64_t)*(uint8_t *)arr_objects[i].data.object.data;                                        \
-                    break;                                                                                              \
-                case 2:                                                                                                 \
-                    val = (uint64_t)*(uint16_t *)arr_objects[i].data.object.data;                                       \
-                    break;                                                                                              \
-                case 4:                                                                                                 \
-                    val = (uint64_t)*(uint32_t *)arr_objects[i].data.object.data;                                       \
-                    break;                                                                                              \
-                case 8:                                                                                                 \
-                    val = (uint64_t)*(uint64_t *)arr_objects[i].data.object.data;                                       \
-                    break;                                                                                              \
-                default:                                                                                                \
-                    val = 0;                                                                                            \
-                    break;                                                                                              \
-                }                                                                                                       \
-                ParrotBuffer_write64(output, ParrotBufferEndian_BIG, val);                                              \
-            }                                                                                                           \
-            primitive = true;                                                                                           \
-        }                                                                                                               \
-    } while (0)
-        X(short, true);
-        X(int, true);
-        X(long, true);
-        X(long long, true);
+            size_t field_count = arrlen(*arr_objects[i].data.object.p_arr_fields);
+            ParrotBuffer_write32(output, ParrotBufferEndian_BIG, field_count);
 
-        X(signed short, true);
-        X(signed int, true);
-        X(signed long, true);
-        X(signed long long, true);
-
-        X(unsigned short, false);
-        X(unsigned int, false);
-        X(unsigned long, false);
-        X(unsigned long long, false);
-
-        X(int8_t, true);
-        X(int16_t, true);
-        X(int32_t, true);
-        X(int64_t, true);
-
-        X(uint8_t, false);
-        X(uint16_t, false);
-        X(uint32_t, false);
-        X(uint64_t, false);
-#undef X
-
-        if (strcmp(typename, "char") == 0 || strcmp(typename, "signed char") == 0 ||
-            strcmp(typename, "unsigned char") == 0) {
-            ParrotBuffer_write16(output, ParrotBufferEndian_BIG, ObjectEntryType_ASCII);
-            ParrotBuffer_write8(output, Parrot_char_to_ascii(*(char *)arr_objects[i].data.object.data));
-        }
-
-        if (strcmp(typename, "float") == 0) {
-            primitive = true;
-            ParrotBuffer_write16(output, ParrotBufferEndian_BIG, ObjectEntryType_NUMBER);
-            ParrotBuffer_write64(output,
-                                 ParrotBufferEndian_BIG,
-                                 ParrotFixed64i_from_double((double)*(float *)arr_objects[i].data.object.data));
-        }
-
-        if (strcmp(typename, "double") == 0) {
-            primitive = true;
-            ParrotBuffer_write16(output, ParrotBufferEndian_BIG, ObjectEntryType_NUMBER);
-            ParrotBuffer_write64(
-                output, ParrotBufferEndian_BIG, ParrotFixed64i_from_double(*(double *)arr_objects[i].data.object.data));
-        }
-
-        if (primitive) {
-            continue;
-        }
-
-        ParrotBuffer_write16(output, ParrotBufferEndian_BIG, ObjectEntryType_OBJECT);
-
-        ParrotBuffer_write_ascii(output, typename);
-        size_t field_count = arrlen(*arr_objects[i].data.object.p_arr_fields);
-        ParrotBuffer_write32(output, ParrotBufferEndian_BIG, field_count);
-
-        for (size_t j = 0; j < field_count; j++) {
-            ObjectEntryFieldEntry *field = (*arr_objects[i].data.object.p_arr_fields) + j;
-
-            ParrotBuffer_write_ascii(output, field->name);
-            ParrotBuffer_write32(output, ParrotBufferEndian_BIG, field->index);
+            for (size_t j = 0; j < field_count; j++) {
+                ObjectEntryFieldEntry *field = (*arr_objects[i].data.object.p_arr_fields) + j;
+                ParrotBuffer_write_ascii(output, field->name);
+                ParrotBuffer_write32(output, ParrotBufferEndian_BIG, field->index);
+            }
+        } break;
+        case ObjectEntryType_SINT:
+            ParrotBuffer_write32(output, ParrotBufferEndian_BIG, arrlen(*arr_objects[i].data.p_arr_sint));
+            for (size_t j = 0; j < arrlen(*arr_objects[i].data.p_arr_sint); j++) {
+                ParrotBuffer_write64s(output, ParrotBufferEndian_BIG, (*arr_objects[i].data.p_arr_sint)[j]);
+            }
+            break;
+        case ObjectEntryType_UINT:
+            ParrotBuffer_write32(output, ParrotBufferEndian_BIG, arrlen(*arr_objects[i].data.p_arr_uint));
+            for (size_t j = 0; j < arrlen(*arr_objects[i].data.p_arr_uint); j++) {
+                ParrotBuffer_write64(output, ParrotBufferEndian_BIG, (*arr_objects[i].data.p_arr_uint)[j]);
+            }
+            break;
+        case ObjectEntryType_ASCII:
+            ParrotBuffer_write32(output, ParrotBufferEndian_BIG, arrlen(*arr_objects[i].data.p_arr_ascii));
+            for (size_t j = 0; j < arrlen(*arr_objects[i].data.p_arr_ascii); j++) {
+                ParrotBuffer_write8(output, Parrot_char_to_ascii((*arr_objects[i].data.p_arr_ascii)[j]));
+            }
+            break;
+        case ObjectEntryType_NUMBER:
+            ParrotBuffer_write32(output, ParrotBufferEndian_BIG, arrlen(*arr_objects[i].data.p_arr_number));
+            for (size_t j = 0; j < arrlen(*arr_objects[i].data.p_arr_number); j++) {
+                ParrotBuffer_write64s(
+                    output, ParrotBufferEndian_BIG, ParrotFixed64i_from_double((*arr_objects[i].data.p_arr_number)[j]));
+            }
+            break;
         }
     }
-
-// #define ENABLE
-#ifdef ENABLE
-#undef ENABLE
-    {
-        FILE *file = fopen("serialization_dump.pdebug.bin", "wb");
-        fwrite(arr_data, arrlen(arr_data), sizeof(uint8_t), file);
-        fclose(file);
-    }
-
-    for (size_t i = 0; i < object_count; i++) {
-        char *typename = ParrotReflect_get_type_name(reflect, arr_objects[i].data.object.type);
-        ParrotScope_push_free(scope, typename);
-        printf("[%zu] type=%s", i, typename);
-
-        if (strcmp(typename, "float") == 0) {
-            printf(" value=%f\n", *(float *)arr_objects[i].data.object.data);
-            continue;
-        }
-
-        printf(" children=%zu\n", arrlen(*arr_objects[i].data.object.p_arr_fields));
-        for (size_t j = 0; j < arrlen(*arr_objects[i].data.object.p_arr_fields); j++) {
-            ObjectEntryFieldEntry *f = (*arr_objects[i].data.object.p_arr_fields) + j;
-            printf("  field \"%s\" -> %u\n", f->name, f->index);
-        }
-    }
-#endif
 
     ParrotScope_delete(scope);
 }
@@ -320,6 +358,7 @@ typedef struct {
     ptrdiff_t type;
 
     uint8_t *data;
+    size_t count;
 } DeserializeStateObject;
 
 typedef enum {
@@ -346,16 +385,17 @@ typedef struct {
     DeserializeStateRelocation *arr_relocations;
 } DeserializeState;
 
-static void
-deserialize_object(DeserializeState *state, size_t object, ptrdiff_t type, ParrotReflect *reflect, bool with_ptrs) {
+static void deserialize_object(
+    DeserializeState *state, size_t object, ptrdiff_t type, ParrotReflect *reflect, size_t count, bool with_ptrs) {
     PARROT_RET_COND(state->arr_objects[object].data);
 
     ParrotScope *scope = ParrotScope_new(NULL);
 
     state->arr_objects[object].type = type;
 
-    state->arr_objects[object].data = malloc(ParrotReflect_get_type_size(reflect, type));
-    memset(state->arr_objects[object].data, 0, ParrotReflect_get_type_size(reflect, type));
+    state->arr_objects[object].data = malloc(ParrotReflect_get_type_size(reflect, type) * count);
+    memset(state->arr_objects[object].data, 0, ParrotReflect_get_type_size(reflect, type) * count);
+    state->arr_objects[object].count = count;
 
     char *typename = ParrotReflect_get_type_name(reflect, type);
     ParrotScope_push_free(scope, typename);
@@ -383,6 +423,11 @@ deserialize_object(DeserializeState *state, size_t object, ptrdiff_t type, Parro
                 continue;
             }
 
+            size_t count = ParrotReflect_get_type_field_array_size(reflect, type, field);
+            if (count == 0) {
+                count = 1;
+            }
+
             DeserializeStateRelocation relocation = {
                 .dest_object = object,
                 .dest_offset = ParrotReflect_get_type_field_offset(reflect, type, field),
@@ -395,7 +440,7 @@ deserialize_object(DeserializeState *state, size_t object, ptrdiff_t type, Parro
                 relocation.unique_data.point.ptr_level = ptr_level;
             }
 
-            deserialize_object(state, relocation.src_object, field_type, reflect, with_ptrs);
+            deserialize_object(state, relocation.src_object, field_type, reflect, count, with_ptrs);
 
             ParrotReflect_get_type_field_size(reflect, type, field);
             arrpush(state->arr_relocations, relocation);
@@ -404,39 +449,76 @@ deserialize_object(DeserializeState *state, size_t object, ptrdiff_t type, Parro
         }
     } break;
     case ObjectEntryType_SINT: {
+        size_t copy_count = PARROT_MIN(count, arrlen(*state->arr_objects[object].object->data.p_arr_sint));
         if (strcmp(typename, "int8_t") == 0) {
-            *(int8_t *)state->arr_objects[object].data = state->arr_objects[object].object->data.sint;
+            int8_t *dest = (int8_t *)state->arr_objects[object].data;
+            for (size_t i = 0; i < copy_count; i++) {
+                dest[i] = (*state->arr_objects[object].object->data.p_arr_sint)[i];
+            }
         } else if (strcmp(typename, "int16_t") == 0) {
-            *(int16_t *)state->arr_objects[object].data = state->arr_objects[object].object->data.sint;
+            int16_t *dest = (int16_t *)state->arr_objects[object].data;
+            for (size_t i = 0; i < copy_count; i++) {
+                dest[i] = (*state->arr_objects[object].object->data.p_arr_sint)[i];
+            }
         } else if (strcmp(typename, "int32_t") == 0) {
-            *(int32_t *)state->arr_objects[object].data = state->arr_objects[object].object->data.sint;
+            int32_t *dest = (int32_t *)state->arr_objects[object].data;
+            for (size_t i = 0; i < copy_count; i++) {
+                dest[i] = (*state->arr_objects[object].object->data.p_arr_sint)[i];
+            }
         } else if (strcmp(typename, "int64_t") == 0) {
-            *(int64_t *)state->arr_objects[object].data = state->arr_objects[object].object->data.sint;
+            int64_t *dest = (int64_t *)state->arr_objects[object].data;
+            for (size_t i = 0; i < copy_count; i++) {
+                dest[i] = (*state->arr_objects[object].object->data.p_arr_sint)[i];
+            }
         }
     } break;
     case ObjectEntryType_UINT: {
+        size_t copy_count = PARROT_MIN(count, arrlen(*state->arr_objects[object].object->data.p_arr_uint));
         if (strcmp(typename, "uint8_t") == 0) {
-            *(uint8_t *)state->arr_objects[object].data = state->arr_objects[object].object->data.uint;
+            uint8_t *dest = (uint8_t *)state->arr_objects[object].data;
+            for (size_t i = 0; i < copy_count; i++) {
+                dest[i] = (*state->arr_objects[object].object->data.p_arr_uint)[i];
+            }
         } else if (strcmp(typename, "uint16_t") == 0) {
-            *(uint16_t *)state->arr_objects[object].data = state->arr_objects[object].object->data.uint;
+            uint16_t *dest = (uint16_t *)state->arr_objects[object].data;
+            for (size_t i = 0; i < copy_count; i++) {
+                dest[i] = (*state->arr_objects[object].object->data.p_arr_uint)[i];
+            }
         } else if (strcmp(typename, "uint32_t") == 0) {
-            *(uint32_t *)state->arr_objects[object].data = state->arr_objects[object].object->data.uint;
+            uint32_t *dest = (uint32_t *)state->arr_objects[object].data;
+            for (size_t i = 0; i < copy_count; i++) {
+                dest[i] = (*state->arr_objects[object].object->data.p_arr_uint)[i];
+            }
         } else if (strcmp(typename, "uint64_t") == 0) {
-            *(uint64_t *)state->arr_objects[object].data = state->arr_objects[object].object->data.uint;
+            uint64_t *dest = (uint64_t *)state->arr_objects[object].data;
+            for (size_t i = 0; i < copy_count; i++) {
+                dest[i] = (*state->arr_objects[object].object->data.p_arr_uint)[i];
+            }
         }
     } break;
-    case ObjectEntryType_ASCII:
+    case ObjectEntryType_ASCII: {
+        size_t copy_count = PARROT_MIN(count, arrlen(*state->arr_objects[object].object->data.p_arr_ascii));
         if (strcmp(typename, "char") == 0 || strcmp(typename, "signed char") == 0 ||
             strcmp(typename, "unsigned char") == 0) {
-            memcpy(state->arr_objects[object].data, &state->arr_objects[object].object->data.ascii, sizeof(char));
+            char *dest = (char *)state->arr_objects[object].data;
+            for (size_t i = 0; i < copy_count; i++) {
+                dest[i] = (*state->arr_objects[object].object->data.p_arr_ascii)[i];
+            }
         }
-        break;
+    } break;
     case ObjectEntryType_NUMBER: {
+        size_t copy_count = PARROT_MIN(count, arrlen(*state->arr_objects[object].object->data.p_arr_number));
         if (strcmp(typename, "float") == 0) {
-            float value = state->arr_objects[object].object->data.number;
-            memcpy(state->arr_objects[object].data, &value, sizeof(float));
+            float *dest = (float *)state->arr_objects[object].data;
+            for (size_t i = 0; i < copy_count; i++) {
+                float value = (float)(*state->arr_objects[object].object->data.p_arr_number)[i];
+                memcpy(&dest[i], &value, sizeof(float));
+            }
         } else if (strcmp(typename, "double") == 0) {
-            memcpy(state->arr_objects[object].data, &state->arr_objects[object].object->data.number, sizeof(double));
+            double *dest = (double *)state->arr_objects[object].data;
+            for (size_t i = 0; i < copy_count; i++) {
+                memcpy(&dest[i], &(*state->arr_objects[object].object->data.p_arr_number)[i], sizeof(double));
+            }
         }
     } break;
     }
@@ -446,6 +528,7 @@ deserialize_object(DeserializeState *state, size_t object, ptrdiff_t type, Parro
 
 static void *
 deserialize(ObjectEntry *objects, size_t object_count, ParrotReflect *reflect, size_t *out_type, bool with_ptrs) {
+    (void)with_ptrs;
     PARROT_RET_COND_V(object_count <= 0, NULL);
 
     ParrotScope *scope = ParrotScope_new(NULL);
@@ -464,7 +547,7 @@ deserialize(ObjectEntry *objects, size_t object_count, ParrotReflect *reflect, s
         arrpush(state.arr_objects, object);
     }
 
-    deserialize_object(&state, 0, *out_type, reflect, with_ptrs);
+    deserialize_object(&state, 0, *out_type, reflect, 1, with_ptrs);
 
     size_t pool_size = ParrotReflect_get_type_size(reflect, state.arr_objects[0].type);
     for (size_t i = 0; i < arrlen(state.arr_relocations); i++) {
@@ -499,7 +582,8 @@ deserialize(ObjectEntry *objects, size_t object_count, ParrotReflect *reflect, s
 
         memcpy(state.arr_objects[relocation.dest_object].data + relocation.dest_offset,
                state.arr_objects[relocation.src_object].data,
-               ParrotReflect_get_type_size(reflect, state.arr_objects[relocation.src_object].type));
+               ParrotReflect_get_type_size(reflect, state.arr_objects[relocation.src_object].type) *
+                   state.arr_objects[relocation.src_object].count);
         free(state.arr_objects[relocation.src_object].data);
         state.arr_objects[relocation.src_object].data =
             state.arr_objects[relocation.dest_object].data + relocation.dest_offset;
@@ -522,11 +606,13 @@ deserialize(ObjectEntry *objects, size_t object_count, ParrotReflect *reflect, s
         }
         memcpy(pool_ptr,
                state.arr_objects[relocation.src_object].data,
-               ParrotReflect_get_type_size(reflect, state.arr_objects[relocation.src_object].type));
+               ParrotReflect_get_type_size(reflect, state.arr_objects[relocation.src_object].type) *
+                   state.arr_objects[relocation.src_object].count);
         free(state.arr_objects[relocation.src_object].data);
 
         state.arr_objects[relocation.src_object].data = pool_ptr;
-        pool_ptr += ParrotReflect_get_type_size(reflect, state.arr_objects[relocation.src_object].type);
+        pool_ptr += ParrotReflect_get_type_size(reflect, state.arr_objects[relocation.src_object].type) *
+                    state.arr_objects[relocation.src_object].count;
 
         hmputs(shm_relocated,
                ((ParrotSizeSet){
@@ -642,23 +728,70 @@ void *Parrot_deserialize_bytes(ParrotBuffer *input, ParrotReflect *reflect, size
             }
             arrfree(arr_object_type);
         } break;
-        case ObjectEntryType_SINT:
-            ParrotBuffer_read64s(input, ParrotBufferEndian_BIG, &entry.data.sint);
-            break;
+        case ObjectEntryType_SINT: {
+            uint32_t count = 0;
+            CHECK_FAIL(ParrotBuffer_read32(input, ParrotBufferEndian_BIG, &count));
 
-        case ObjectEntryType_UINT:
-            ParrotBuffer_read64(input, ParrotBufferEndian_BIG, &entry.data.uint);
-            break;
+            entry.data.p_arr_sint = malloc(sizeof(*entry.data.p_arr_sint));
+            ParrotScope_push_free(entry.scope, entry.data.p_arr_sint);
+            *entry.data.p_arr_sint = NULL;
+            ParrotScope_push_arrfree(entry.scope, *entry.data.p_arr_sint);
+
+            while (count--) {
+                int64_t number = 0;
+                CHECK_FAIL(ParrotBuffer_read64s(input, ParrotBufferEndian_BIG, &number));
+
+                arrpush(*entry.data.p_arr_sint, number);
+            }
+        } break;
+
+        case ObjectEntryType_UINT: {
+            uint32_t count = 0;
+            CHECK_FAIL(ParrotBuffer_read32(input, ParrotBufferEndian_BIG, &count));
+
+            entry.data.p_arr_uint = malloc(sizeof(*entry.data.p_arr_uint));
+            ParrotScope_push_free(entry.scope, entry.data.p_arr_uint);
+            *entry.data.p_arr_uint = NULL;
+            ParrotScope_push_arrfree(entry.scope, *entry.data.p_arr_uint);
+
+            while (count--) {
+                uint64_t number = 0;
+                ParrotBuffer_read64(input, ParrotBufferEndian_BIG, &number);
+
+                arrpush(*entry.data.p_arr_uint, number);
+            }
+        } break;
         case ObjectEntryType_ASCII: {
-            uint8_t ascii = 0;
-            ParrotBuffer_read8(input, &ascii);
-            entry.data.ascii = Parrot_ascii_to_char(ascii);
-            break;
-        }
+            uint32_t count = 0;
+            CHECK_FAIL(ParrotBuffer_read32(input, ParrotBufferEndian_BIG, &count));
+
+            entry.data.p_arr_ascii = malloc(sizeof(*entry.data.p_arr_ascii));
+            ParrotScope_push_free(entry.scope, entry.data.p_arr_ascii);
+            *entry.data.p_arr_ascii = NULL;
+            ParrotScope_push_arrfree(entry.scope, *entry.data.p_arr_ascii);
+
+            while (count--) {
+                uint8_t ascii = 0;
+                CHECK_FAIL(ParrotBuffer_read8(input, &ascii));
+
+                arrpush(*entry.data.p_arr_ascii, Parrot_ascii_to_char(ascii));
+            }
+        } break;
         case ObjectEntryType_NUMBER: {
-            ParrotFixed64i number = 0;
-            CHECK_FAIL(ParrotBuffer_read64s(input, ParrotBufferEndian_BIG, &number));
-            entry.data.number = ParrotFixed64i_to_double(number);
+            uint32_t count = 0;
+            CHECK_FAIL(ParrotBuffer_read32(input, ParrotBufferEndian_BIG, &count));
+
+            entry.data.p_arr_number = malloc(sizeof(*entry.data.p_arr_number));
+            ParrotScope_push_free(entry.scope, entry.data.p_arr_number);
+            *entry.data.p_arr_number = NULL;
+            ParrotScope_push_arrfree(entry.scope, *entry.data.p_arr_number);
+
+            while (count--) {
+                ParrotFixed64i number = 0;
+                CHECK_FAIL(ParrotBuffer_read64s(input, ParrotBufferEndian_BIG, &number));
+
+                arrpush(*entry.data.p_arr_number, ParrotFixed64i_to_double(number));
+            }
         } break;
         default:
             FAIL();

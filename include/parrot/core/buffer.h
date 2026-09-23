@@ -22,8 +22,9 @@ typedef struct ParrotBuffer ParrotBuffer;
 PARROT_API ParrotBuffer *ParrotBuffer_new(/* Auto-deleted at end if not NULL */ ParrotScope *scope,
                                           /* NULL = no read */ ParrotBufferRead read,
                                           /* NULL = no write */ ParrotBufferWrite write);
+PARROT_API ParrotBuffer *ParrotBuffer_new_file(FILE *file);
 PARROT_API ParrotBuffer *ParrotBuffer_new_bytearray(/* Auto-deleted at end if not NULL */ ParrotScope *scope,
-                                                    const void *data,
+                                                    const void **p_data,
                                                     size_t size,
                                                     /* NULL = no write */ ParrotBufferWrite write);
 #define ParrotBuffer_new_stbds_array(p_arr_data) ParrotBuffer_new_stbds_array_raw(&(p_arr_data));

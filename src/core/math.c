@@ -351,10 +351,10 @@ ParrotTransform ParrotTransform_new(void) {
     };
 }
 
-static ParrotMat ParrotTransform_calculate_matrix_impl(const ParrotTransform *root, const ParrotTransform *self) {
+ParrotMat ParrotTransform_calculate_matrix(const ParrotTransform *self) {
     ParrotMat matrix = ParrotMat_identity();
-    if (self->parent && self->parent != root) {
-        matrix = ParrotTransform_calculate_matrix_impl(root, self->parent);
+    if (self->parent) {
+        matrix = ParrotTransform_calculate_matrix(self->parent);
     }
 
     matrix = ParrotMat_mul(matrix, ParrotMat_translation(self->position));
@@ -363,10 +363,6 @@ static ParrotMat ParrotTransform_calculate_matrix_impl(const ParrotTransform *ro
     matrix = ParrotMat_mul(matrix, self->matrix);
 
     return matrix;
-}
-
-ParrotMat ParrotTransform_calculate_matrix(const ParrotTransform *self) {
-    return ParrotTransform_calculate_matrix_impl(self, self);
 }
 
 ParrotMat ParrotGMatSet_combine(const ParrotGMatSet *self) {

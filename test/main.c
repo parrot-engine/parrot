@@ -103,7 +103,6 @@ static void init(ParrotMainLoopRunSettings *settings) {
     ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRectComponent);
     {
         object_transform = ParrotSceneWorld_get_component(world, object, ParrotTransform);
-        object_transform->parent = object_transform;
         object_transform->rotation = (ParrotVec3){0, 0, 45};
 
         ParrotVideoSceneRenderableComponent *renderable =

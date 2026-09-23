@@ -23,8 +23,31 @@ ParrotBuffer *ParrotBuffer_new(ParrotScope *scope, ParrotBufferRead read, Parrot
     return self;
 }
 
+static bool file_read(ParrotScope *scope, size_t position, uint8_t *out) {
+    FILE *file = ParrotScope_get_ctx(scope, FILE *);
+
+    size_t old_position = ftell(file);
+    fseek(file, position, SEEK_SET);
+    bool success = fread(out, sizeof(*out), 1, file) == sizeof(*out);
+    fseek(file, old_position, SEEK_SET);
+
+    return success;
+}
+
+static void file_write(ParrotScope *scope, uint8_t byte) {
+    FILE *file = ParrotScope_get_ctx(scope, FILE *);
+    fwrite(&byte, sizeof(byte), 1, file);
+}
+
+ParrotBuffer *ParrotBuffer_new_file(FILE *file) {
+    ParrotScope *scope = ParrotScope_new(NULL);
+    ParrotScope_set_ctx(scope, file);
+
+    return ParrotBuffer_new(scope, file_read, file_write);
+}
+
 typedef struct {
-    const uint8_t *data;
+    const uint8_t **p_data;
     size_t size;
 
     ParrotScope *write_scope;
@@ -38,7 +61,7 @@ static bool bytearray_read(ParrotScope *scope, size_t position, uint8_t *out) {
         return false;
     }
 
-    *out = ctx->data[position];
+    *out = (*ctx->p_data)[position];
     return true;
 }
 
@@ -51,11 +74,11 @@ static void bytearray_write_wrapper(ParrotScope *scope, uint8_t byte) {
 }
 
 ParrotBuffer *
-ParrotBuffer_new_bytearray(ParrotScope *write_scope, const void *data, size_t size, ParrotBufferWrite write) {
+ParrotBuffer_new_bytearray(ParrotScope *write_scope, const void **p_data, size_t size, ParrotBufferWrite write) {
     ParrotScope *scope = ParrotScope_new(NULL);
     BytearrayCtx *ctx = ParrotScope_alloc_ctx(scope, BytearrayCtx);
 
-    ctx->data = data;
+    ctx->p_data = (const uint8_t **)p_data;
     ctx->size = size;
 
     ctx->write_scope = write_scope;
