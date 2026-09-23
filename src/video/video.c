@@ -22,9 +22,6 @@ typedef struct {
     int height;
 
     bool close_requested;
-
-    bool physical_keys[ParrotWindowDriverEventKey_COUNT];
-    bool logical_keys[ParrotWindowDriverEventKey_COUNT];
 } ParrotVideoObjectWindow;
 
 typedef struct {
@@ -34,6 +31,12 @@ typedef struct {
 
     int width;
     int height;
+
+    bool physical_keys[ParrotWindowDriverEventKey_COUNT];
+    bool logical_keys[ParrotWindowDriverEventKey_COUNT];
+
+    bool mouse_buttons[ParrotWindowDriverEventMouseButton_COUNT];
+    ParrotVec2 mouse_position;
 } ParrotVideoObjectViewport;
 
 typedef struct {
@@ -75,6 +78,13 @@ typedef struct {
 typedef struct {
     ParrotScope *scope;
 
+    ParrotScope *func_scope;
+    ParrotVideoCustomDrawFunc func;
+} ParrotVideoObjectCustomDraw;
+
+typedef struct {
+    ParrotScope *scope;
+
     ParrotScope *title_scope;
     char *title;
 
@@ -110,6 +120,8 @@ struct ParrotVideoObject {
 
     ParrotVideoObjectRect *rect;
     ParrotVideoObjectText *text;
+
+    ParrotVideoObjectCustomDraw *custom_draw;
 
     ParrotVideoObjectUIWindow *ui_window;
 };
@@ -160,6 +172,11 @@ void ParrotVideo_shutdown(void) {
 
     ParrotScope_delete(self->scope);
     self = NULL;
+}
+
+void ParrotVideo_vshutdown(void *unused) {
+    (void)unused;
+    ParrotVideo_shutdown();
 }
 
 bool ParrotVideo_is_initialized(void) {
@@ -352,18 +369,6 @@ int ParrotVideo_object_get_window_height(ParrotVideoObjectHandle handle) {
     return self->window_driver->get_height(hmget(self->hm_pointers, handle.index)->window->window);
 }
 
-bool ParrotVideo_object_is_window_key_down(ParrotVideoObjectHandle handle, ParrotWindowDriverEventKey key) {
-    PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
-
-    return hmget(self->hm_pointers, handle.index)->window->physical_keys[key];
-}
-
-bool ParrotVideo_object_is_window_logical_key_down(ParrotVideoObjectHandle handle, ParrotWindowDriverEventKey key) {
-    PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
-
-    return hmget(self->hm_pointers, handle.index)->window->logical_keys[key];
-}
-
 void ParrotVideo_object_add_viewport(ParrotVideoObjectHandle handle, int width, int height) {
     PARROT_FAIL_COND(ParrotVideo_object_has_viewport(handle));
 
@@ -398,11 +403,51 @@ bool ParrotVideo_object_has_viewport(ParrotVideoObjectHandle handle) {
     return hmget(self->hm_pointers, handle.index)->viewport;
 }
 
+int ParrotVideo_object_get_viewport_width(ParrotVideoObjectHandle handle) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
+
+    return hmget(self->hm_pointers, handle.index)->viewport->width;
+}
+
+int ParrotVideo_object_get_viewport_height(ParrotVideoObjectHandle handle) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
+
+    return hmget(self->hm_pointers, handle.index)->viewport->height;
+}
+
 void ParrotVideo_object_set_viewport_size(ParrotVideoObjectHandle handle, int width, int height) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
 
     PARROT_FAIL_COND(width == 0);
     PARROT_FAIL_COND(height == 0);
+}
+
+bool ParrotVideo_object_is_viewport_key_down(ParrotVideoObjectHandle handle, ParrotWindowDriverEventKey key) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
+    PARROT_FAIL_COND(key >= ParrotWindowDriverEventKey_COUNT);
+
+    return hmget(self->hm_pointers, handle.index)->viewport->physical_keys[key];
+}
+
+bool ParrotVideo_object_is_viewport_logical_key_down(ParrotVideoObjectHandle handle, ParrotWindowDriverEventKey key) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
+    PARROT_FAIL_COND(key >= ParrotWindowDriverEventKey_COUNT);
+
+    return hmget(self->hm_pointers, handle.index)->viewport->logical_keys[key];
+}
+
+bool ParrotVideo_object_is_viewport_mouse_button_down(ParrotVideoObjectHandle handle,
+                                                      ParrotWindowDriverEventMouseButton button) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
+    PARROT_FAIL_COND(button >= ParrotWindowDriverEventMouseButton_COUNT);
+
+    return hmget(self->hm_pointers, handle.index)->viewport->mouse_buttons[button];
+}
+
+ParrotVec2 ParrotVideo_object_get_viewport_mouse_position(ParrotVideoObjectHandle handle) {
+    PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
+
+    return hmget(self->hm_pointers, handle.index)->viewport->mouse_position;
 }
 
 void ParrotVideo_object_add_camera(ParrotVideoObjectHandle handle) {
@@ -569,6 +614,43 @@ void ParrotVideo_object_clear_text(ParrotVideoObjectHandle handle) {
 
     ParrotScope_delete(object->text->scope);
     object->text = NULL;
+}
+
+void ParrotVideo_object_set_custom_draw(ParrotVideoObjectHandle handle,
+                                        ParrotScope *scope,
+                                        ParrotVideoCustomDrawFunc func) {
+    PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
+
+    PARROT_FAIL_NULL(func);
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    if (object->custom_draw) {
+        ParrotScope_delete(object->custom_draw->scope);
+    }
+
+    object->custom_draw = PARROT_ALLOC(ParrotVideoObjectCustomDraw);
+
+    object->custom_draw->scope = ParrotScope_new(object->scope);
+    ParrotScope_push_free(object->custom_draw->scope, object->custom_draw);
+
+    object->custom_draw->func_scope = scope;
+    if (scope) {
+        ParrotScope_set_parent(scope, object->custom_draw->scope);
+    }
+
+    object->custom_draw->func = func;
+}
+
+void ParrotVideo_object_clear_custom_draw(ParrotVideoObjectHandle handle) {
+    PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
+
+    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+
+    if (object->custom_draw) {
+        ParrotScope_delete(object->custom_draw->scope);
+    }
+    object->custom_draw = NULL;
 }
 
 void ParrotVideo_object_add_ui_window(ParrotVideoObjectHandle handle, int width, int height) {
@@ -771,11 +853,11 @@ static void draw_text(ParrotVideoDriverViewport *viewport,
     hmfree(hm_arr_char_positions);
 }
 
-static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
-                                      ParrotVideoDriverViewport *viewport,
-                                      ParrotMat view_matrix,
-                                      ParrotMat projection_matrix,
-                                      ParrotColor tint) {
+static void render_object(ParrotVideoObjectHandle handle,
+                          ParrotVideoDriverViewport *viewport,
+                          ParrotMat view_matrix,
+                          ParrotMat projection_matrix,
+                          ParrotColor tint) {
     ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
 
     tint = ParrotColor_mul(tint, object->tint);
@@ -788,8 +870,26 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
                 object->window->close_requested = true;
             } break;
             case ParrotWindowDriverEventType_KEY: {
-                object->window->physical_keys[event.data.key.physical_key] = event.data.key.key_down;
-                object->window->logical_keys[event.data.key.logical_key] = event.data.key.key_down;
+                if (!ParrotVideo_object_has_viewport(handle)) {
+                    break;
+                }
+
+                object->viewport->physical_keys[event.data.key.physical_key] = event.data.key.key_down;
+                object->viewport->logical_keys[event.data.key.logical_key] = event.data.key.key_down;
+            } break;
+            case ParrotWindowDriverEventType_MOUSE_BUTTON: {
+                if (!ParrotVideo_object_has_viewport(handle)) {
+                    break;
+                }
+
+                object->viewport->mouse_buttons[event.data.mouse_button.button] = event.data.mouse_button.button_down;
+            } break;
+            case ParrotWindowDriverEventType_MOUSE_MOTION: {
+                if (!ParrotVideo_object_has_viewport(handle)) {
+                    break;
+                }
+
+                object->viewport->mouse_position = event.data.mouse_motion.position;
             } break;
             default:
                 break;
@@ -821,14 +921,14 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
                                 !camera->corner_aligned ? object->viewport->width / 2 : object->viewport->width,
                                 !camera->corner_aligned ? -object->viewport->height / 2 : 0,
                                 !camera->corner_aligned ? object->viewport->height / 2 : object->viewport->height,
-                                0,
+                                -1000000,
                                 1000000);
         }
     }
 
     if (object->visible) {
         for (size_t i = 0; i < hmlen(object->shm_children); i++) {
-            ParrotVideo_render_object(object->shm_children[i].key, viewport, view_matrix, projection_matrix, tint);
+            render_object(object->shm_children[i].key, viewport, view_matrix, projection_matrix, tint);
         }
     }
 
@@ -896,76 +996,20 @@ static void ParrotVideo_render_object(ParrotVideoObjectHandle handle,
                   tint);
     }
 
-    if (ParrotVideo_object_has_ui_window(handle)) {
-        const ParrotReal titlebar_height = 32;
-
-        ParrotReal width = object->ui_window->width;
-        ParrotReal height = object->ui_window->height;
-
-        ParrotColor titlebar_color = ParrotColor_mul(ParrotColor_new(48, 48, 48), tint);
-        ParrotColor body_color = ParrotColor_mul(ParrotColor_new(56, 56, 56), tint);
-
-        ParrotVideoVertex vertices[] = {
-            // Titlebar
-            (ParrotVideoVertex){.position = (ParrotVec3){0, -titlebar_height, 0}, .tint = titlebar_color},
-            (ParrotVideoVertex){.position = (ParrotVec3){width, -titlebar_height, 0}, .tint = titlebar_color},
-            (ParrotVideoVertex){.position = (ParrotVec3){0, 0, 0}, .tint = titlebar_color},
-
-            (ParrotVideoVertex){.position = (ParrotVec3){width, 0, 0}, .tint = titlebar_color},
-            (ParrotVideoVertex){.position = (ParrotVec3){0, 0, 0}, .tint = titlebar_color},
-            (ParrotVideoVertex){.position = (ParrotVec3){width, -titlebar_height, 0}, .tint = titlebar_color},
-
-            // Body
-            (ParrotVideoVertex){.position = (ParrotVec3){0, 0, 0}, .tint = body_color},
-            (ParrotVideoVertex){.position = (ParrotVec3){width, 0, 0}, .tint = body_color},
-            (ParrotVideoVertex){.position = (ParrotVec3){0, height, 0}, .tint = body_color},
-
-            (ParrotVideoVertex){.position = (ParrotVec3){width, height, 0}, .tint = body_color},
-            (ParrotVideoVertex){.position = (ParrotVec3){0, height, 0}, .tint = body_color},
-            (ParrotVideoVertex){.position = (ParrotVec3){width, 0, 0}, .tint = body_color},
-        };
-
-        self->video_driver->draw_viewport_vertices(viewport,
-                                                   (ParrotGMatSet){
-                                                       .model = object->matrix,
-                                                       .view = view_matrix,
-                                                       .projection = projection_matrix,
-                                                   },
-                                                   vertices,
-                                                   PARROT_ARRAY_LEN(vertices));
-
-        ParrotMat title_offset = ParrotMat_translation((ParrotVec3){8, -titlebar_height / 4, 0});
-        draw_text(viewport,
-                  (ParrotGMatSet){
-                      .model = ParrotMat_mul(object->matrix, title_offset),
-                      .view = view_matrix,
-                      .projection = projection_matrix,
-                  },
-                  self->default_font,
-                  object->ui_window->title,
-                  24,
-                  ParrotColor_WHITE);
-
-        ParrotVec2 close_text_size = ParrotVideoFont_measure_text(self->default_font, 24, "X");
-
-        ParrotMat close_text_offset = ParrotMat_translation(
-            (ParrotVec3){object->ui_window->width - close_text_size.x - 8, -titlebar_height / 4, 0});
-        draw_text(viewport,
-                  (ParrotGMatSet){
-                      .model = ParrotMat_mul(object->matrix, close_text_offset),
-                      .view = view_matrix,
-                      .projection = projection_matrix,
-                  },
-                  self->default_font,
-                  "X",
-                  24,
-                  ParrotColor_WHITE);
+    if (object->custom_draw) {
+        object->custom_draw->func(object->custom_draw->func_scope,
+                                  self->video_driver,
+                                  viewport,
+                                  (ParrotGMatSet){
+                                      .model = object->matrix,
+                                      .view = view_matrix,
+                                      .projection = projection_matrix,
+                                  });
     }
 }
 
 void ParrotVideo_render(void) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
 
-    ParrotVideo_render_object(
-        self->root_object_handle, NULL, ParrotMat_identity(), ParrotMat_identity(), ParrotColor_WHITE);
+    render_object(self->root_object_handle, NULL, ParrotMat_identity(), ParrotMat_identity(), ParrotColor_WHITE);
 }

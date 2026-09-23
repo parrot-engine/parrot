@@ -5,13 +5,15 @@ export PACK_END = _Pragma(\"pack(pop)\")
 
 export CFLAGS += -std=c99 -Wall -Wextra -pedantic-errors -MMD -MP -I$(ROOT_DIR) -I$(shell pwd)/lib
 
-ifeq ($(DEBUG),1)
+ifeq ($(DEBUG_INFO),1)
 export CFLAGS += -g
 export ASFLAGS += -g
 endif
 
-ifeq ($(DEBUG),0)
+ifeq ($(OPTIMIZE),1)
 export CFLAGS += $(OPTIMIZER)
+else
+
 endif
 
 CONFIG_HEADER=$(BUILD_INCLUDE_DIR)/parrot/config.h
@@ -41,6 +43,8 @@ $(eval $(call ADD_MODULE,scene))
 
 $(eval $(call ADD_MODULE,video))
 
+$(eval $(call ADD_MODULE,ui))
+
 $(eval $(call ADD_MODULE,drivers))
 $(eval $(call ADD_MODULE,platform))
 
@@ -65,6 +69,7 @@ ifeq ($(PLATFORM_UNIX),1)
 endif
 
 	echo "#define PARROT_PLATFORM_$(shell echo "$(PLATFORM)" | tr 'a-z' 'A-Z')" >> $(CONFIG_HEADER)
+	echo "#define PARROT_ARCH_$(shell echo "$(ARCH)" | tr 'A-Z' 'a-z' | sed 's/-/_/g')" >> $(CONFIG_HEADER)
 
 ifeq ($(DEBUG),1)
 	echo "#define PARROT_DEBUG" >> $(CONFIG_HEADER)

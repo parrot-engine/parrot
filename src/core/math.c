@@ -265,18 +265,18 @@ ParrotMat ParrotMat_mul(ParrotMat a, ParrotMat b) {
 }
 
 ParrotVec3 ParrotMat_transform3(ParrotMat matrix, ParrotVec3 vec) {
+    float w = matrix.data[0][3] * vec.x + matrix.data[1][3] * vec.y + matrix.data[2][3] * vec.z + matrix.data[3][3];
+    PARROT_RET_COND_V(w == 0, ParrotVec3_n(0));
     return (ParrotVec3){
-        .x = matrix.data[0][0] * vec.x + matrix.data[1][0] * vec.y + matrix.data[2][0] * vec.z + matrix.data[3][0],
-        .y = matrix.data[0][1] * vec.x + matrix.data[1][1] * vec.y + matrix.data[2][1] * vec.z + matrix.data[3][1],
-        .z = matrix.data[0][2] * vec.x + matrix.data[1][2] * vec.y + matrix.data[2][2] * vec.z + matrix.data[3][2],
+        .x = (matrix.data[0][0] * vec.x + matrix.data[1][0] * vec.y + matrix.data[2][0] * vec.z + matrix.data[3][0]) / w,
+        .y = (matrix.data[0][1] * vec.x + matrix.data[1][1] * vec.y + matrix.data[2][1] * vec.z + matrix.data[3][1]) / w,
+        .z = (matrix.data[0][2] * vec.x + matrix.data[1][2] * vec.y + matrix.data[2][2] * vec.z + matrix.data[3][2]) / w,
     };
 }
 
 ParrotVec2 ParrotMat_transform2(ParrotMat matrix, ParrotVec2 vec) {
-    return (ParrotVec2){
-        .x = matrix.data[0][0] * vec.x + matrix.data[1][0] * vec.y + matrix.data[2][0],
-        .y = matrix.data[0][1] * vec.x + matrix.data[1][1] * vec.y + matrix.data[2][1],
-    };
+    ParrotVec3 result = ParrotMat_transform3(matrix, ParrotVec3_upgrade(vec));
+    return (ParrotVec2){result.x, result.y};
 }
 
 ParrotMat

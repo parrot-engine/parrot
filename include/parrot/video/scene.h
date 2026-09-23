@@ -163,30 +163,6 @@ static const ParrotReflectDescription ParrotVideoSceneTextComponent_description[
     PARROT_REFLECT_END(),
 };
 
-typedef struct {
-    const char *title;
-
-    int width;
-    int height;
-    bool resize;
-
-    bool close_requested;
-} ParrotVideoSceneUIWindowComponent;
-
-static const ParrotReflectDescription ParrotVideoSceneUIWindowComponent_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneUIWindowComponent),
-
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneUIWindowComponent, const char *, title, ),
-
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneUIWindowComponent, int, width, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneUIWindowComponent, int, height, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneUIWindowComponent, bool, resize, ),
-
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneUIWindowComponent, bool, close_requested, ),
-
-    PARROT_REFLECT_END(),
-};
-
 void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world);
 void ParrotVideoSceneSystem_update(ParrotSceneWorld *world, ParrotVideoObjectHandle root_handle);
 

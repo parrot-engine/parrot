@@ -13,18 +13,6 @@ struct ParrotVideoSceneSystem {
     ParrotVideoObjectHandle root_handle;
 };
 
-static void ParrotVideoSceneCameraComponent_constructor(ParrotSceneWorldEntity entity, void *self_ptr, void *user_data) {
-    PARROT_FAIL_COND(!ParrotVideo_is_initialized());
-
-    (void)entity;
-    (void)user_data;
-
-    ParrotVideoSceneCameraComponent *self = self_ptr;
-
-    self->use_clear_color = true;
-    self->clear_color = ParrotColor_newf(0.3, 0.3, 0.3);
-}
-
 static void
 ParrotVideoSceneRenderableComponent_constructor(ParrotSceneWorldEntity entity, void *self_ptr, void *user_data) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
@@ -38,6 +26,18 @@ ParrotVideoSceneRenderableComponent_constructor(ParrotSceneWorldEntity entity, v
 
     self->visible = true;
     self->tint = ParrotColor_WHITE;
+}
+
+static void ParrotVideoSceneCameraComponent_constructor(ParrotSceneWorldEntity entity, void *self_ptr, void *user_data) {
+    PARROT_FAIL_COND(!ParrotVideo_is_initialized());
+
+    (void)entity;
+    (void)user_data;
+
+    ParrotVideoSceneCameraComponent *self = self_ptr;
+
+    self->use_clear_color = true;
+    self->clear_color = ParrotColor_newf(0.3, 0.3, 0.3);
 }
 
 void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
@@ -56,14 +56,17 @@ void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
                                         });
 }
 
-static ParrotVideoObjectHandle ParrotVideoSceneSystem_get_parent(ParrotSceneWorld *world,
-                                                                 ParrotVideoObjectHandle root_handle,
-                                                                 ParrotSceneWorldEntity entity) {
+static ParrotVideoObjectHandle
+get_parent(ParrotSceneWorld *world, ParrotVideoObjectHandle root_handle, ParrotSceneWorldEntity entity) {
     entity = ParrotSceneWorld_get_entity_parent(world, entity);
     for (; entity != ParrotSceneWorldEntity_NULL; entity = ParrotSceneWorld_get_entity_parent(world, entity)) {
         ParrotVideoSceneRenderableComponent *renderable =
             ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRenderableComponent);
         if (!renderable) {
+            continue;
+        }
+
+        if (ParrotSceneWorld_is_component_deletion_queued(world, entity, ParrotVideoSceneRenderableComponent)) {
             continue;
         }
 
@@ -81,10 +84,8 @@ static void ParrotVideoSceneSystem_update_tree(ParrotSceneWorld *world,
 
         ParrotVideoSceneRenderableComponent *renderable =
             ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRenderableComponent);
-        PARROT_FAIL_NULL(renderable);
 
-        ParrotVideo_set_object_parent(renderable->object_handle,
-                                      ParrotVideoSceneSystem_get_parent(world, root_handle, entity));
+        ParrotVideo_set_object_parent(renderable->object_handle, get_parent(world, root_handle, entity));
     }
 }
 
@@ -242,30 +243,32 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
         ParrotVideo_object_clear_text(renderable->object_handle);
     }
 
-    ParrotVideoSceneUIWindowComponent *ui_window =
-        ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneUIWindowComponent);
-    if (ui_window) {
-        if (!ParrotVideo_object_has_ui_window(renderable->object_handle)) {
-            ParrotVideo_object_add_ui_window(renderable->object_handle, ui_window->width, ui_window->height);
-        }
-
-        ParrotVideo_object_set_ui_window_title(renderable->object_handle, ui_window->title);
-
-        if (!ui_window->resize) {
-            ui_window->width = ParrotVideo_object_get_ui_window_width(renderable->object_handle);
-            ui_window->height = ParrotVideo_object_get_ui_window_height(renderable->object_handle);
-        } else {
-            ParrotVideo_object_set_ui_window_size(renderable->object_handle, ui_window->width, ui_window->height);
-        }
-
-        if (ParrotVideo_object_is_ui_window_close_requested(renderable->object_handle)) {
-            ui_window->close_requested = true;
-        }
-    } else {
-        if (ParrotVideo_object_has_ui_window(renderable->object_handle)) {
-            ParrotVideo_object_remove_ui_window(renderable->object_handle);
-        }
+    /*
+ParrotVideoSceneUIWindowComponent *ui_window =
+    ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneUIWindowComponent);
+if (ui_window) {
+    if (!ParrotVideo_object_has_ui_window(renderable->object_handle)) {
+        ParrotVideo_object_add_ui_window(renderable->object_handle, ui_window->width, ui_window->height);
     }
+
+    ParrotVideo_object_set_ui_window_title(renderable->object_handle, ui_window->title);
+
+    if (!ui_window->resize) {
+        ui_window->width = ParrotVideo_object_get_ui_window_width(renderable->object_handle);
+        ui_window->height = ParrotVideo_object_get_ui_window_height(renderable->object_handle);
+    } else {
+        ParrotVideo_object_set_ui_window_size(renderable->object_handle, ui_window->width, ui_window->height);
+    }
+
+    if (ParrotVideo_object_is_ui_window_close_requested(renderable->object_handle)) {
+        ui_window->close_requested = true;
+    }
+} else {
+    if (ParrotVideo_object_has_ui_window(renderable->object_handle)) {
+        ParrotVideo_object_remove_ui_window(renderable->object_handle);
+    }
+}
+    */
 }
 
 void ParrotVideoSceneSystem_update(ParrotSceneWorld *world, ParrotVideoObjectHandle root_handle) {
@@ -285,6 +288,11 @@ void ParrotVideoSceneSystem_update(ParrotSceneWorld *world, ParrotVideoObjectHan
 
     for (size_t i = 0; i < ParrotSceneWorld_query_result_count(world, query); i++) {
         ParrotSceneWorldEntity entity = ParrotSceneWorld_query_result_at(world, query, i);
+        if (ParrotSceneWorld_is_component_deletion_queued(world, entity, ParrotVideoSceneRenderableComponent)) {
+            ParrotVideo_delete_object(
+                ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRenderableComponent)->object_handle);
+            continue;
+        }
         ParrotVideoSceneSystem_sync_entity(world, entity);
     }
 }

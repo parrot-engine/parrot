@@ -40,6 +40,9 @@ export DRIVERS ?= default
 # [string] Extra CFLAGS to add to the build
 export EXTRA_CFLAGS ?= 
 
+# [string] Extra ASFLAGS to add to the build
+export EXTRA_ASFLAGS ?= 
+
 # [string] Extra LDFLAGS to add to the build
 export EXTRA_LDFLAGS ?= 
 

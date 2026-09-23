@@ -131,7 +131,7 @@ PARROT_API bool ParrotSceneWorld_is_component_registered(ParrotSceneWorld *self,
 #define ParrotSceneWorld_is_component_deletion_queued(self, entity, type)                                               \
     ParrotSceneWorld_is_component_deletion_queued_name(self, entity, PARROT_TYPE_STRING(type))
 #define ParrotSceneWorld_queue_delete_component(self, entity, type)                                                     \
-    ParrotSceneWorld_delete_component_name(self, entity, PARROT_TYPE_STRING(type))
+    ParrotSceneWorld_queue_delete_component_name(self, entity, PARROT_TYPE_STRING(type))
 
 PARROT_API void
 ParrotSceneWorld_add_component_name(ParrotSceneWorld *self, ParrotSceneWorldEntity entity, const char *name);

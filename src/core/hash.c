@@ -2,9 +2,16 @@
 
 extern uint32_t Parrot_crc32_table[];
 
-ParrotCRC32 Parrot_crc32(const void *void_data, size_t size) {
+ParrotCRC32 Parrot_crc32(const void *data, size_t size) {
+    return Parrot_crc32_combine(~0xFFFFFFFF, data, size);
+}
+
+ParrotCRC32 Parrot_crc32_combine(ParrotCRC32 crc, const void *void_data, size_t size) {
     const uint8_t *data = (uint8_t *)void_data;
-    ParrotCRC32 crc = 0xFFFFFFFF;
+
+    PARROT_FAIL_NULL(data);
+
+    crc = ~crc;
 
     while (size-- > 0) {
 #ifdef PARROT_AVOID_MEMORY
@@ -15,11 +22,14 @@ ParrotCRC32 Parrot_crc32(const void *void_data, size_t size) {
             uint32_t mask = -(crc & 1);
             crc = (crc >> 1) ^ (mask & poly);
         }
-    }
-    return ~crc;
 #else
         crc = Parrot_crc32_table[(crc ^ *(data++)) & 0xFF] ^ (crc >> 8);
+#endif
     }
+
+#ifdef PARROT_AVOID_MEMORY
+    return ~crc;
+#else
     return crc;
 #endif
 }

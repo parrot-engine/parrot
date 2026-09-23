@@ -4,7 +4,6 @@
 #include "parrot/core/scope.h"
 #include "parrot/drivers/gl_driver.h"
 #include "parrot/stb_ds.h"
-#include "parrot/video/video.h"
 #include <GL/gl.h>
 #include <GL/glx.h>
 #include <X11/Xlib.h>
@@ -40,12 +39,6 @@ struct Driver {
     ParrotGLDriver *gl_driver;
 };
 
-static void driver_viewport_scope_delete_context_wrapper(void *ctx) {
-    ParrotVideoDriverViewport *self = ctx;
-
-    self->driver->gl_driver->delete_context(self->gl_context);
-}
-
 static ParrotVideoDriverViewport *driver_create_viewport(ParrotVideoDriver *base, int width, int height) {
     ParrotVideoDriverViewport *self = PARROT_ALLOC(ParrotVideoDriverViewport);
 
@@ -60,10 +53,13 @@ static ParrotVideoDriverViewport *driver_create_viewport(ParrotVideoDriver *base
     ParrotScope_push_free(self->scope, self->framebuffer);
 
     self->gl_context = self->driver->gl_driver->create_context(self->driver->gl_driver, 1, 1, width, height);
-    ParrotScope_push(self->scope, driver_viewport_scope_delete_context_wrapper, self);
+    ParrotScope_push(self->scope, self->driver->gl_driver->vdelete_context, self->gl_context);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
 
     return self;
 }
@@ -205,4 +201,8 @@ ParrotVideoDriver *Parrot_gl11_video_driver_new(ParrotGLDriver *gl_driver) {
 
 void Parrot_gl11_video_driver_delete(ParrotVideoDriver *base) {
     ParrotScope_delete(((Driver *)base)->scope);
+}
+
+void Parrot_gl11_video_driver_vdelete(void *base) {
+    Parrot_gl11_video_driver_delete(base);
 }

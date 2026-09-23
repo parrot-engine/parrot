@@ -41,6 +41,12 @@ static void scope_context_destroy_context_wrapper(void *ctx) {
     glXDestroyContext(self->driver->display, self->context);
 }
 
+static void scope_context_unbind_context(void *ctx) {
+    ParrotGLDriverContext *self = ctx;
+
+    glXMakeContextCurrent(self->driver->display, None, None, self->context);
+}
+
 static ParrotGLDriverContext *driver_create_context(ParrotGLDriver *base, int major, int minor, int width, int height) {
     ParrotGLDriverContext *self = PARROT_ALLOC(ParrotGLDriverContext);
 
@@ -91,6 +97,8 @@ static ParrotGLDriverContext *driver_create_context(ParrotGLDriver *base, int ma
 
     glXMakeContextCurrent(self->driver->display, self->pbuffer, self->pbuffer, self->context);
 
+    ParrotScope_push(self->scope, scope_context_unbind_context, self);
+
     int actual_major, actual_minor;
     glGetIntegerv(GL_MAJOR_VERSION, &actual_major);
     glGetIntegerv(GL_MINOR_VERSION, &actual_minor);
@@ -105,6 +113,10 @@ static ParrotGLDriverContext *driver_create_context(ParrotGLDriver *base, int ma
 
 static void driver_delete_context(ParrotGLDriverContext *self) {
     ParrotScope_delete(self->scope);
+}
+
+static void driver_vdelete_context(void *self) {
+    driver_delete_context(self);
 }
 
 static void driver_use_context(ParrotGLDriverContext *self) {
@@ -123,6 +135,7 @@ ParrotGLDriver *Parrot_x11_gl_driver_new(void) {
 
     self->base.create_context = driver_create_context;
     self->base.delete_context = driver_delete_context;
+    self->base.vdelete_context = driver_vdelete_context;
     self->base.use_context = driver_use_context;
 
     self->display = XOpenDisplay(NULL);
@@ -137,4 +150,8 @@ ParrotGLDriver *Parrot_x11_gl_driver_new(void) {
 
 void Parrot_x11_gl_driver_delete(ParrotGLDriver *base) {
     ParrotScope_delete(((Driver *)base)->scope);
+}
+
+void Parrot_x11_gl_driver_vdelete(void *self) {
+    Parrot_x11_gl_driver_delete(self);
 }

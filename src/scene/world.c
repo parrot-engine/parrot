@@ -442,6 +442,17 @@ static ParrotCRC32 ParrotSceneWorld_query(ParrotSceneWorld *self, const ParrotSc
         ;
 
     ParrotCRC32 query_crc32 = Parrot_crc32(query, count * sizeof(ParrotSceneWorldQuery));
+    for (const ParrotSceneWorldQuery *filter = query; filter->type != ParrotSceneWorldQueryType_END; filter++) {
+        switch (filter->type) {
+        case ParrotSceneWorldQueryType_COMPONENT:
+            query_crc32 = Parrot_crc32_combine(
+                query_crc32, filter->data.component.name, strlen(filter->data.component.name) * sizeof(char));
+            break;
+        default:
+            break;
+        }
+    }
+
     PARROT_RET_COND_V(hmgeti(self->hm_queries, query_crc32) >= 0, query_crc32);
 
     ParrotSceneWorldCachedQuery cached_query = {

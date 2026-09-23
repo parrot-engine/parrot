@@ -9,6 +9,7 @@
 #include <X11/extensions/dbe.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -78,8 +79,8 @@ static ParrotWindowDriverWindow *driver_create_window(ParrotWindowDriver *base, 
     ParrotWindowDriverWindow *self = PARROT_ALLOC(ParrotWindowDriverWindow);
 
     self->driver = (Driver *)base;
-    self->scope = ParrotScope_new(self->driver->scope);
 
+    self->scope = ParrotScope_new(self->driver->scope);
     ParrotScope_push_free(self->scope, self);
 
     self->width = width;
@@ -98,7 +99,9 @@ static ParrotWindowDriverWindow *driver_create_window(ParrotWindowDriver *base, 
                                        BlackPixel(self->driver->display, self->screen),
                                        BlackPixel(self->driver->display, self->screen));
     ParrotScope_push(self->scope, driver_window_scope_destroy_window_wrapper, self);
-    XSelectInput(self->driver->display, self->window, ExposureMask | KeyPress | KeyRelease);
+    XSelectInput(self->driver->display,
+                 self->window,
+                 ExposureMask | KeyPress | KeyRelease | ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
 
     XMapWindow(self->driver->display, self->window);
 
@@ -173,7 +176,6 @@ static bool driver_poll_events(ParrotWindowDriverWindow *self, ParrotWindowDrive
 
                 XDestroyImage(self->image);
 
-                free(self->image_data);
                 self->image_data = calloc(attrs.width * attrs.height, sizeof(uint32_t));
                 self->image = XCreateImage(self->driver->display,
                                            DefaultVisual(self->driver->display, self->screen),
@@ -246,6 +248,49 @@ static bool driver_poll_events(ParrotWindowDriverWindow *self, ParrotWindowDrive
             };
             return true;
         } break;
+        case ButtonPress:
+        case ButtonRelease: {
+            bool button_down = event.type == ButtonPress;
+
+            ParrotWindowDriverEventMouseButton button = ParrotWindowDriverEventMouseButton_LEFT;
+            switch (event.xbutton.button) {
+            case 1:
+                button = ParrotWindowDriverEventMouseButton_LEFT;
+                break;
+            case 2:
+                button = ParrotWindowDriverEventMouseButton_MIDDLE;
+                break;
+            case 3:
+                button = ParrotWindowDriverEventMouseButton_RIGHT;
+                break;
+            default:
+                break;
+            }
+
+            *out_event = (ParrotWindowDriverEvent){
+                .type = ParrotWindowDriverEventType_MOUSE_BUTTON,
+                .data.mouse_button =
+                    {
+                        .button_down = button_down,
+                        .button = button,
+                    },
+            };
+            return true;
+        } break;
+        case MotionNotify: {
+            *out_event = (ParrotWindowDriverEvent){
+                .type = ParrotWindowDriverEventType_MOUSE_MOTION,
+                .data.mouse_motion =
+                    {
+                        .position =
+                            (ParrotVec2){
+                                event.xmotion.x,
+                                event.xmotion.y,
+                            },
+                    },
+            };
+            return true;
+        } break;
         }
     }
 
@@ -285,20 +330,115 @@ static int driver_get_height(ParrotWindowDriverWindow *self) {
     return self->height;
 }
 
+static void convert_pixels(uint32_t *restrict bgrx8888, const uint32_t *restrict rgbx8888, int width, int height) {
+    size_t total = width * height;
+#ifdef PARROT_ARCH_x86_64
+    uint32_t cpuid1_eax = 0;
+    uint32_t cpuid1_ecx = 0;
+    __asm__ volatile("cpuid" : "=a"(cpuid1_eax), "=c"(cpuid1_ecx) : "a"(1), "c"(0) : "ebx", "edx");
+
+    uint32_t cpuid7_ebx = 0;
+    __asm__ volatile("cpuid" : "=b"(cpuid7_ebx) : "a"(7), "c"(0) : "edx");
+
+    bool has_osxsave = (cpuid1_ecx >> 27) & 1;
+    // Not true tests until has_osxsave block
+    bool has_avx512 = has_osxsave && (cpuid7_ebx >> 16) & 1;
+    bool has_avx2 = has_osxsave && (cpuid7_ebx >> 5) & 1;
+
+    bool has_ssse3 = (cpuid1_ecx >> 9) & 1;
+    bool has_movbe = (cpuid1_ecx >> 22) & 1;
+
+    if (has_osxsave) {
+        uint32_t xgetbv_eax = 0;
+        __asm__ volatile("xgetbv" : "=a"(xgetbv_eax) : "c"(0) : "edx");
+        has_avx2 = has_avx2 && (xgetbv_eax & 0x6) == 0x6;
+        has_avx512 = has_avx512 && (xgetbv_eax & 0xE6) == 0xE6;
+    }
+
+    static const uint8_t shuffle_mask[64] = {
+        2,  1,  0,  3,  6,  5,  4,  7,  10, 9,  8,  11, 14, 13, 12, 15,
+
+        18, 17, 16, 19, 22, 21, 20, 23, 26, 25, 24, 27, 30, 29, 28, 31,
+
+        34, 33, 32, 35, 38, 37, 36, 39, 42, 41, 40, 43, 46, 45, 44, 47,
+
+        50, 49, 48, 51, 54, 53, 52, 55, 58, 57, 56, 59, 62, 61, 60, 63,
+    };
+
+    if (has_avx512) {
+        while (total >= 16) {
+            __asm__ volatile("vmovdqu64 %1, %%zmm0\n\t"
+                             "vpshufb %2, %%zmm0, %%zmm0\n\t"
+                             "vmovdqu64 %%zmm0, %0\n\t"
+                             : "=m"(*bgrx8888)
+                             : "m"(*rgbx8888), "m"(shuffle_mask)
+                             : "zmm0");
+
+            rgbx8888 += 16;
+            bgrx8888 += 16;
+            total -= 16;
+        }
+    }
+
+    if (has_avx2) {
+        while (total >= 8) {
+            __asm__ volatile("vmovdqu %1, %%ymm0\n\t"
+                             "vpshufb %2, %%ymm0, %%ymm0\n\t"
+                             "vmovdqu %%ymm0, %0\n\t"
+                             : "=m"(*bgrx8888)
+                             : "m"(*rgbx8888), "m"(shuffle_mask)
+                             : "ymm0");
+
+            rgbx8888 += 8;
+            bgrx8888 += 8;
+            total -= 8;
+        }
+    }
+
+    if (has_ssse3) {
+        while (total >= 4) {
+            __asm__ volatile("movdqu %1, %%xmm0\n\t"
+                             "pshufb %2, %%xmm0\n\t"
+                             "movdqu %%xmm0, %0\n\t"
+                             : "=m"(*bgrx8888)
+                             : "m"(*rgbx8888), "m"(shuffle_mask)
+                             : "xmm0");
+
+            rgbx8888 += 4;
+            bgrx8888 += 4;
+            total -= 4;
+        }
+    }
+
+    if (has_movbe) {
+        for (size_t i = 0; i < total; i++) {
+            __asm__ volatile("movbe %1, %0" : "=m"(bgrx8888[i]) : "r"(rgbx8888[i] << 8) : "eax");
+        }
+        return;
+    }
+
+    for (size_t i = 0; i < total; i++) {
+        __asm__ volatile("bswap %1\n"
+                         "movl %1, %0"
+                         : "=m"(bgrx8888[i])
+                         : "r"(rgbx8888[i] << 8)
+                         : "eax");
+    }
+#else
+    for (size_t i = 0; i < total; i++) {
+        const uint32_t px = rgbx8888[i];
+        bgrx8888[i] = ((px & 0x0000FF) << 16) | (px & 0x00FF00) | ((px & 0xFF0000) >> 16);
+    }
+#endif
+}
+
 static void driver_set_image(ParrotWindowDriverWindow *self, const uint32_t *rgbx8888) {
     PARROT_FAIL_NULL(self);
 
     XWindowAttributes attrs;
     XGetWindowAttributes(self->driver->display, self->window, &attrs);
 
-    for (int y = 0; y < attrs.height; y++) {
-        for (int x = 0; x < attrs.width; x++) {
-            uint8_t r = rgbx8888[y * attrs.width + x] & 0xFF;
-            uint8_t g = (rgbx8888[y * attrs.width + x] >> 8) & 0xFF;
-            uint8_t b = (rgbx8888[y * attrs.width + x] >> 16) & 0xFF;
-            self->image_data[y * attrs.width + x] = ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
-        }
-    }
+    convert_pixels(self->image_data, rgbx8888, attrs.width, attrs.height);
     XPutImage(self->driver->display, self->back_buffer, self->gc, self->image, 0, 0, 0, 0, attrs.width, attrs.height);
 
     XdbeSwapInfo swap_info = {self->window, XdbeBackground};
@@ -590,4 +730,8 @@ ParrotWindowDriver *Parrot_x11_window_driver_new(void) {
 
 void Parrot_x11_window_driver_delete(ParrotWindowDriver *self) {
     ParrotScope_delete(((Driver *)self)->scope);
+}
+
+void Parrot_x11_window_driver_vdelete(void *self) {
+    Parrot_x11_window_driver_delete(self);
 }

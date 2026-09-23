@@ -4,7 +4,16 @@
 #include <stdint.h>
 #include <string.h>
 
+typedef struct {
+    char character;
+    ParrotVideoFontChar data;
+    uint8_t *bitmap;
+} ParrotVideoFontCacheEntry;
+
 struct ParrotVideoFont {
+    ParrotVideoFontCacheEntry cache[256];
+    uint8_t cache_ptr;
+
     stbtt_fontinfo font;
 };
 
@@ -33,6 +42,12 @@ ParrotVideoFont *ParrotVideoFont_new_default(ParrotVideoFontDefaultStyle style) 
 void ParrotVideoFont_delete(ParrotVideoFont *self) {
     PARROT_FAIL_NULL(self);
 
+    for (size_t i = 0; i < 256; i++) {
+        if (self->cache[i].bitmap) {
+            stbtt_FreeBitmap(self->cache[i].bitmap, NULL);
+        }
+    }
+
     free(self);
 }
 
@@ -44,22 +59,43 @@ ParrotVideoFontChar ParrotVideoFont_char(ParrotVideoFont *self, float size, char
     PARROT_FAIL_NULL(self);
 
     ParrotVideoFontChar character = {0};
+    bool cache_hit = false;
 
-    float scale = stbtt_ScaleForPixelHeight(&self->font, size);
+    uint8_t *bitmap = NULL;
+    for (size_t i = 0; i < 256; i++) {
+        if (self->cache[i].bitmap && self->cache[i].character == c) {
+            character = self->cache[i].data;
+            bitmap = self->cache[i].bitmap;
+            cache_hit = true;
+            break;
+        }
+    }
 
-    uint8_t *bitmap = stbtt_GetCodepointBitmap(
-        &self->font, 0, scale, c, &character.width, &character.height, &character.x, &character.y);
+    if (!cache_hit) {
+        float scale = stbtt_ScaleForPixelHeight(&self->font, size);
 
-    int left_side_bearing;
-    stbtt_GetCodepointHMetrics(&self->font, c, &character.advance, &left_side_bearing);
-    character.advance *= scale;
+        bitmap = stbtt_GetCodepointBitmap(
+            &self->font, 0, scale, c, &character.width, &character.height, &character.x, &character.y);
+
+        int left_side_bearing;
+        stbtt_GetCodepointHMetrics(&self->font, c, &character.advance, &left_side_bearing);
+        character.advance *= scale;
+
+        if (self->cache[self->cache_ptr].bitmap) {
+            stbtt_FreeBitmap(self->cache[self->cache_ptr].bitmap, NULL);
+        }
+
+        self->cache[self->cache_ptr++] = (ParrotVideoFontCacheEntry){
+            .character = c,
+            .data = character,
+            .bitmap = bitmap,
+        };
+    }
 
     character.bitmap = calloc(character.width * character.height, sizeof(uint8_t));
     if (bitmap) {
         memcpy(character.bitmap, bitmap, character.width * character.height * sizeof(uint8_t));
     }
-
-    stbtt_FreeBitmap(bitmap, NULL);
 
     return character;
 }
@@ -90,5 +126,8 @@ ParrotVec2 ParrotVideoFont_measure_text(ParrotVideoFont *self, float size, const
         position.x += character.advance;
     }
 
-    return position;
+    return (ParrotVec2){
+        position.x,
+        PARROT_MAX(max_character_height, position.y),
+    };
 }

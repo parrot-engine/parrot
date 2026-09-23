@@ -1,5 +1,5 @@
-export CC=$(ARCH)-linux-gnu-gcc
-export AR=$(ARCH)-linux-gnu-gcc-ar
+export CC ?= $(ARCH)-linux-gnu-gcc
+export AR ?= $(ARCH)-linux-gnu-gcc-ar
 export STRIP=strip
 
 export PLATFORM_HAS_OS ?= 1

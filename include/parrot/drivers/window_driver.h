@@ -2,6 +2,7 @@
 #define PARROT_PARROT_INCLUDE_PARROT_DRIVERS_WINDOW_DRIVER_H_
 
 #include "parrot/core/api.h"
+#include "parrot/core/math.h"
 #include "parrot/drivers/window_driver.keys.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,7 +13,18 @@ typedef enum {
     ParrotWindowDriverEventType_RESIZE,
 
     ParrotWindowDriverEventType_KEY,
+
+    ParrotWindowDriverEventType_MOUSE_BUTTON,
+    ParrotWindowDriverEventType_MOUSE_MOTION,
 } ParrotWindowDriverEventType;
+
+typedef enum {
+    ParrotWindowDriverEventMouseButton_LEFT = 0,
+    ParrotWindowDriverEventMouseButton_MIDDLE,
+    ParrotWindowDriverEventMouseButton_RIGHT,
+
+    ParrotWindowDriverEventMouseButton_COUNT,
+} ParrotWindowDriverEventMouseButton;
 
 typedef struct {
     ParrotWindowDriverEventType type;
@@ -44,6 +56,14 @@ typedef struct {
             bool mod_ralt;
             bool mod_caps_lock;
         } key;
+
+        struct {
+            bool button_down;
+            ParrotWindowDriverEventMouseButton button;
+        } mouse_button;
+        struct {
+            ParrotVec2 position;
+        } mouse_motion;
     } data;
 } ParrotWindowDriverEvent;
 
@@ -71,6 +91,6 @@ struct ParrotWindowDriver {
 /// Returns NULL if error
 PARROT_API ParrotWindowDriver *Parrot_x11_window_driver_new(void);
 PARROT_API void Parrot_x11_window_driver_delete(ParrotWindowDriver *self);
-PARROT_API void ParrotWindowDriver_vdelete(void *self);
+PARROT_API void Parrot_x11_window_driver_vdelete(void *self);
 
 #endif // PARROT_PARROT_INCLUDE_PARROT_DRIVERS_WINDOW_DRIVER_H_

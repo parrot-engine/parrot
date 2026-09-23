@@ -3,11 +3,17 @@
 
 #include "parrot/core/api.h"
 #include "parrot/core/math.h"
+#include "parrot/core/scope.h"
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
 #include "parrot/video/font.h"
 #include <stdbool.h>
 #include <stdint.h>
+
+typedef void (*ParrotVideoCustomDrawFunc)(ParrotScope *scope,
+                                          ParrotVideoDriver *driver,
+                                          ParrotVideoDriverViewport *viewport,
+                                          ParrotGMatSet matrix);
 
 typedef enum {
     ParrotVideoObjectEventType_WINDOW = 0,
@@ -26,6 +32,7 @@ typedef struct {
 
 PARROT_API void ParrotVideo_init(ParrotWindowDriver *window_driver, ParrotVideoDriver *video_driver);
 PARROT_API void ParrotVideo_shutdown(void);
+PARROT_API void ParrotVideo_vshutdown(void *unused);
 PARROT_API bool ParrotVideo_is_initialized(void);
 
 PARROT_API ParrotVideoObjectHandle ParrotVideo_get_root(void);
@@ -52,14 +59,19 @@ PARROT_API void ParrotVideo_object_set_window_title(ParrotVideoObjectHandle hand
 PARROT_API void ParrotVideo_object_set_window_size(ParrotVideoObjectHandle handle, int width, int height);
 PARROT_API int ParrotVideo_object_get_window_width(ParrotVideoObjectHandle handle);
 PARROT_API int ParrotVideo_object_get_window_height(ParrotVideoObjectHandle handle);
-PARROT_API bool ParrotVideo_object_is_window_key_down(ParrotVideoObjectHandle handle, ParrotWindowDriverEventKey key);
-PARROT_API bool ParrotVideo_object_is_window_logical_key_down(ParrotVideoObjectHandle handle,
-                                                              ParrotWindowDriverEventKey key);
 
 PARROT_API void ParrotVideo_object_add_viewport(ParrotVideoObjectHandle handle, int width, int height);
 PARROT_API void ParrotVideo_object_remove_viewport(ParrotVideoObjectHandle handle);
 PARROT_API bool ParrotVideo_object_has_viewport(ParrotVideoObjectHandle handle);
 PARROT_API void ParrotVideo_object_set_viewport_size(ParrotVideoObjectHandle handle, int width, int height);
+PARROT_API int ParrotVideo_object_get_viewport_width(ParrotVideoObjectHandle handle);
+PARROT_API int ParrotVideo_object_get_viewport_height(ParrotVideoObjectHandle handle);
+PARROT_API bool ParrotVideo_object_is_viewport_key_down(ParrotVideoObjectHandle handle, ParrotWindowDriverEventKey key);
+PARROT_API bool ParrotVideo_object_is_viewport_logical_key_down(ParrotVideoObjectHandle handle,
+                                                                ParrotWindowDriverEventKey key);
+PARROT_API bool ParrotVideo_object_is_viewport_mouse_button_down(ParrotVideoObjectHandle handle,
+                                                                 ParrotWindowDriverEventMouseButton button);
+PARROT_API ParrotVec2 ParrotVideo_object_get_viewport_mouse_position(ParrotVideoObjectHandle handle);
 
 PARROT_API void ParrotVideo_object_add_camera(ParrotVideoObjectHandle handle);
 PARROT_API void ParrotVideo_object_remove_camera(ParrotVideoObjectHandle handle);
@@ -82,6 +94,11 @@ PARROT_API void
 ParrotVideo_object_set_text(ParrotVideoObjectHandle handle, ParrotVideoFont *font, float size, const char *text);
 PARROT_API void ParrotVideo_object_clear_text(ParrotVideoObjectHandle handle);
 
+PARROT_API void ParrotVideo_object_set_custom_draw(ParrotVideoObjectHandle handle,
+                                                   /* Freed if not NULL on deletion */ ParrotScope *scope,
+                                                   ParrotVideoCustomDrawFunc func);
+PARROT_API void ParrotVideo_object_clear_custom_draw(ParrotVideoObjectHandle handle);
+
 PARROT_API void ParrotVideo_object_add_ui_window(ParrotVideoObjectHandle handle, int width, int height);
 PARROT_API void ParrotVideo_object_remove_ui_window(ParrotVideoObjectHandle handle);
 PARROT_API bool ParrotVideo_object_has_ui_window(ParrotVideoObjectHandle handle);
@@ -90,10 +107,6 @@ PARROT_API void ParrotVideo_object_set_ui_window_title(ParrotVideoObjectHandle h
 PARROT_API void ParrotVideo_object_set_ui_window_size(ParrotVideoObjectHandle handle, int width, int height);
 PARROT_API int ParrotVideo_object_get_ui_window_width(ParrotVideoObjectHandle handle);
 PARROT_API int ParrotVideo_object_get_ui_window_height(ParrotVideoObjectHandle handle);
-
-PARROT_API void ParrotVideo_object_add_ui_(ParrotVideoObjectHandle handle);
-PARROT_API void ParrotVideo_object_remove_ui_(ParrotVideoObjectHandle handle);
-PARROT_API bool ParrotVideo_object_has_ui_(ParrotVideoObjectHandle handle);
 
 PARROT_API void ParrotVideo_render(void);
 
