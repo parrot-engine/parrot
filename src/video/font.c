@@ -6,6 +6,8 @@
 
 typedef struct {
     char character;
+    float size;
+
     ParrotVideoFontChar data;
     uint8_t *bitmap;
 } ParrotVideoFontCacheEntry;
@@ -63,9 +65,11 @@ ParrotVideoFontChar ParrotVideoFont_char(ParrotVideoFont *self, float size, char
 
     uint8_t *bitmap = NULL;
     for (size_t i = 0; i < 256; i++) {
-        if (self->cache[i].bitmap && self->cache[i].character == c) {
-            character = self->cache[i].data;
-            bitmap = self->cache[i].bitmap;
+        ParrotVideoFontCacheEntry entry = self->cache[i];
+        if (entry.bitmap && entry.character == c && entry.size == size) {
+            character = entry.data;
+            bitmap = entry.bitmap;
+
             cache_hit = true;
             break;
         }
@@ -81,15 +85,19 @@ ParrotVideoFontChar ParrotVideoFont_char(ParrotVideoFont *self, float size, char
         stbtt_GetCodepointHMetrics(&self->font, c, &character.advance, &left_side_bearing);
         character.advance *= scale;
 
-        if (self->cache[self->cache_ptr].bitmap) {
-            stbtt_FreeBitmap(self->cache[self->cache_ptr].bitmap, NULL);
-        }
+        if (bitmap) {
+            if (self->cache[self->cache_ptr].bitmap) {
+                stbtt_FreeBitmap(self->cache[self->cache_ptr].bitmap, NULL);
+            }
 
-        self->cache[self->cache_ptr++] = (ParrotVideoFontCacheEntry){
-            .character = c,
-            .data = character,
-            .bitmap = bitmap,
-        };
+            self->cache[self->cache_ptr++] = (ParrotVideoFontCacheEntry){
+                .character = c,
+                .size = size,
+
+                .data = character,
+                .bitmap = bitmap,
+            };
+        }
     }
 
     character.bitmap = calloc(character.width * character.height, sizeof(uint8_t));
