@@ -216,13 +216,20 @@ void ParrotUISystem_update(ParrotUISystem *self, ParrotVideoObjectHandle viewpor
                     continue;
                 }
 
+                ParrotReal max_z = -INFINITY;
                 for (size_t j = arrlen(ui_internal->arr_hit_zones); j > 0; j--) {
                     ParrotUIInternalHitZone zone = ui_internal->arr_hit_zones[j - 1];
 
                     ParrotMat combined = ParrotGMatSet_combine(&zone.matrix);
-                    ParrotVec2 zone_min_ndc = ParrotMat_transform2(combined, zone.position);
+
+                    ParrotVec3 zone_min_ndc = ParrotMat_transform3(combined, ParrotVec3_upgrade(zone.position));
                     ParrotVec2 zone_max_ndc = ParrotMat_transform2(
                         combined, (ParrotVec2){zone.position.x + zone.size.x, zone.position.y + zone.size.y});
+
+                    ParrotReal z = zone_min_ndc.z;
+                    if (z <= max_z) {
+                        continue;
+                    }
 
                     ParrotVec2 zone_min_screen = {
                         (zone_min_ndc.x + 1) / 2 * screen_width,
@@ -254,7 +261,7 @@ void ParrotUISystem_update(ParrotUISystem *self, ParrotVideoObjectHandle viewpor
                                 },
                         };
                         self->mouse_button_hit_found[btn] = true;
-                        break;
+                        max_z = z;
                     }
                 }
 
