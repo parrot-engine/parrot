@@ -127,10 +127,10 @@ static void init(ParrotMainLoopRunSettings *settings) {
 
         ParrotUIComponent *ui = ParrotSceneWorld_get_component(world, window, ParrotUIComponent);
         ui->font = font;
+        ui->min_width = 640;
+        ui->min_height = 480;
 
         ParrotUIWindowComponent *ui_window = ParrotSceneWorld_get_component(world, window, ParrotUIWindowComponent);
-        ui_window->width = 640;
-        ui_window->height = 480;
         ui_window->title = "Test (sub) window";
     }
 

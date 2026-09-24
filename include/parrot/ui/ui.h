@@ -10,6 +10,14 @@
 typedef struct {
     ParrotVideoObjectHandle object_handle;
 
+    int width;
+    int height;
+
+    // >0 = No cap
+    int min_width, max_width;
+    // >0 = No cap
+    int min_height, max_height;
+
     /// NULL = parent's font or crash if root
     ParrotVideoFont *font;
 } ParrotUIComponent;
@@ -19,6 +27,14 @@ static const ParrotReflectDescription ParrotUIComponent_description[] = {
 
     PARROT_REFLECT_TYPE_FIELD(ParrotUIComponent, ParrotVideoObjectHandle, object_handle, ),
 
+    PARROT_REFLECT_TYPE_FIELD(ParrotUIComponent, int, width, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotUIComponent, int, height, ),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotUIComponent, int, min_width, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotUIComponent, int, max_width, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotUIComponent, int, min_height, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotUIComponent, int, max_height, ),
+
     PARROT_REFLECT_TYPE_FIELD(ParrotUIComponent, ParrotVideoFont *, font, ),
 
     PARROT_REFLECT_END(),
@@ -27,11 +43,8 @@ static const ParrotReflectDescription ParrotUIComponent_description[] = {
 typedef struct {
     const char *title;
 
-    int width;
-    int height;
-    bool resize;
-
-    bool immovable;
+    bool resizable;
+    bool movable;
 
     bool close_requested;
 } ParrotUIWindowComponent;
@@ -41,11 +54,7 @@ static const ParrotReflectDescription ParrotUIWindowComponent_description[] = {
 
     PARROT_REFLECT_TYPE_FIELD(ParrotUIWindowComponent, const char *, title, ),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotUIWindowComponent, int, width, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotUIWindowComponent, int, height, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotUIWindowComponent, bool, resize, ),
-
-    PARROT_REFLECT_TYPE_FIELD(ParrotUIWindowComponent, bool, immovable, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotUIWindowComponent, bool, movable, ),
 
     PARROT_REFLECT_TYPE_FIELD(ParrotUIWindowComponent, bool, close_requested, ),
 
