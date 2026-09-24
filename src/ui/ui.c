@@ -26,6 +26,10 @@ typedef struct {
                      uint64_t frames,
                      ParrotSceneWorld *world,
                      ParrotSceneWorldEntity entity);
+    void (*on_hover)(ParrotVideoObjectHandle viewport_handle,
+                     ParrotVec2 normalized_position,
+                     ParrotSceneWorld *world,
+                     ParrotSceneWorldEntity entity);
 } ParrotUIInternalHitZone;
 
 struct ParrotUIInternalHitInfo {
@@ -211,65 +215,84 @@ void ParrotUISystem_update(ParrotUISystem *self, ParrotVideoObjectHandle viewpor
         ParrotVideo_set_object_matrix(ui->object_handle, ParrotTransform_calculate_matrix(transform));
 
         for (ParrotWindowDriverEventMouseButton btn = 0; btn < ParrotWindowDriverEventMouseButton_COUNT; btn++) {
-            if (ParrotVideo_object_is_viewport_mouse_button_down(viewport_handle, btn)) {
-                if (++self->mouse_button_frames[btn] != 1) {
-                    continue;
-                }
-
-                ParrotReal max_z = -INFINITY;
-                for (size_t j = arrlen(ui_internal->arr_hit_zones); j > 0; j--) {
-                    ParrotUIInternalHitZone zone = ui_internal->arr_hit_zones[j - 1];
-
-                    ParrotMat combined = ParrotGMatSet_combine(&zone.matrix);
-
-                    ParrotVec3 zone_min_ndc = ParrotMat_transform3(combined, ParrotVec3_upgrade(zone.position));
-                    ParrotVec2 zone_max_ndc = ParrotMat_transform2(
-                        combined, (ParrotVec2){zone.position.x + zone.size.x, zone.position.y + zone.size.y});
-
-                    ParrotReal z = zone_min_ndc.z;
-                    if (z <= max_z) {
-                        continue;
-                    }
-
-                    ParrotVec2 zone_min_screen = {
-                        (zone_min_ndc.x + 1) / 2 * screen_width,
-                        (zone_min_ndc.y + 1) / 2 * screen_height,
-                    };
-                    ParrotVec2 zone_max_screen = {
-                        (zone_max_ndc.x + 1) / 2 * screen_width,
-                        (zone_max_ndc.y + 1) / 2 * screen_height,
-                    };
-
-                    float y_min = PARROT_MIN(zone_min_screen.y, zone_max_screen.y);
-                    float y_max = PARROT_MAX(zone_min_screen.y, zone_max_screen.y);
-                    float x_min = PARROT_MIN(zone_min_screen.x, zone_max_screen.x);
-                    float x_max = PARROT_MAX(zone_min_screen.x, zone_max_screen.x);
-
-                    bool hit = mouse_screen.x >= x_min && mouse_screen.x <= x_max && mouse_screen.y >= y_min &&
-                               mouse_screen.y <= y_max;
-                    if (hit) {
-                        self->mouse_button_hit[btn] = (ParrotUIInternalHitInfo){
-                            .zone = zone,
-
-                            .viewport_handle = viewport_handle,
-                            .button = btn,
-
-                            .normalized_position =
-                                (ParrotVec2){
-                                    (mouse_screen.x - x_min) / (x_max - x_min) * 2 - 1,
-                                    (mouse_screen.y - y_min) / (y_max - y_min) * 2 - 1,
-                                },
-                        };
-                        self->mouse_button_hit_found[btn] = true;
-                        max_z = z;
-                    }
-                }
-
+            if (!ParrotVideo_object_is_viewport_mouse_button_down(viewport_handle, btn)) {
+                self->mouse_button_frames[btn] = 0;
+                self->mouse_button_hit_found[btn] = false;
                 continue;
             }
 
-            self->mouse_button_frames[btn] = 0;
-            self->mouse_button_hit_found[btn] = false;
+            self->mouse_button_frames[btn]++;
+        }
+
+        ParrotReal max_z = -INFINITY;
+        for (size_t j = arrlen(ui_internal->arr_hit_zones); j > 0; j--) {
+            ParrotUIInternalHitZone zone = ui_internal->arr_hit_zones[j - 1];
+
+            ParrotMat combined = ParrotGMatSet_combine(&zone.matrix);
+
+            ParrotVec3 zone_min_ndc = ParrotMat_transform3(combined, ParrotVec3_upgrade(zone.position));
+            ParrotVec2 zone_max_ndc = ParrotMat_transform2(
+                combined, (ParrotVec2){zone.position.x + zone.size.x, zone.position.y + zone.size.y});
+
+            ParrotReal z = zone_min_ndc.z;
+            if (z <= max_z) {
+                continue;
+            }
+
+            ParrotVec2 zone_min_screen = {
+                (zone_min_ndc.x + 1) / 2 * screen_width,
+                (zone_min_ndc.y + 1) / 2 * screen_height,
+            };
+            ParrotVec2 zone_max_screen = {
+                (zone_max_ndc.x + 1) / 2 * screen_width,
+                (zone_max_ndc.y + 1) / 2 * screen_height,
+            };
+
+            float y_min = PARROT_MIN(zone_min_screen.y, zone_max_screen.y);
+            float y_max = PARROT_MAX(zone_min_screen.y, zone_max_screen.y);
+            float x_min = PARROT_MIN(zone_min_screen.x, zone_max_screen.x);
+            float x_max = PARROT_MAX(zone_min_screen.x, zone_max_screen.x);
+
+            ParrotVec2 normalized_position = (ParrotVec2){
+                (mouse_screen.x - x_min) / (x_max - x_min) * 2 - 1,
+                (mouse_screen.y - y_min) / (y_max - y_min) * 2 - 1,
+            };
+
+            bool hit =
+                mouse_screen.x >= x_min && mouse_screen.x <= x_max && mouse_screen.y >= y_min && mouse_screen.y <= y_max;
+            if (!hit) {
+                continue;
+            }
+
+            bool click = false;
+
+            for (ParrotWindowDriverEventMouseButton btn = 0; btn < ParrotWindowDriverEventMouseButton_COUNT; btn++) {
+                if (self->mouse_button_frames[btn] <= 0) {
+                    continue;
+                }
+
+                click = true;
+
+                if (self->mouse_button_frames[btn] == 1) {
+                    continue;
+                }
+
+                self->mouse_button_hit[btn] = (ParrotUIInternalHitInfo){
+                    .zone = zone,
+
+                    .viewport_handle = viewport_handle,
+                    .button = btn,
+
+                    .normalized_position = normalized_position,
+                };
+                self->mouse_button_hit_found[btn] = true;
+            }
+
+            if (!click && zone.on_hover) {
+                zone.on_hover(viewport_handle, normalized_position, self->world, entity);
+            }
+
+            max_z = z;
         }
 
         for (ParrotWindowDriverEventMouseButton btn = 0; btn < ParrotWindowDriverEventMouseButton_COUNT; btn++) {
@@ -519,6 +542,8 @@ draw_entity(ParrotScope *scope, ParrotVideoDriver *driver, ParrotVideoDriverView
     ParrotUIWindowComponent *ui_window =
         ParrotSceneWorld_get_component(state->self->world, state->entity, ParrotUIWindowComponent);
     if (ui_window) {
+        ParrotReal min_titlebar_width = 0;
+
         const ParrotReal titlebar_height = 32;
         const ParrotReal resize_buffer = 8;
 
@@ -586,6 +611,9 @@ draw_entity(ParrotScope *scope, ParrotVideoDriver *driver, ParrotVideoDriverView
                   ui_window->title,
                   24,
                   ParrotColor_WHITE);
+        min_titlebar_width += title_size.x;
+
+        min_titlebar_width += 24;
 
         ParrotVec2 close_size = ParrotVideoFont_measure_text(font, 24, "X");
         ParrotVec2 close_offset = (ParrotVec2){width - close_size.x - 8, -titlebar_height / 4};
@@ -602,8 +630,9 @@ draw_entity(ParrotScope *scope, ParrotVideoDriver *driver, ParrotVideoDriverView
             .on_click = window_on_close_click,
         };
         draw_text(driver, viewport, close_zone.matrix, font, "X", 24, ParrotColor_WHITE);
+        min_titlebar_width += close_size.x;
 
-        ui->min_width = PARROT_MAX(ui->min_width, title_size.x + 24 + close_size.x);
+        ui->min_width = PARROT_MAX(ui->min_width, min_titlebar_width);
 
         arrpush(ui_internal->arr_hit_zones, resize_zone);
         arrpush(ui_internal->arr_hit_zones, body_zone);
