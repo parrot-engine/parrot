@@ -40,6 +40,8 @@ static void file_write(ParrotScope *scope, uint8_t byte) {
 }
 
 ParrotBuffer *ParrotBuffer_new_file(FILE *file) {
+    PARROT_FAIL_NULL(file);
+
     ParrotScope *scope = ParrotScope_new(NULL);
     ParrotScope_set_ctx(scope, file);
 
@@ -75,6 +77,8 @@ static void bytearray_write_wrapper(ParrotScope *scope, uint8_t byte) {
 
 ParrotBuffer *
 ParrotBuffer_new_bytearray(ParrotScope *write_scope, const void **p_data, size_t size, ParrotBufferWrite write) {
+    PARROT_FAIL_NULL(p_data);
+
     ParrotScope *scope = ParrotScope_new(NULL);
     BytearrayCtx *ctx = ParrotScope_alloc_ctx(scope, BytearrayCtx);
 

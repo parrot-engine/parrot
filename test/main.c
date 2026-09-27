@@ -105,6 +105,13 @@ static void init(ParrotMainLoopRunSettings *settings) {
         object_transform = ParrotSceneWorld_get_component(world, object, ParrotTransform);
         object_transform->rotation = (ParrotVec3){0, 0, 45};
 
+        /*FILE *file = fopen("/tmp/dump.bin", "wb+");
+        ParrotBuffer *buffer = ParrotBuffer_new_file(file);
+        Parrot_serialize_bytes(
+            buffer, reflect, ParrotReflect_resolve_type(reflect, "ParrotTransform"), object_transform, true);
+        ParrotBuffer_delete(buffer);
+        fclose(file);*/
+
         ParrotVideoSceneRenderableComponent *renderable =
             ParrotSceneWorld_get_component(world, object, ParrotVideoSceneRenderableComponent);
         renderable->tint = ParrotColor_RED;
