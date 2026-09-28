@@ -1,7 +1,7 @@
 #ifndef PARROT_PARROT_INCLUDE_PARROT_DRIVERS_GL_DRIVER_H_
 #define PARROT_PARROT_INCLUDE_PARROT_DRIVERS_GL_DRIVER_H_
 
-#include "parrot/core/api.h"
+#include "parrot/core/core.h"
 #include <stdbool.h>
 #include <stdint.h>
 

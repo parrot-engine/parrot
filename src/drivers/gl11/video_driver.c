@@ -1,7 +1,5 @@
 #include "parrot/drivers/video_driver.h"
-#include "parrot/core/hash.h"
-#include "parrot/core/math.h"
-#include "parrot/core/scope.h"
+#include "parrot/core/core.h"
 #include "parrot/drivers/gl_driver.h"
 #include "parrot/stb_ds.h"
 #include <GL/gl.h>

@@ -1,7 +1,5 @@
 #include "parrot/scene/world.h"
-#include "parrot/core/hash.h"
-#include "parrot/core/math.h"
-#include "parrot/core/util.h"
+#include "parrot/core/core.h"
 #include "parrot/stb_ds.h"
 #include "src/ds.h"
 #include <stddef.h>

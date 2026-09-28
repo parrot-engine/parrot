@@ -1,8 +1,7 @@
 #ifndef PARROT_PARROT_INCLUDE_PARROT_UI_UI_H_
 #define PARROT_PARROT_INCLUDE_PARROT_UI_UI_H_
 
-#include "parrot/core/api.h"
-#include "parrot/core/reflect.h"
+#include "parrot/core/core.h"
 #include "parrot/scene/world.h"
 #include "parrot/video/font.h"
 #include "parrot/video/video.h"

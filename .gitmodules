@@ -1,0 +1,3 @@
+[submodule "include/parrot/core"]
+	path = include/parrot/core
+	url = https://github.com/parrot-engine/core

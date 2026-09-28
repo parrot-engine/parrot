@@ -1,8 +1,7 @@
 #ifndef __SRC_PARROT_SRC_DS_H_
 #define __SRC_PARROT_SRC_DS_H_
 
-#include "parrot/core/hash.h"
-#include "parrot/core/scope.h"
+#include "parrot/core/core.h"
 #include <stddef.h>
 
 typedef struct {

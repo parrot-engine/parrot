@@ -1,7 +1,5 @@
 #include "parrot/video/scene.h"
-#include "parrot/core/math.h"
-#include "parrot/core/scope.h"
-#include "parrot/core/util.h"
+#include "parrot/core/core.h"
 #include "parrot/scene/world.h"
 #include "parrot/video/video.h"
 #include "stb_image.h"

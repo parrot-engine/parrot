@@ -1,6 +1,5 @@
 #include "parrot/ui/ui.h"
-#include "parrot/core/math.h"
-#include "parrot/core/scope.h"
+#include "parrot/core/core.h"
 #include "parrot/drivers/window_driver.h"
 #include "parrot/scene/world.h"
 #include "parrot/stb_ds.h"

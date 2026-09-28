@@ -1,7 +1,7 @@
 #ifndef PARROT_PARROT_INCLUDE_PARROT_VIDEO_VERTEX_H_
 #define PARROT_PARROT_INCLUDE_PARROT_VIDEO_VERTEX_H_
 
-#include "parrot/core/math.h"
+#include "parrot/core/core.h"
 
 typedef struct {
     ParrotVec3 position;

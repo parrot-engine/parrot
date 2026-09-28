@@ -1,7 +1,7 @@
 #ifndef PARROT_PARROT_INCLUDE_PARROT_UI_MODULE_H_
 #define PARROT_PARROT_INCLUDE_PARROT_UI_MODULE_H_
 
-#include "parrot/core/reflect.h"
+#include "parrot/core/core.h"
 #include "parrot/ui/ui.h"
 
 static const ParrotReflectDescription Parrot_ui_collection[] = {

@@ -1,6 +1,5 @@
 #include "parrot/drivers/gl_driver.h"
-#include "parrot/core/scope.h"
-#include "parrot/core/util.h"
+#include "parrot/core/core.h"
 #include <GL/glx.h>
 #include <X11/Xlib.h>
 #include <stdint.h>

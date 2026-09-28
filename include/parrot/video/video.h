@@ -1,9 +1,7 @@
 #ifndef __SRC_PARROT_INCLUDE_PARROT_VIDEO_VIDEO_H_
 #define __SRC_PARROT_INCLUDE_PARROT_VIDEO_VIDEO_H_
 
-#include "parrot/core/api.h"
-#include "parrot/core/math.h"
-#include "parrot/core/scope.h"
+#include "parrot/core/core.h"
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
 #include "parrot/video/font.h"
