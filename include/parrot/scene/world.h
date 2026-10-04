@@ -75,12 +75,13 @@ typedef struct {
 #define PARROT_SCENE_WORLD_QUERY_WITH_COMPONENT(type)                                                                   \
     PARROT_SCENE_WORLD_QUERY_WITH_COMPONENT_NAME(PARROT_TYPE_STRING(type))
 
-typedef void (*ParrotSceneWorldComponentConstructor)(ParrotSceneWorldEntity entity, void *component, void *user_data);
+typedef void (*ParrotSceneWorldComponentFunc)(ParrotSceneWorld *world, ParrotSceneWorldEntity entity, void *user_data);
 
 typedef struct {
     size_t size;
 
-    ParrotSceneWorldComponentConstructor constructor;
+    ParrotSceneWorldComponentFunc constructor;
+    ParrotSceneWorldComponentFunc destructor;
     void *user_data;
 } ParrotSceneWorldComponentDescription;
 

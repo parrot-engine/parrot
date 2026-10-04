@@ -10,14 +10,15 @@ struct ParrotVideoSceneSystem {
     ParrotVideoObjectHandle root_handle;
 };
 
-static void
-ParrotVideoSceneRenderableComponent_constructor(ParrotSceneWorldEntity entity, void *self_ptr, void *user_data) {
+static void ParrotVideoSceneRenderableComponent_constructor(ParrotSceneWorld *world,
+                                                            ParrotSceneWorldEntity entity,
+                                                            void *user_data) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
 
-    (void)entity;
     (void)user_data;
 
-    ParrotVideoSceneRenderableComponent *self = self_ptr;
+    ParrotVideoSceneRenderableComponent *self =
+        ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRenderableComponent);
 
     self->object_handle = ParrotVideo_create_object();
 
@@ -25,16 +26,41 @@ ParrotVideoSceneRenderableComponent_constructor(ParrotSceneWorldEntity entity, v
     self->tint = ParrotColor_WHITE;
 }
 
-static void ParrotVideoSceneCameraComponent_constructor(ParrotSceneWorldEntity entity, void *self_ptr, void *user_data) {
+static void
+ParrotVideoSceneRenderableComponent_destructor(ParrotSceneWorld *world, ParrotSceneWorldEntity entity, void *user_data) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
 
-    (void)entity;
     (void)user_data;
 
-    ParrotVideoSceneCameraComponent *self = self_ptr;
+    ParrotVideo_delete_object(
+        ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRenderableComponent)->object_handle);
+}
+
+static void
+ParrotVideoSceneCameraComponent_constructor(ParrotSceneWorld *world, ParrotSceneWorldEntity entity, void *user_data) {
+    PARROT_FAIL_COND(!ParrotVideo_is_initialized());
+
+    (void)user_data;
+
+    ParrotVideoSceneCameraComponent *self =
+        ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneCameraComponent);
 
     self->use_clear_color = true;
     self->clear_color = ParrotColor_newf(0.3, 0.3, 0.3);
+}
+
+static void ParrotVideoSceneRectTextureComponent_destructor(ParrotSceneWorld *world,
+                                                            ParrotSceneWorldEntity entity,
+                                                            void *user_data) {
+    PARROT_FAIL_COND(!ParrotVideo_is_initialized());
+
+    (void)user_data;
+
+    ParrotVideoSceneRectTextureComponent *self =
+        ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRectTextureComponent);
+    if (self->_rgba8888) {
+        stbi_image_free(self->_rgba8888);
+    }
 }
 
 void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
@@ -43,6 +69,7 @@ void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
                                         (ParrotSceneWorldComponentDescription){
                                             .size = sizeof(ParrotVideoSceneRenderableComponent),
                                             .constructor = ParrotVideoSceneRenderableComponent_constructor,
+                                            .destructor = ParrotVideoSceneRenderableComponent_destructor,
                                         });
 
     ParrotSceneWorld_register_component(world,
@@ -50,6 +77,13 @@ void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
                                         (ParrotSceneWorldComponentDescription){
                                             .size = sizeof(ParrotVideoSceneCameraComponent),
                                             .constructor = ParrotVideoSceneCameraComponent_constructor,
+                                        });
+
+    ParrotSceneWorld_register_component(world,
+                                        PARROT_TYPE_STRING(ParrotVideoSceneRectTextureComponent),
+                                        (ParrotSceneWorldComponentDescription){
+                                            .size = sizeof(ParrotVideoSceneRectTextureComponent),
+                                            .constructor = ParrotVideoSceneRectTextureComponent_destructor,
                                         });
 }
 
