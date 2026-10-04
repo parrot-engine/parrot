@@ -22,7 +22,7 @@ CONFIG_HEADER_GUARD_NAME := _$(shell openssl rand -hex 32)_PARROT_CONFIG_H_
 MODULE_BUILD_DIRS=
 MODULE_TARGETS=
 
-SRCS=$(shell echo *.c lib/*.c)
+SRCS=$(shell echo lib/*.c)
 OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
 
 .PHONY: all

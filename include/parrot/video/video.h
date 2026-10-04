@@ -1,7 +1,7 @@
 #ifndef __SRC_PARROT_INCLUDE_PARROT_VIDEO_VIDEO_H_
 #define __SRC_PARROT_INCLUDE_PARROT_VIDEO_VIDEO_H_
 
-#include "parrot/core/core.h"
+#include "parrot/core/scope.h"
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
 #include "parrot/video/font.h"
@@ -87,10 +87,6 @@ PARROT_API void ParrotVideo_object_clear_rect_texture(ParrotVideoObjectHandle ha
 PARROT_API void
 ParrotVideo_object_set_rect_texture_region(ParrotVideoObjectHandle handle, int x, int y, int width, int height);
 PARROT_API void ParrotVideo_object_set_rect_size(ParrotVideoObjectHandle handle, ParrotReal width, ParrotReal height);
-
-PARROT_API void
-ParrotVideo_object_set_text(ParrotVideoObjectHandle handle, ParrotVideoFont *font, float size, const char *text);
-PARROT_API void ParrotVideo_object_clear_text(ParrotVideoObjectHandle handle);
 
 PARROT_API void ParrotVideo_object_set_custom_draw(ParrotVideoObjectHandle handle,
                                                    /* Freed if not NULL on deletion */ ParrotScope *scope,

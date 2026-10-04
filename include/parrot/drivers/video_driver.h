@@ -1,10 +1,12 @@
 #ifndef PARROT_PARROT_INCLUDE_PARROT_DRIVERS_VIDEO_DRIVER_H_
 #define PARROT_PARROT_INCLUDE_PARROT_DRIVERS_VIDEO_DRIVER_H_
 
-#include "parrot/core/core.h"
+#include "parrot/core/math.h"
+#include "parrot/core/util.h"
 #include "parrot/drivers/gl_driver.h"
 #include "parrot/video/vertex.h"
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 typedef struct ParrotVideoDriver ParrotVideoDriver;

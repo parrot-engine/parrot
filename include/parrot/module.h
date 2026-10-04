@@ -1,7 +1,7 @@
 #ifndef PARROT_PARROT_INCLUDE_PARROT_MODULE_H_
 #define PARROT_PARROT_INCLUDE_PARROT_MODULE_H_
 
-#include "parrot/core/core.h"
+#include "parrot/core/module.h"
 #include "parrot/video/module.h"
 
 static const ParrotReflectDescription Parrot_collection[] = {

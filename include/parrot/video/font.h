@@ -1,7 +1,10 @@
 #ifndef PARROT_PARROT_INCLUDE_PARROT_VIDEO_FONT_H_
 #define PARROT_PARROT_INCLUDE_PARROT_VIDEO_FONT_H_
 
-#include "parrot/core/core.h"
+#include "parrot/core/binary.h"
+#include "parrot/core/math.h"
+#include "parrot/core/util.h"
+#include <stdint.h>
 
 typedef struct {
     int width;

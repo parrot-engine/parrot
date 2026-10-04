@@ -1,5 +1,5 @@
 #include "parrot/drivers/window_driver.h"
-#include "parrot/core/core.h"
+#include "parrot/core/scope.h"
 #include "parrot/drivers/window_driver.keys.h"
 #include <X11/X.h>
 #include <X11/Xlib.h>

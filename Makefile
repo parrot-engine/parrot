@@ -14,16 +14,20 @@ include config.default.mk
 
 PREFIX ?= /usr/local
 
+export CORE_DIR=$(ROOT_DIR)/core
 export ROOT_BUILD_DIR=$(ROOT_DIR)/build
 export BUILD_DIR=$(ROOT_BUILD_DIR)/$(BUILD_DIR_NAME)
 
 export INCLUDE_DIR=$(ROOT_DIR)/include
+export CORE_INCLUDE_DIR=$(CORE_DIR)/include
 export BUILD_INCLUDE_DIR=$(BUILD_DIR)/include
 
 export CFLAGS += $(EXTRA_CFLAGS) $(EXTRA_CLDFLAGS)
 export ASFLAGS += $(EXTRA_ASFLAGS)
 export LDFLAGS += $(EXTRA_LDFLAGS) $(EXTRA_CLDFLAGS)
-export CFLAGS += -I$(INCLUDE_DIR) -I$(BUILD_INCLUDE_DIR) -I$(ROOT_DIR)/platform/$(PLATFORM)/include
+
+export CFLAGS += -I$(INCLUDE_DIR) -I$(CORE_INCLUDE_DIR) -I$(BUILD_INCLUDE_DIR)
+export CFLAGS += -I$(ROOT_DIR)/platform/$(PLATFORM)/include
 
 export OUTPUT_NAME=libparrot
 export LIB_OUTPUT_STATIC=$(BUILD_DIR)/$(OUTPUT_NAME).a

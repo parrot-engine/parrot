@@ -1,4 +1,4 @@
-SRCS=$(shell find . -name "*.c")
+SRCS=$(shell find $(CORE_DIR)/src -name "*.c")
 OBJS=$(patsubst %, $(BUILD_DIR)/src/%.o, $(SRCS))
 
 all: $(OBJS)

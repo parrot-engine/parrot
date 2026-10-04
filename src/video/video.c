@@ -1,8 +1,7 @@
 #include "parrot/video/video.h"
-#include "parrot/core/core.h"
+#include "parrot/core/array.h"
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
-#include "parrot/stb_ds.h"
 #include "parrot/video/font.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -117,7 +116,6 @@ struct ParrotVideoObject {
     ParrotVideoObjectCamera *camera;
 
     ParrotVideoObjectRect *rect;
-    ParrotVideoObjectText *text;
 
     ParrotVideoObjectCustomDraw *custom_draw;
 
@@ -157,7 +155,7 @@ void ParrotVideo_init(ParrotWindowDriver *window_driver, ParrotVideoDriver *vide
     self->window_driver = window_driver;
     self->video_driver = video_driver;
 
-    ParrotScope_push_hmfree(self->scope, self->hm_pointers);
+    ParrotScope_push_arrfree(self->scope, self->hm_pointers);
 
     self->default_font = ParrotVideoFont_new_default(ParrotVideoFontDefaultStyle_MODERN);
     ParrotScope_push(self->scope, ParrotVideoFont_vdelete, self->default_font);
@@ -199,7 +197,7 @@ ParrotVideoObjectHandle ParrotVideo_create_object(void) {
     object->tint = ParrotColor_WHITE;
 
     uint32_t index = self->next_pointer_id++;
-    hmput(self->hm_pointers, index, object);
+    ParrotArray_put(self->hm_pointers, ((ParrotVideoObjectPointer){index, object}));
 
     ParrotVideoObjectHandle handle = (ParrotVideoObjectHandle){
         .index = index,
@@ -207,9 +205,9 @@ ParrotVideoObjectHandle ParrotVideo_create_object(void) {
 
     if (self->root_object) {
         object->parent = self->root_object_handle;
-        hmputs(self->root_object->shm_children, (ParrotVideoObjectChild){handle});
+        ParrotArray_put(self->root_object->shm_children, (ParrotVideoObjectChild){handle});
     }
-    ParrotScope_push_hmfree(object->scope, object->shm_children);
+    ParrotScope_push_arrfree(object->scope, object->shm_children);
 
     if (!self->root_object) {
         self->root_object = object;
@@ -222,69 +220,71 @@ ParrotVideoObjectHandle ParrotVideo_create_object(void) {
 void ParrotVideo_delete_object(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
-    while (hmlen(object->shm_children) > 0) {
+    while (ParrotArray_size(object->shm_children) > 0) {
         ParrotVideo_delete_object(object->shm_children[0].key);
     }
 
-    ParrotVideoObject *parent_object = hmget(self->hm_pointers, object->parent);
-    hmdel(parent_object->shm_children, handle.index);
+    ParrotVideoObject *parent_object =
+        ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, object->parent))->value;
+    ParrotArray_delk(parent_object->shm_children, handle.index);
 
-    hmdel(self->hm_pointers, handle.index);
+    ParrotArray_delk(self->hm_pointers, handle.index);
     ParrotScope_delete(object->scope);
 }
 
 bool ParrotVideo_does_object_exist(ParrotVideoObjectHandle handle) {
-    return hmgeti(self->hm_pointers, handle.index) >= 0;
+    return ParrotArray_find(self->hm_pointers, handle.index) >= 0;
 }
 
 void ParrotVideo_set_object_parent(ParrotVideoObjectHandle handle, ParrotVideoObjectHandle parent) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(parent));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
     PARROT_FAIL_NULL(object);
 
-    ParrotVideoObject *new_parent = hmget(self->hm_pointers, parent);
+    ParrotVideoObject *new_parent = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, parent))->value;
     PARROT_FAIL_NULL(new_parent);
 
-    ParrotVideoObject *old_parent = hmget(self->hm_pointers, object->parent);
+    ParrotVideoObject *old_parent =
+        ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, object->parent))->value;
     PARROT_FAIL_NULL(old_parent);
 
-    hmdel(old_parent->shm_children, handle);
-    hmputs(new_parent->shm_children, (ParrotVideoObjectChild){handle});
+    ParrotArray_delk(old_parent->shm_children, handle);
+    ParrotArray_put(new_parent->shm_children, (ParrotVideoObjectChild){handle});
     object->parent = parent;
 }
 
 void ParrotVideo_set_object_visible(ParrotVideoObjectHandle handle, bool visible) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
-    hmget(self->hm_pointers, handle.index)->visible = visible;
+    ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->visible = visible;
 }
 
 void ParrotVideo_set_object_tint(ParrotVideoObjectHandle handle, ParrotColor tint) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
-    hmget(self->hm_pointers, handle.index)->tint = tint;
+    ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->tint = tint;
 }
 
 void ParrotVideo_set_object_matrix(ParrotVideoObjectHandle handle, ParrotMat matrix) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
-    hmget(self->hm_pointers, handle.index)->matrix = matrix;
+    ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->matrix = matrix;
 }
 
 ParrotMat ParrotVideo_get_object_matrix(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
-    return hmget(self->hm_pointers, handle.index)->matrix;
+    return ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->matrix;
 }
 
 bool ParrotVideo_poll_object_events(ParrotVideoObjectHandle handle, ParrotVideoObjectEvent *out_event) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     if (object->event_queue_read == object->event_queue_write) {
         return false;
@@ -297,7 +297,7 @@ bool ParrotVideo_poll_object_events(ParrotVideoObjectHandle handle, ParrotVideoO
 void ParrotVideo_push_object_event(ParrotVideoObjectHandle handle, ParrotVideoObjectEvent event) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
     object->event_queue[object->event_queue_write++] = event;
 }
 
@@ -307,7 +307,7 @@ void ParrotVideo_object_add_window(ParrotVideoObjectHandle handle, int width, in
     PARROT_FAIL_COND(width == 0);
     PARROT_FAIL_COND(height == 0);
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
     object->window = PARROT_ALLOC(ParrotVideoObjectWindow);
 
     object->window->scope = ParrotScope_new(object->scope);
@@ -320,7 +320,7 @@ void ParrotVideo_object_add_window(ParrotVideoObjectHandle handle, int width, in
 void ParrotVideo_object_remove_window(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     ParrotScope_delete(object->window->scope);
     object->window = NULL;
@@ -329,13 +329,13 @@ void ParrotVideo_object_remove_window(ParrotVideoObjectHandle handle) {
 bool ParrotVideo_object_has_window(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
-    return hmget(self->hm_pointers, handle.index)->window;
+    return ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->window;
 }
 
 bool ParrotVideo_object_is_window_close_requested(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     bool close_requested = object->window->close_requested;
     object->window->close_requested = false;
@@ -345,7 +345,8 @@ bool ParrotVideo_object_is_window_close_requested(ParrotVideoObjectHandle handle
 void ParrotVideo_object_set_window_title(ParrotVideoObjectHandle handle, const char *title) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
 
-    self->window_driver->set_title(hmget(self->hm_pointers, handle.index)->window->window, title);
+    self->window_driver->set_title(
+        ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->window->window, title);
 }
 
 void ParrotVideo_object_set_window_size(ParrotVideoObjectHandle handle, int width, int height) {
@@ -354,17 +355,22 @@ void ParrotVideo_object_set_window_size(ParrotVideoObjectHandle handle, int widt
     PARROT_FAIL_COND(width == 0);
     PARROT_FAIL_COND(height == 0);
 
-    self->window_driver->set_size(hmget(self->hm_pointers, handle.index)->window->window, width, height);
+    self->window_driver->set_size(
+        ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->window->window,
+        width,
+        height);
 }
 
 int ParrotVideo_object_get_window_width(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
-    return self->window_driver->get_width(hmget(self->hm_pointers, handle.index)->window->window);
+    return self->window_driver->get_width(
+        ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->window->window);
 }
 
 int ParrotVideo_object_get_window_height(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_window(handle));
-    return self->window_driver->get_height(hmget(self->hm_pointers, handle.index)->window->window);
+    return self->window_driver->get_height(
+        ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->window->window);
 }
 
 void ParrotVideo_object_add_viewport(ParrotVideoObjectHandle handle, int width, int height) {
@@ -373,7 +379,7 @@ void ParrotVideo_object_add_viewport(ParrotVideoObjectHandle handle, int width, 
     PARROT_FAIL_COND(width == 0);
     PARROT_FAIL_COND(height == 0);
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
     object->viewport = PARROT_ALLOC(ParrotVideoObjectViewport);
 
     object->viewport->scope = ParrotScope_new(object->scope);
@@ -389,7 +395,7 @@ void ParrotVideo_object_add_viewport(ParrotVideoObjectHandle handle, int width, 
 void ParrotVideo_object_remove_viewport(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     ParrotScope_delete(object->viewport->scope);
     object->viewport = NULL;
@@ -398,19 +404,19 @@ void ParrotVideo_object_remove_viewport(ParrotVideoObjectHandle handle) {
 bool ParrotVideo_object_has_viewport(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
-    return hmget(self->hm_pointers, handle.index)->viewport;
+    return ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->viewport;
 }
 
 int ParrotVideo_object_get_viewport_width(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
 
-    return hmget(self->hm_pointers, handle.index)->viewport->width;
+    return ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->viewport->width;
 }
 
 int ParrotVideo_object_get_viewport_height(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
 
-    return hmget(self->hm_pointers, handle.index)->viewport->height;
+    return ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->viewport->height;
 }
 
 void ParrotVideo_object_set_viewport_size(ParrotVideoObjectHandle handle, int width, int height) {
@@ -424,14 +430,16 @@ bool ParrotVideo_object_is_viewport_key_down(ParrotVideoObjectHandle handle, Par
     PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
     PARROT_FAIL_COND(key >= ParrotWindowDriverEventKey_COUNT);
 
-    return hmget(self->hm_pointers, handle.index)->viewport->physical_keys[key];
+    return ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))
+        ->value->viewport->physical_keys[key];
 }
 
 bool ParrotVideo_object_is_viewport_logical_key_down(ParrotVideoObjectHandle handle, ParrotWindowDriverEventKey key) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
     PARROT_FAIL_COND(key >= ParrotWindowDriverEventKey_COUNT);
 
-    return hmget(self->hm_pointers, handle.index)->viewport->logical_keys[key];
+    return ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))
+        ->value->viewport->logical_keys[key];
 }
 
 bool ParrotVideo_object_is_viewport_mouse_button_down(ParrotVideoObjectHandle handle,
@@ -439,19 +447,21 @@ bool ParrotVideo_object_is_viewport_mouse_button_down(ParrotVideoObjectHandle ha
     PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
     PARROT_FAIL_COND(button >= ParrotWindowDriverEventMouseButton_COUNT);
 
-    return hmget(self->hm_pointers, handle.index)->viewport->mouse_buttons[button];
+    return ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))
+        ->value->viewport->mouse_buttons[button];
 }
 
 ParrotVec2 ParrotVideo_object_get_viewport_mouse_position(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_viewport(handle));
 
-    return hmget(self->hm_pointers, handle.index)->viewport->mouse_position;
+    return ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))
+        ->value->viewport->mouse_position;
 }
 
 void ParrotVideo_object_add_camera(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(ParrotVideo_object_has_camera(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
     object->camera = PARROT_ALLOC(ParrotVideoObjectCamera);
 
     object->camera->scope = ParrotScope_new(object->scope);
@@ -463,7 +473,7 @@ void ParrotVideo_object_add_camera(ParrotVideoObjectHandle handle) {
 void ParrotVideo_object_remove_camera(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_camera(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     ParrotScope_delete(object->camera->scope);
     object->camera = NULL;
@@ -472,13 +482,13 @@ void ParrotVideo_object_remove_camera(ParrotVideoObjectHandle handle) {
 bool ParrotVideo_object_has_camera(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
-    return hmget(self->hm_pointers, handle.index)->camera;
+    return ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->camera;
 }
 
 void ParrotVideo_object_set_camera_corner_aligned(ParrotVideoObjectHandle handle, bool value) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_camera(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     object->camera->corner_aligned = value;
 }
@@ -486,7 +496,7 @@ void ParrotVideo_object_set_camera_corner_aligned(ParrotVideoObjectHandle handle
 void ParrotVideo_object_set_camera_clear_color(ParrotVideoObjectHandle handle, ParrotColor color) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_camera(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     object->camera->clear_color = color;
     object->camera->use_clear_color = true;
@@ -495,7 +505,7 @@ void ParrotVideo_object_set_camera_clear_color(ParrotVideoObjectHandle handle, P
 void ParrotVideo_object_clear_camera_clear_color(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_camera(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     object->camera->use_clear_color = false;
 }
@@ -503,7 +513,7 @@ void ParrotVideo_object_clear_camera_clear_color(ParrotVideoObjectHandle handle)
 void ParrotVideo_object_add_rect(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(ParrotVideo_object_has_rect(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     object->rect = PARROT_ALLOC(ParrotVideoObjectRect);
 
@@ -514,7 +524,7 @@ void ParrotVideo_object_add_rect(ParrotVideoObjectHandle handle) {
 void ParrotVideo_object_remove_rect(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
     ParrotVideo_object_clear_rect_texture(handle);
 
     ParrotScope_delete(object->rect->scope);
@@ -524,7 +534,7 @@ void ParrotVideo_object_remove_rect(ParrotVideoObjectHandle handle) {
 bool ParrotVideo_object_has_rect(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
-    return hmget(self->hm_pointers, handle.index)->rect;
+    return ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->rect;
 }
 
 void ParrotVideo_object_set_rect_texture(
@@ -535,7 +545,7 @@ void ParrotVideo_object_set_rect_texture(
 
     PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     if (object->rect->texture_scope) {
         ParrotScope_delete(object->rect->texture_scope);
@@ -556,7 +566,7 @@ void ParrotVideo_object_set_rect_texture(
 void ParrotVideo_object_clear_rect_texture(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     free(object->rect->texture_rgba8888);
     object->rect->texture_rgba8888 = NULL;
@@ -568,7 +578,7 @@ void ParrotVideo_object_set_rect_texture_region(ParrotVideoObjectHandle handle, 
 
     PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     PARROT_FAIL_NULL(object->rect->texture_rgba8888);
 
@@ -579,39 +589,10 @@ void ParrotVideo_object_set_rect_texture_region(ParrotVideoObjectHandle handle, 
 void ParrotVideo_object_set_rect_size(ParrotVideoObjectHandle handle, ParrotReal width, ParrotReal height) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     object->rect->width = width;
     object->rect->height = height;
-}
-
-void ParrotVideo_object_set_text(ParrotVideoObjectHandle handle, ParrotVideoFont *font, float size, const char *text) {
-    PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
-
-    if (object->text) {
-        ParrotVideo_object_clear_text(handle);
-    }
-
-    object->text = PARROT_ALLOC(ParrotVideoObjectText);
-
-    object->text->scope = ParrotScope_new(object->scope);
-    ParrotScope_push_free(object->text->scope, object->text);
-
-    object->text->font = font;
-    object->text->size = size;
-    object->text->text = text;
-}
-
-void ParrotVideo_object_clear_text(ParrotVideoObjectHandle handle) {
-    PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
-
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
-
-    PARROT_RET_COND(!object->text);
-
-    ParrotScope_delete(object->text->scope);
-    object->text = NULL;
 }
 
 void ParrotVideo_object_set_custom_draw(ParrotVideoObjectHandle handle,
@@ -621,7 +602,7 @@ void ParrotVideo_object_set_custom_draw(ParrotVideoObjectHandle handle,
 
     PARROT_FAIL_NULL(func);
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     if (object->custom_draw) {
         ParrotScope_delete(object->custom_draw->scope);
@@ -643,7 +624,7 @@ void ParrotVideo_object_set_custom_draw(ParrotVideoObjectHandle handle,
 void ParrotVideo_object_clear_custom_draw(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_does_object_exist(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     if (object->custom_draw) {
         ParrotScope_delete(object->custom_draw->scope);
@@ -654,7 +635,7 @@ void ParrotVideo_object_clear_custom_draw(ParrotVideoObjectHandle handle) {
 void ParrotVideo_object_add_ui_window(ParrotVideoObjectHandle handle, int width, int height) {
     PARROT_FAIL_COND(ParrotVideo_object_has_ui_window(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     object->ui_window = PARROT_ALLOC(ParrotVideoObjectUIWindow);
 
@@ -670,21 +651,21 @@ void ParrotVideo_object_add_ui_window(ParrotVideoObjectHandle handle, int width,
 void ParrotVideo_object_remove_ui_window(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_ui_window(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     ParrotScope_delete(object->ui_window->scope);
     object->ui_window->scope = NULL;
 }
 
 bool ParrotVideo_object_has_ui_window(ParrotVideoObjectHandle handle) {
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
     return object->ui_window;
 }
 
 bool ParrotVideo_object_is_ui_window_close_requested(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_ui_window(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     bool value = object->ui_window->close_requested;
     object->ui_window->close_requested = false;
@@ -694,7 +675,7 @@ bool ParrotVideo_object_is_ui_window_close_requested(ParrotVideoObjectHandle han
 void ParrotVideo_object_set_ui_window_title(ParrotVideoObjectHandle handle, const char *title) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_ui_window(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     if (object->ui_window->title_scope) {
         ParrotScope_delete(object->ui_window->title_scope);
@@ -708,7 +689,7 @@ void ParrotVideo_object_set_ui_window_title(ParrotVideoObjectHandle handle, cons
 void ParrotVideo_object_set_ui_window_size(ParrotVideoObjectHandle handle, int width, int height) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_ui_window(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     object->ui_window->width = width;
     object->ui_window->height = height;
@@ -717,21 +698,21 @@ void ParrotVideo_object_set_ui_window_size(ParrotVideoObjectHandle handle, int w
 int ParrotVideo_object_get_ui_window_width(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_ui_window(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
     return object->ui_window->width;
 }
 
 int ParrotVideo_object_get_ui_window_height(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_ui_window(handle));
 
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
     return object->ui_window->height;
 }
 
 static bool ParrotVideo_find_camera(ParrotVideoObjectHandle handle,
                                     ParrotVideoObjectHandle *out_handle,
                                     ParrotVideoObjectCamera **out_camera) {
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     if (!object->visible) {
         return false;
@@ -743,7 +724,7 @@ static bool ParrotVideo_find_camera(ParrotVideoObjectHandle handle,
         return true;
     }
 
-    for (size_t i = 0; i < hmlen(object->shm_children); i++) {
+    for (size_t i = 0; i < ParrotArray_size(object->shm_children); i++) {
         if (ParrotVideo_find_camera(object->shm_children[i].key, out_handle, out_camera)) {
             return true;
         }
@@ -751,111 +732,12 @@ static bool ParrotVideo_find_camera(ParrotVideoObjectHandle handle,
     return false;
 }
 
-static void draw_text(ParrotVideoDriverViewport *viewport,
-                      ParrotGMatSet matrix_set,
-                      ParrotVideoFont *font,
-                      const char *text,
-                      float size,
-                      ParrotColor color) {
-    struct {
-        char key;
-        ParrotVideoFontChar value;
-    } *hm_chars = NULL;
-
-    struct {
-        char key;
-        ParrotVec2 *value;
-    } *hm_arr_char_positions = NULL;
-
-    float max_character_height = 0;
-
-    ParrotVec2 position = ParrotVec2_n(0);
-    for (size_t i = 0; i < strlen(text); i++) {
-        char c = text[i];
-
-        switch (c) {
-        case '\n': {
-            position.y += max_character_height;
-            position.x = 0;
-
-            max_character_height = 0;
-            continue;
-        }
-        default:
-            break;
-        }
-
-        if (hmgeti(hm_chars, text[i]) < 0) {
-            hmput(hm_chars, c, ParrotVideoFont_char(font, size, c));
-            hmput(hm_arr_char_positions, c, NULL);
-        }
-
-        ParrotVideoFontChar character = hmget(hm_chars, c);
-        max_character_height = PARROT_MAX(max_character_height, character.height);
-
-        ParrotVec2 *arr_positions = hmget(hm_arr_char_positions, c);
-        ParrotVec2 character_position = ParrotVec2_add(position, (ParrotVec2){character.x, character.y});
-        arrpush(arr_positions, character_position);
-        hmput(hm_arr_char_positions, c, arr_positions);
-
-        position.x += character.advance;
-    }
-
-    for (size_t i = 0; i < shlen(hm_chars); i++) {
-        ParrotVideoVertex *arr_vertices = NULL;
-
-        ParrotVideoFontChar character = hm_chars[i].value;
-        int w = character.width;
-        int h = character.height;
-
-        for (size_t j = 0; j < arrlen(hm_arr_char_positions[i].value); j++) {
-            float x = hm_arr_char_positions[i].value[j].x;
-            float y = hm_arr_char_positions[i].value[j].y;
-
-            ParrotVideoVertex a = {(ParrotVec3){x, y, 0}, .uv = {0, 0}, .tint = color};
-            ParrotVideoVertex b = {(ParrotVec3){x + w, y, 0}, .uv = {1, 0}, .tint = color};
-            ParrotVideoVertex c = {(ParrotVec3){x, y + h, 0}, .uv = {0, 1}, .tint = color};
-            ParrotVideoVertex d = {(ParrotVec3){x + w, y + h, 0}, .uv = {1, 1}, .tint = color};
-            ParrotVideoVertex e = {(ParrotVec3){x, y + h, 0}, .uv = {0, 1}, .tint = color};
-            ParrotVideoVertex f = {(ParrotVec3){x + w, y, 0}, .uv = {1, 0}, .tint = color};
-
-            arrpush(arr_vertices, a);
-            arrpush(arr_vertices, b);
-            arrpush(arr_vertices, c);
-            arrpush(arr_vertices, d);
-            arrpush(arr_vertices, e);
-            arrpush(arr_vertices, f);
-        }
-
-        uint32_t *rgba8888 = calloc(w * h, sizeof(uint32_t));
-        {
-            for (int y = 0; y < h; y++) {
-                for (int x = 0; x < w; x++) {
-                    rgba8888[y * w + x] = ((uint32_t)character.bitmap[y * w + x] << 24) | 0xFFFFFF;
-                }
-            }
-            free(character.bitmap);
-
-            self->video_driver->set_viewport_texture(viewport, w, h, rgba8888, false);
-            self->video_driver->draw_viewport_vertices(viewport, matrix_set, arr_vertices, arrlen(arr_vertices));
-            self->video_driver->clear_viewport_texture(viewport);
-        }
-        free(rgba8888);
-
-        arrfree(hm_arr_char_positions[i].value);
-        arrfree(arr_vertices);
-    }
-
-    hmfree(hm_chars);
-    hmfree(hm_arr_char_positions);
-}
-
 static void render_object(ParrotVideoObjectHandle handle,
                           ParrotVideoDriverViewport *viewport,
                           ParrotMat view_matrix,
                           ParrotMat projection_matrix,
                           ParrotColor tint) {
-    ParrotVideoObject *object = hmget(self->hm_pointers, handle.index);
+    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
     tint = ParrotColor_mul(tint, object->tint);
 
@@ -906,7 +788,8 @@ static void render_object(ParrotVideoObjectHandle handle,
         ParrotVideoObjectCamera *camera;
 
         if (ParrotVideo_find_camera(handle, &camera_handle, &camera)) {
-            ParrotVideoObject *camera_object = hmget(self->hm_pointers, camera_handle.index);
+            ParrotVideoObject *camera_object =
+                ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, camera_handle.index))->value;
 
             if (camera->use_clear_color) {
                 self->video_driver->clear_viewport(object->viewport->viewport, camera->clear_color);
@@ -924,7 +807,7 @@ static void render_object(ParrotVideoObjectHandle handle,
     }
 
     if (object->visible) {
-        for (size_t i = 0; i < hmlen(object->shm_children); i++) {
+        for (size_t i = 0; i < ParrotArray_size(object->shm_children); i++) {
             render_object(object->shm_children[i].key, viewport, view_matrix, projection_matrix, tint);
         }
     }
@@ -980,19 +863,6 @@ static void render_object(ParrotVideoObjectHandle handle,
                                                    vertices,
                                                    6);
         self->video_driver->clear_viewport_texture(viewport);
-    }
-
-    if (object->text) {
-        draw_text(viewport,
-                  (ParrotGMatSet){
-                      .model = object->matrix,
-                      .view = view_matrix,
-                      .projection = projection_matrix,
-                  },
-                  object->text->font,
-                  object->text->text,
-                  object->text->size,
-                  tint);
     }
 
     if (object->custom_draw) {

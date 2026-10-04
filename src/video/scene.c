@@ -1,5 +1,4 @@
 #include "parrot/video/scene.h"
-#include "parrot/core/core.h"
 #include "parrot/scene/world.h"
 #include "parrot/video/video.h"
 #include "stb_image.h"
@@ -232,13 +231,6 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
         if (ParrotVideo_object_has_rect(renderable->object_handle)) {
             ParrotVideo_object_remove_rect(renderable->object_handle);
         }
-    }
-
-    ParrotVideoSceneTextComponent *text = ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneTextComponent);
-    if (text) {
-        ParrotVideo_object_set_text(renderable->object_handle, text->font, text->size, text->text);
-    } else {
-        ParrotVideo_object_clear_text(renderable->object_handle);
     }
 
     /*

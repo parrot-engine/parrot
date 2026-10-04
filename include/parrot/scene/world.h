@@ -1,7 +1,7 @@
 #ifndef __SRC_PARROT_ECS_INCLUDE_PARROT_ECS_WORLD_H_
 #define __SRC_PARROT_ECS_INCLUDE_PARROT_ECS_WORLD_H_
 
-#include "parrot/core/core.h"
+#include "parrot/core/util.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

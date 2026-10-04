@@ -1,7 +1,6 @@
 #ifndef PARROT_PARROT_INCLUDE_PARROT_VIDEO_MODULE_H_
 #define PARROT_PARROT_INCLUDE_PARROT_VIDEO_MODULE_H_
 
-#include "parrot/core/core.h"
 #include "parrot/video/scene.h"
 
 static const ParrotReflectDescription Parrot_video_collection[] = {

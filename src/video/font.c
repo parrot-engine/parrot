@@ -1,5 +1,4 @@
 #include "parrot/video/font.h"
-#include "parrot/core/core.h"
 #include "stb_truetype.h"
 #include <stdint.h>
 #include <string.h>

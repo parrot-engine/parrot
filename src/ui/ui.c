@@ -1,8 +1,8 @@
 #include "parrot/ui/ui.h"
-#include "parrot/core/core.h"
+#include "parrot/core/array.h"
 #include "parrot/drivers/window_driver.h"
 #include "parrot/scene/world.h"
-#include "parrot/stb_ds.h"
+#include "parrot/video/font.h"
 #include "parrot/video/scene.h"
 #include "parrot/video/video.h"
 #include <math.h>
@@ -224,7 +224,7 @@ void ParrotUISystem_update(ParrotUISystem *self, ParrotVideoObjectHandle viewpor
         }
 
         ParrotReal max_z = -INFINITY;
-        for (size_t j = arrlen(ui_internal->arr_hit_zones); j > 0; j--) {
+        for (size_t j = ParrotArray_size(ui_internal->arr_hit_zones); j > 0; j--) {
             ParrotUIInternalHitZone zone = ui_internal->arr_hit_zones[j - 1];
 
             ParrotMat combined = ParrotGMatSet_combine(&zone.matrix);
@@ -320,7 +320,7 @@ void ParrotUISystem_update(ParrotUISystem *self, ParrotVideoObjectHandle viewpor
             ui->height = PARROT_MIN(ui->height, ui->max_height);
         }
 
-        arrsetlen(ui_internal->arr_hit_zones, 0);
+        ParrotArray_deln(ui_internal->arr_hit_zones, 0, ParrotArray_size(ui_internal->arr_hit_zones));
         ui_internal->last_mouse_position = mouse_screen;
     }
 }
@@ -335,6 +335,13 @@ static ParrotVideoFont *get_font(ParrotSceneWorld *world, ParrotSceneWorldEntity
     return get_font(world, entity);
 }
 
+typedef struct {
+    char key;
+
+    ParrotVideoFontChar character;
+    ParrotVec2 *arr_positions;
+} DrawTextChar;
+
 static void draw_text(ParrotVideoDriver *driver,
                       ParrotVideoDriverViewport *viewport,
                       ParrotGMatSet matrix_set,
@@ -342,15 +349,7 @@ static void draw_text(ParrotVideoDriver *driver,
                       const char *text,
                       float size,
                       ParrotColor color) {
-    struct {
-        char key;
-        ParrotVideoFontChar value;
-    } *hm_chars = NULL;
-
-    struct {
-        char key;
-        ParrotVec2 *value;
-    } *hm_arr_char_positions = NULL;
+    DrawTextChar *hm_chars = NULL;
 
     float max_character_height = 0;
 
@@ -370,69 +369,73 @@ static void draw_text(ParrotVideoDriver *driver,
             break;
         }
 
-        if (hmgeti(hm_chars, text[i]) < 0) {
-            hmput(hm_chars, c, ParrotVideoFont_char(font, size, c));
-            hmput(hm_arr_char_positions, c, NULL);
+        if (ParrotArray_find(hm_chars, text[i]) < 0) {
+            ParrotVideoFontChar character = ParrotVideoFont_char(font, size, c);
+            ParrotArray_put(hm_chars,
+                            ((DrawTextChar){
+                                .key = c,
+                                .character = character,
+                                .arr_positions = NULL,
+                            }));
         }
 
-        ParrotVideoFontChar character = hmget(hm_chars, c);
-        max_character_height = PARROT_MAX(max_character_height, character.height);
+        DrawTextChar *character = (DrawTextChar *)ParrotArray_findp(hm_chars, c);
+        max_character_height = PARROT_MAX(max_character_height, character->character.height);
 
-        ParrotVec2 *arr_positions = hmget(hm_arr_char_positions, c);
-        ParrotVec2 character_position = ParrotVec2_add(position, (ParrotVec2){character.x, character.y});
-        arrpush(arr_positions, character_position);
-        hmput(hm_arr_char_positions, c, arr_positions);
+        ParrotVec2 character_position =
+            ParrotVec2_add(position, (ParrotVec2){character->character.x, character->character.y});
+        ParrotArray_push(character->arr_positions, character_position);
 
-        position.x += character.advance;
+        position.x += character->character.advance;
     }
 
-    for (size_t i = 0; i < shlen(hm_chars); i++) {
+    for (size_t i = 0; i < ParrotArray_size(hm_chars); i++) {
         ParrotVideoVertex *arr_vertices = NULL;
 
-        ParrotVideoFontChar character = hm_chars[i].value;
-        int w = character.width;
-        int h = character.height;
+        DrawTextChar *character = &hm_chars[i];
+        int w = character->character.width;
+        int h = character->character.height;
 
-        for (size_t j = 0; j < arrlen(hm_arr_char_positions[i].value); j++) {
-            float x = hm_arr_char_positions[i].value[j].x;
-            float y = hm_arr_char_positions[i].value[j].y;
+        for (size_t j = 0; j < ParrotArray_size(character->arr_positions); j++) {
+            float x = character->arr_positions[j].x;
+            float y = character->arr_positions[j].y;
 
-            ParrotVideoVertex a = {(ParrotVec3){x, y, 0}, .uv = {0, 0}, .tint = color};
-            ParrotVideoVertex b = {(ParrotVec3){x + w, y, 0}, .uv = {1, 0}, .tint = color};
-            ParrotVideoVertex c = {(ParrotVec3){x, y + h, 0}, .uv = {0, 1}, .tint = color};
-            ParrotVideoVertex d = {(ParrotVec3){x + w, y + h, 0}, .uv = {1, 1}, .tint = color};
-            ParrotVideoVertex e = {(ParrotVec3){x, y + h, 0}, .uv = {0, 1}, .tint = color};
-            ParrotVideoVertex f = {(ParrotVec3){x + w, y, 0}, .uv = {1, 0}, .tint = color};
+            ParrotVideoVertex a = {.position = {x, y, 0}, .uv = {0, 0}, .tint = color};
+            ParrotVideoVertex b = {.position = {x + w, y, 0}, .uv = {1, 0}, .tint = color};
+            ParrotVideoVertex c = {.position = {x, y + h, 0}, .uv = {0, 1}, .tint = color};
+            ParrotVideoVertex d = {.position = {x + w, y + h, 0}, .uv = {1, 1}, .tint = color};
+            ParrotVideoVertex e = {.position = {x, y + h, 0}, .uv = {0, 1}, .tint = color};
+            ParrotVideoVertex f = {.position = {x + w, y, 0}, .uv = {1, 0}, .tint = color};
 
-            arrpush(arr_vertices, a);
-            arrpush(arr_vertices, b);
-            arrpush(arr_vertices, c);
-            arrpush(arr_vertices, d);
-            arrpush(arr_vertices, e);
-            arrpush(arr_vertices, f);
+            ParrotArray_push(arr_vertices, a);
+            ParrotArray_push(arr_vertices, b);
+            ParrotArray_push(arr_vertices, c);
+            ParrotArray_push(arr_vertices, d);
+            ParrotArray_push(arr_vertices, e);
+            ParrotArray_push(arr_vertices, f);
         }
 
         uint32_t *rgba8888 = calloc(w * h, sizeof(uint32_t));
         {
             for (int y = 0; y < h; y++) {
                 for (int x = 0; x < w; x++) {
-                    rgba8888[y * w + x] = ((uint32_t)character.bitmap[y * w + x] << 24) | 0xFFFFFF;
+                    rgba8888[y * w + x] = ((uint32_t)character->character.bitmap[y * w + x] << 24) | 0xFFFFFF;
                 }
             }
-            free(character.bitmap);
 
             driver->set_viewport_texture(viewport, w, h, rgba8888, false);
-            driver->draw_viewport_vertices(viewport, matrix_set, arr_vertices, arrlen(arr_vertices));
+            driver->draw_viewport_vertices(viewport, matrix_set, arr_vertices, ParrotArray_size(arr_vertices));
             driver->clear_viewport_texture(viewport);
         }
         free(rgba8888);
 
-        arrfree(hm_arr_char_positions[i].value);
-        arrfree(arr_vertices);
+        ParrotArray_free(arr_vertices);
+
+        free(character->character.bitmap);
+        ParrotArray_free(character->arr_positions);
     }
 
-    hmfree(hm_chars);
-    hmfree(hm_arr_char_positions);
+    ParrotArray_free(hm_chars);
 }
 
 static void window_on_resize_click(const ParrotUIInternalHitInfo *info,
@@ -633,9 +636,9 @@ draw_entity(ParrotScope *scope, ParrotVideoDriver *driver, ParrotVideoDriverView
 
         ui->min_width = PARROT_MAX(ui->min_width, min_titlebar_width);
 
-        arrpush(ui_internal->arr_hit_zones, resize_zone);
-        arrpush(ui_internal->arr_hit_zones, body_zone);
-        arrpush(ui_internal->arr_hit_zones, titlebar_zone);
-        arrpush(ui_internal->arr_hit_zones, close_zone);
+        ParrotArray_push(ui_internal->arr_hit_zones, resize_zone);
+        ParrotArray_push(ui_internal->arr_hit_zones, body_zone);
+        ParrotArray_push(ui_internal->arr_hit_zones, titlebar_zone);
+        ParrotArray_push(ui_internal->arr_hit_zones, close_zone);
     }
 }

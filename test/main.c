@@ -1,4 +1,4 @@
-#include "parrot/core/core.h"
+#include "parrot/core/main_loop.h"
 #include "parrot/drivers/gl_driver.h"
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
