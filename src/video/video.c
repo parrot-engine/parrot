@@ -1,8 +1,10 @@
 #include "parrot/video/video.h"
 #include "parrot/core/array.h"
+#include "parrot/core/scope.h"
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
 #include "parrot/video/font.h"
+#include "stb_image.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,12 +53,7 @@ typedef struct {
     ParrotReal width;
     ParrotReal height;
 
-    ParrotScope *texture_scope;
-
-    int texture_width;
-    int texture_height;
-    uint32_t *texture_rgba8888;
-
+    ParrotVideoTexture *texture;
     int texture_region_x;
     int texture_region_y;
     int texture_region_width;
@@ -127,6 +124,14 @@ typedef struct ParrotVideoObjectPointer {
     ParrotVideoObject *value;
 } ParrotVideoObjectPointer;
 
+struct ParrotVideoTexture {
+    ParrotScope *scope;
+
+    int width;
+    int height;
+    uint32_t *rgba8888;
+};
+
 typedef struct {
     ParrotScope *scope;
 
@@ -177,6 +182,51 @@ void ParrotVideo_vshutdown(void *unused) {
 
 bool ParrotVideo_is_initialized(void) {
     return self;
+}
+
+ParrotVideoTexture *ParrotVideo_create_texture(const uint8_t *data, size_t size) {
+    PARROT_FAIL_NULL(data);
+
+    ParrotVideoTexture *texture = PARROT_ALLOC(ParrotVideoTexture);
+
+    texture->scope = ParrotScope_new(self->scope);
+    ParrotScope_push_free(texture->scope, texture);
+
+    int channels = 0;
+    texture->rgba8888 = (uint32_t *)stbi_load_from_memory(data, size, &texture->width, &texture->height, &channels, 4);
+    if (!texture->rgba8888) {
+        ParrotScope_delete(texture->scope);
+        return NULL;
+    }
+
+    ParrotScope_push(texture->scope, stbi_image_free, texture->rgba8888);
+
+    return texture;
+}
+
+ParrotVideoTexture *ParrotVideo_create_texture_raw(int width, int height, const uint32_t *rgba8888) {
+    PARROT_FAIL_NULL(rgba8888);
+
+    ParrotVideoTexture *texture = PARROT_ALLOC(ParrotVideoTexture);
+
+    texture->scope = ParrotScope_new(self->scope);
+    ParrotScope_push_free(texture->scope, texture);
+
+    texture->width = width;
+    texture->height = height;
+
+    texture->rgba8888 = calloc(width * height, sizeof(*rgba8888));
+    ParrotScope_push_free(texture->scope, texture->rgba8888);
+
+    memcpy(texture->rgba8888, rgba8888, width * height * sizeof(rgba8888));
+
+    return texture;
+}
+
+void ParrotVideo_delete_texture(ParrotVideoTexture *texture) {
+    PARROT_FAIL_NULL(texture);
+
+    ParrotScope_delete(texture->scope);
 }
 
 ParrotVideoObjectHandle ParrotVideo_get_root(void) {
@@ -525,8 +575,6 @@ void ParrotVideo_object_remove_rect(ParrotVideoObjectHandle handle) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
 
     ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
-    ParrotVideo_object_clear_rect_texture(handle);
-
     ParrotScope_delete(object->rect->scope);
     object->rect = NULL;
 }
@@ -537,39 +585,20 @@ bool ParrotVideo_object_has_rect(ParrotVideoObjectHandle handle) {
     return ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value->rect;
 }
 
-void ParrotVideo_object_set_rect_texture(
-    ParrotVideoObjectHandle handle, int width, int height, const uint32_t *rgba8888, bool nearest_filter) {
-    PARROT_FAIL_COND(width == 0);
-    PARROT_FAIL_COND(height == 0);
-    PARROT_FAIL_NULL(rgba8888);
-
+void ParrotVideo_object_set_rect_texture(ParrotVideoObjectHandle handle,
+                                         ParrotVideoTexture *texture,
+                                         bool nearest_filter) {
     PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
 
     ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
-    if (object->rect->texture_scope) {
-        ParrotScope_delete(object->rect->texture_scope);
+    object->rect->texture = texture;
+
+    if (texture) {
+        object->rect->texture_region_x = 0, object->rect->texture_region_y = 0;
+        object->rect->texture_region_width = texture->width, object->rect->texture_region_width = texture->height;
+        object->rect->texture_nearest_filter = nearest_filter;
     }
-
-    object->rect->texture_scope = ParrotScope_new(object->rect->scope);
-
-    object->rect->texture_width = width, object->rect->texture_region_width = width;
-    object->rect->texture_height = height, object->rect->texture_region_height = height;
-    object->rect->texture_region_x = 0, object->rect->texture_region_y = 0;
-    object->rect->texture_nearest_filter = nearest_filter;
-
-    object->rect->texture_rgba8888 = calloc(width * height, sizeof(uint32_t));
-    memcpy(object->rect->texture_rgba8888, rgba8888, width * height * sizeof(uint32_t));
-    ParrotScope_push_free(object->rect->texture_scope, object->rect->texture_rgba8888);
-}
-
-void ParrotVideo_object_clear_rect_texture(ParrotVideoObjectHandle handle) {
-    PARROT_FAIL_COND(!ParrotVideo_object_has_rect(handle));
-
-    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
-
-    free(object->rect->texture_rgba8888);
-    object->rect->texture_rgba8888 = NULL;
 }
 
 void ParrotVideo_object_set_rect_texture_region(ParrotVideoObjectHandle handle, int x, int y, int width, int height) {
@@ -580,7 +609,7 @@ void ParrotVideo_object_set_rect_texture_region(ParrotVideoObjectHandle handle, 
 
     ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
 
-    PARROT_FAIL_NULL(object->rect->texture_rgba8888);
+    PARROT_FAIL_NULL(object->rect->texture);
 
     object->rect->texture_region_x = x, object->rect->texture_region_y = y;
     object->rect->texture_region_width = width, object->rect->texture_region_height = height;
@@ -826,16 +855,12 @@ static void render_object(ParrotVideoObjectHandle handle,
         ParrotReal width = object->rect->width;
         ParrotReal height = object->rect->height;
 
-        float x0 =
-            object->rect->texture_rgba8888 ? object->rect->texture_region_x / (float)object->rect->texture_width : 0;
-        float y0 =
-            object->rect->texture_rgba8888 ? object->rect->texture_region_y / (float)object->rect->texture_height : 0;
-        float x1 = object->rect->texture_rgba8888 ?
-                       x0 + object->rect->texture_region_width / (float)object->rect->texture_width :
-                       0;
-        float y1 = object->rect->texture_rgba8888 ?
-                       y0 + object->rect->texture_region_height / (float)object->rect->texture_height :
-                       0;
+        float x0 = object->rect->texture ? object->rect->texture_region_x / (float)object->rect->texture->width : 0;
+        float y0 = object->rect->texture ? object->rect->texture_region_y / (float)object->rect->texture->height : 0;
+        float x1 =
+            object->rect->texture ? x0 + object->rect->texture_region_width / (float)object->rect->texture->width : 0;
+        float y1 =
+            object->rect->texture ? y0 + object->rect->texture_region_height / (float)object->rect->texture->height : 0;
 
         ParrotVideoVertex vertices[] = {
             (ParrotVideoVertex){.position = (ParrotVec3){0, 0, 0}, .uv = {x0, y0}, .tint = tint},
@@ -847,11 +872,11 @@ static void render_object(ParrotVideoObjectHandle handle,
             (ParrotVideoVertex){.position = (ParrotVec3){width, 0, 0}, .uv = {x1, y0}, .tint = tint},
         };
 
-        if (object->rect->texture_rgba8888) {
+        if (object->rect->texture) {
             self->video_driver->set_viewport_texture(viewport,
-                                                     object->rect->texture_width,
-                                                     object->rect->texture_height,
-                                                     object->rect->texture_rgba8888,
+                                                     object->rect->texture->width,
+                                                     object->rect->texture->height,
+                                                     object->rect->texture->rgba8888,
                                                      object->rect->texture_nearest_filter);
         }
         self->video_driver->draw_viewport_vertices(viewport,

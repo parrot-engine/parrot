@@ -4,7 +4,6 @@
 #include "parrot/core/scope.h"
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
-#include "parrot/video/font.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -28,10 +27,16 @@ typedef struct {
     uint32_t index;
 } ParrotVideoObjectHandle;
 
+typedef struct ParrotVideoTexture ParrotVideoTexture;
+
 PARROT_API void ParrotVideo_init(ParrotWindowDriver *window_driver, ParrotVideoDriver *video_driver);
 PARROT_API void ParrotVideo_shutdown(void);
 PARROT_API void ParrotVideo_vshutdown(void *unused);
 PARROT_API bool ParrotVideo_is_initialized(void);
+
+PARROT_API ParrotVideoTexture *ParrotVideo_create_texture(const uint8_t *data, size_t size);
+PARROT_API ParrotVideoTexture *ParrotVideo_create_texture_raw(int width, int height, const uint32_t *rgba8888);
+PARROT_API void ParrotVideo_delete_texture(ParrotVideoTexture *texture);
 
 PARROT_API ParrotVideoObjectHandle ParrotVideo_get_root(void);
 
@@ -81,9 +86,9 @@ PARROT_API void ParrotVideo_object_clear_camera_clear_color(ParrotVideoObjectHan
 PARROT_API void ParrotVideo_object_add_rect(ParrotVideoObjectHandle handle);
 PARROT_API void ParrotVideo_object_remove_rect(ParrotVideoObjectHandle handle);
 PARROT_API bool ParrotVideo_object_has_rect(ParrotVideoObjectHandle handle);
-PARROT_API void ParrotVideo_object_set_rect_texture(
-    ParrotVideoObjectHandle handle, int width, int height, const uint32_t *rgba8888, bool nearest_filter);
-PARROT_API void ParrotVideo_object_clear_rect_texture(ParrotVideoObjectHandle handle);
+PARROT_API void ParrotVideo_object_set_rect_texture(ParrotVideoObjectHandle handle,
+                                                    /* NULL = none */ ParrotVideoTexture *texture,
+                                                    bool nearest_filter);
 PARROT_API void
 ParrotVideo_object_set_rect_texture_region(ParrotVideoObjectHandle handle, int x, int y, int width, int height);
 PARROT_API void ParrotVideo_object_set_rect_size(ParrotVideoObjectHandle handle, ParrotReal width, ParrotReal height);

@@ -49,20 +49,6 @@ ParrotVideoSceneCameraComponent_constructor(ParrotSceneWorld *world, ParrotScene
     self->clear_color = ParrotColor_newf(0.3, 0.3, 0.3);
 }
 
-static void ParrotVideoSceneRectTextureComponent_destructor(ParrotSceneWorld *world,
-                                                            ParrotSceneWorldEntity entity,
-                                                            void *user_data) {
-    PARROT_FAIL_COND(!ParrotVideo_is_initialized());
-
-    (void)user_data;
-
-    ParrotVideoSceneRectTextureComponent *self =
-        ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRectTextureComponent);
-    if (self->_rgba8888) {
-        stbi_image_free(self->_rgba8888);
-    }
-}
-
 void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
     ParrotSceneWorld_register_component(world,
                                         PARROT_TYPE_STRING(ParrotVideoSceneRenderableComponent),
@@ -77,13 +63,6 @@ void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
                                         (ParrotSceneWorldComponentDescription){
                                             .size = sizeof(ParrotVideoSceneCameraComponent),
                                             .constructor = ParrotVideoSceneCameraComponent_constructor,
-                                        });
-
-    ParrotSceneWorld_register_component(world,
-                                        PARROT_TYPE_STRING(ParrotVideoSceneRectTextureComponent),
-                                        (ParrotSceneWorldComponentDescription){
-                                            .size = sizeof(ParrotVideoSceneRectTextureComponent),
-                                            .constructor = ParrotVideoSceneRectTextureComponent_destructor,
                                         });
 }
 
@@ -196,55 +175,9 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
             ParrotVideo_object_add_rect(renderable->object_handle);
         }
 
-        ParrotVideoSceneRectTextureComponent *texture =
-            ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRectTextureComponent);
-        ParrotVideoSceneRectRawTextureComponent *raw_texture =
-            ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRectRawTextureComponent);
+        ParrotVideo_object_set_rect_texture(renderable->object_handle, rect->texture, rect->texture_nearest_filter);
 
-        if (texture) {
-            if (texture->image_dirty) {
-                if (texture->_rgba8888) {
-                    stbi_image_free(texture->_rgba8888);
-                }
-
-                int channels = 0;
-                texture->_rgba8888 = (uint32_t *)stbi_load_from_memory(
-                    texture->image.data, texture->image.size, &texture->_width, &texture->_height, &channels, 4);
-            }
-
-            if (!texture->_rgba8888) {
-#define X {0xFF, 0x00, 0x00, 0xFF}
-#define O {0x00, 0x00, 0x00, 0xFF}
-                const uint8_t image_fail_texture_data[6][6][4] = {
-                    {O, X, X, X, X, O},
-                    {X, X, O, O, O, X},
-                    {X, O, X, O, O, X},
-                    {X, O, O, X, O, X},
-                    {X, O, O, O, X, X},
-                    {O, X, X, X, X, O},
-                };
-#undef O
-#undef X
-                ParrotVideo_object_set_rect_texture(
-                    renderable->object_handle, 6, 6, (uint32_t *)image_fail_texture_data, true);
-            } else {
-                ParrotVideo_object_set_rect_texture(renderable->object_handle,
-                                                    texture->_width,
-                                                    texture->_height,
-                                                    texture->_rgba8888,
-                                                    rect->texture_nearest_filter);
-            }
-        } else if (raw_texture) {
-            ParrotVideo_object_set_rect_texture(renderable->object_handle,
-                                                raw_texture->width,
-                                                raw_texture->height,
-                                                raw_texture->rgba8888,
-                                                rect->texture_nearest_filter);
-        } else {
-            ParrotVideo_object_clear_rect_texture(renderable->object_handle);
-        }
-
-        if (texture || raw_texture) {
+        if (rect->texture) {
             if (rect->texture_use_region) {
                 ParrotVideo_object_set_rect_texture_region(renderable->object_handle,
                                                            rect->texture_region_x,
@@ -255,12 +188,6 @@ static void ParrotVideoSceneSystem_sync_entity(ParrotSceneWorld *world, ParrotSc
         }
 
         ParrotVideo_object_set_rect_size(renderable->object_handle, rect->width, rect->height);
-
-        if (ParrotSceneWorld_is_component_deletion_queued(world, entity, ParrotVideoSceneRectTextureComponent)) {
-            if (texture->_rgba8888) {
-                stbi_image_free(texture->_rgba8888);
-            }
-        }
     } else {
         if (ParrotVideo_object_has_rect(renderable->object_handle)) {
             ParrotVideo_object_remove_rect(renderable->object_handle);
