@@ -1,0 +1,10 @@
+OSFILE=$(OBJCOPY) -I elf32-bigmips -O elf32-bigmips \
+	--rename-section .text=.os.text \
+	--rename-section .data=.os.data \
+	--rename-section .bss=.os.bss \
+	--rename-section .rodata=.os.rodata \
+	--rename-section .rodata.str1.1=.os.rodata \
+	--rename-section .rodata.str1.8=.os.rodata \
+	--rename-section .rodata.str1.4=.os.rodata \
+	--rename-section .rodata.cst4=.os.rodata \
+	--rename-section .rodata.cst8=.os.rodata

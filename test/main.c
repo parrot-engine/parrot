@@ -1,3 +1,4 @@
+#include "parrot/config.h"
 #include "parrot/core/main_loop.h"
 #include "parrot/drivers/gl_driver.h"
 #include "parrot/drivers/video_driver.h"
@@ -5,8 +6,6 @@
 #include "parrot/drivers/window_driver.keys.h"
 #include "parrot/module.h"
 #include "parrot/scene/world.h"
-#include "parrot/ui/ui.h"
-#include "parrot/video/font.h"
 #include "parrot/video/scene.h"
 #include "parrot/video/video.h"
 #include <stdio.h>
@@ -22,7 +21,7 @@ static ParrotReflect *reflect;
 
 static ParrotSceneWorld *world;
 
-static ParrotUISystem *ui_system;
+// static ParrotUISystem *ui_system;
 
 static ParrotVideoObjectHandle root_handle;
 static ParrotVideoSceneWindowComponent *window;
@@ -39,27 +38,36 @@ static void init(ParrotMainLoopRunSettings *settings) {
     ParrotReflect_register(reflect, Parrot_collection);
     ParrotScope_push(scope, ParrotReflect_vdelete, reflect);
 
+#ifdef PARROT_PLATFORM_HAS_OS
+#ifdef PARROT_PLATFORM_LINUX
     ParrotWindowDriver *window_driver = Parrot_x11_window_driver_new();
     ParrotScope_push(scope, Parrot_x11_window_driver_vdelete, window_driver);
 
     ParrotGLDriver *gl_driver = Parrot_x11_gl_driver_new();
     ParrotScope_push(scope, Parrot_x11_gl_driver_vdelete, gl_driver);
-
+#endif
     ParrotVideoDriver *video_driver = Parrot_gl11_video_driver_new(gl_driver);
     ParrotScope_push(scope, Parrot_gl11_video_driver_vdelete, video_driver);
+#else
+#ifdef PARROT_PLATFORM_N64
+    ParrotWindowDriver *window_driver = NULL;
+    ParrotGLDriver *gl_driver = NULL;
+    ParrotVideoDriver *video_driver = NULL;
+#endif
+#endif
 
     ParrotVideo_init(window_driver, video_driver);
     ParrotScope_push(scope, ParrotVideo_vshutdown, NULL);
 
-    ParrotVideoFont *font = ParrotVideoFont_new_default(ParrotVideoFontDefaultStyle_MODERN);
-    ParrotScope_push(scope, ParrotVideoFont_vdelete, font);
+    /*ParrotVideoFont *font = ParrotVideoFont_new_default(ParrotVideoFontDefaultStyle_MODERN);
+    ParrotScope_push(scope, ParrotVideoFont_vdelete, font);*/
 
     world = ParrotSceneWorld_new();
     ParrotScope_push(scope, ParrotSceneWorld_vdelete, world);
     ParrotVideoSceneSystem_register_components(world);
 
-    ui_system = ParrotUISystem_new(world, ParrotVideo_get_root());
-    ParrotScope_push(scope, ParrotUISystem_vdelete, ui_system);
+    /*ui_system = ParrotUISystem_new(world, ParrotVideo_get_root());
+    ParrotScope_push(scope, ParrotUISystem_vdelete, ui_system);*/
 
     ParrotSceneWorldEntity root = ParrotSceneWorld_create_entity(world);
     ParrotVideoSceneRenderableComponent *root_renderable = NULL;
@@ -121,7 +129,7 @@ static void init(ParrotMainLoopRunSettings *settings) {
         rect->height = RECT_SIZE;
     }
 
-    ParrotSceneWorldEntity window = ParrotSceneWorld_create_entity(world);
+    /*ParrotSceneWorldEntity window = ParrotSceneWorld_create_entity(world);
     ParrotSceneWorld_set_entity_parent(world, window, root);
     ParrotSceneWorld_add_component(world, window, ParrotTransform);
     ParrotSceneWorld_add_component(world, window, ParrotUIComponent);
@@ -137,7 +145,7 @@ static void init(ParrotMainLoopRunSettings *settings) {
 
         ParrotUIWindowComponent *ui_window = ParrotSceneWorld_get_component(world, window, ParrotUIWindowComponent);
         ui_window->title = "Test (sub) window";
-    }
+    }*/
 
     ParrotVideoSceneSystem_update(world, ParrotVideo_get_root());
     root_handle = root_renderable->object_handle;
@@ -185,7 +193,7 @@ static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should
         fps_update_timer += delta;
     }
 
-    ParrotUISystem_update(ui_system, root_handle);
+    // ParrotUISystem_update(ui_system, root_handle);
 
     ParrotSceneWorld_delete_queued(world);
     return should_close;

@@ -36,6 +36,8 @@ ParrotVideoFont *ParrotVideoFont_new_default(ParrotVideoFontDefaultStyle style) 
             .data = ParrotVideoFont_default_jupiteroid_font,
             .size = ParrotVideoFont_default_jupiteroid_font_len,
         });
+    default:
+        break;
     }
     return NULL;
 }

@@ -1,5 +1,6 @@
-export CC = $(ARCH)-linux-gnu-gcc
-export AR = $(ARCH)-linux-gnu-gcc-ar
+export CC=$(ARCH)-linux-gnu-gcc
+export AR=$(ARCH)-linux-gnu-gcc-ar
+export OBJCOPY=$(ARCH)-linux-gnu-gcc-objcopy
 export STRIP=strip
 
 export PLATFORM_HAS_OS ?= 1

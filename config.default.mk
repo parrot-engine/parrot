@@ -30,6 +30,9 @@ export DOUBLE_PRECISION ?= 0
 # Default is platform dependent but if the platform specifies no default, it will be treated as false.
 export AVOID_MEMORY ?= $(DEFAULT)
 
+# [bool] Makes the engine provide an OS on N64
+export N64_PROVIDE_OS ?= 1
+
 # [path] The build directory name (relative to the root build directory) to build into. By default, the value is derived from the
 # other options.
 export BUILD_DIR_NAME ?= $(DEFAULT)

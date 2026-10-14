@@ -1,0 +1,6 @@
+#ifndef PARROT_PARROT_SRC_PLATFORM_N64_OS_ROM_H_
+#define PARROT_PARROT_SRC_PLATFORM_N64_OS_ROM_H_
+
+void _Parrot_n64_os_parse_rom(void);
+
+#endif // PARROT_PARROT_SRC_PLATFORM_N64_OS_ROM_H_

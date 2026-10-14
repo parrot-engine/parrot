@@ -141,8 +141,6 @@ typedef struct {
     ParrotVideoObjectPointer *hm_pointers;
     uint32_t next_pointer_id;
 
-    ParrotVideoFont *default_font;
-
     ParrotVideoObject *root_object;
     ParrotVideoObjectHandle root_object_handle;
 } ParrotVideo;
@@ -161,9 +159,6 @@ void ParrotVideo_init(ParrotWindowDriver *window_driver, ParrotVideoDriver *vide
     self->video_driver = video_driver;
 
     ParrotScope_push_arrfree(self->scope, self->hm_pointers);
-
-    self->default_font = ParrotVideoFont_new_default(ParrotVideoFontDefaultStyle_MODERN);
-    ParrotScope_push(self->scope, ParrotVideoFont_vdelete, self->default_font);
 
     ParrotVideo_create_object();
 }
