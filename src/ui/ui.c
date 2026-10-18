@@ -63,13 +63,13 @@ struct ParrotUISystem {
 static void
 draw_entity(ParrotScope *scope, ParrotVideoDriver *driver, ParrotVideoDriverViewport *viewport, ParrotGMatSet matrix);
 
-static void ParrotUIComponent_constructor(ParrotSceneWorld *world, ParrotSceneWorldEntity entity, void *user_data) {
+static void ParrotUIComponent_constructor(ParrotSceneWorldEntity entity, void *user_data) {
     ParrotUISystem *self = user_data;
 
-    ParrotSceneWorld_add_component(world, entity, ParrotUIInternal);
+    ParrotSceneWorld_add_component(self->world, entity, ParrotUIInternal);
 
-    ParrotUIComponent *ui = ParrotSceneWorld_get_component(world, entity, ParrotUIComponent);
-    ParrotUIInternal *ui_internal = ParrotSceneWorld_get_component(world, entity, ParrotUIInternal);
+    ParrotUIComponent *ui = ParrotSceneWorld_get_component(self->world, entity, ParrotUIComponent);
+    ParrotUIInternal *ui_internal = ParrotSceneWorld_get_component(self->world, entity, ParrotUIInternal);
 
     ui_internal->scope = ParrotScope_new(self->scope);
     ParrotScope_push_arrfree(ui_internal->scope, ui_internal->arr_hit_zones);
@@ -87,11 +87,10 @@ static void ParrotUIComponent_constructor(ParrotSceneWorld *world, ParrotSceneWo
     ParrotVideo_object_set_custom_draw(ui->object_handle, scope, draw_entity);
 }
 
-static void
-ParrotUIWindowComponent_constructor(ParrotSceneWorld *world, ParrotSceneWorldEntity entity, void *user_data) {
+static void ParrotUIWindowComponent_constructor(ParrotSceneWorldEntity entity, void *user_data) {
     (void)entity;
-    (void)user_data;
 
+    ParrotSceneWorld *world = user_data;
     ParrotUIWindowComponent *ui_window = ParrotSceneWorld_get_component(world, entity, ParrotUIWindowComponent);
 
     ui_window->resizable = true;

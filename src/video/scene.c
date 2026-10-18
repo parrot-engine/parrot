@@ -10,13 +10,10 @@ struct ParrotVideoSceneSystem {
     ParrotVideoObjectHandle root_handle;
 };
 
-static void ParrotVideoSceneRenderableComponent_constructor(ParrotSceneWorld *world,
-                                                            ParrotSceneWorldEntity entity,
-                                                            void *user_data) {
+static void ParrotVideoSceneRenderableComponent_constructor(ParrotSceneWorldEntity entity, void *user_data) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
 
-    (void)user_data;
-
+    ParrotSceneWorld *world = user_data;
     ParrotVideoSceneRenderableComponent *self =
         ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRenderableComponent);
 
@@ -26,22 +23,19 @@ static void ParrotVideoSceneRenderableComponent_constructor(ParrotSceneWorld *wo
     self->tint = ParrotColor_WHITE;
 }
 
-static void
-ParrotVideoSceneRenderableComponent_destructor(ParrotSceneWorld *world, ParrotSceneWorldEntity entity, void *user_data) {
+static void ParrotVideoSceneRenderableComponent_destructor(ParrotSceneWorldEntity entity, void *user_data) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
 
-    (void)user_data;
+    ParrotSceneWorld *world = user_data;
 
     ParrotVideo_delete_object(
         ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneRenderableComponent)->object_handle);
 }
 
-static void
-ParrotVideoSceneCameraComponent_constructor(ParrotSceneWorld *world, ParrotSceneWorldEntity entity, void *user_data) {
+static void ParrotVideoSceneCameraComponent_constructor(ParrotSceneWorldEntity entity, void *user_data) {
     PARROT_FAIL_COND(!ParrotVideo_is_initialized());
 
-    (void)user_data;
-
+    ParrotSceneWorld *world = user_data;
     ParrotVideoSceneCameraComponent *self =
         ParrotSceneWorld_get_component(world, entity, ParrotVideoSceneCameraComponent);
 
@@ -56,6 +50,7 @@ void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
                                             .size = sizeof(ParrotVideoSceneRenderableComponent),
                                             .constructor = ParrotVideoSceneRenderableComponent_constructor,
                                             .destructor = ParrotVideoSceneRenderableComponent_destructor,
+                                            .user_data = world,
                                         });
 
     ParrotSceneWorld_register_component(world,
@@ -63,6 +58,7 @@ void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world) {
                                         (ParrotSceneWorldComponentDescription){
                                             .size = sizeof(ParrotVideoSceneCameraComponent),
                                             .constructor = ParrotVideoSceneCameraComponent_constructor,
+                                            .user_data = world,
                                         });
 }
 

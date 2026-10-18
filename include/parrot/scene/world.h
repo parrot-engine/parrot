@@ -75,13 +75,12 @@ typedef struct {
 #define PARROT_SCENE_WORLD_QUERY_WITH_COMPONENT(type)                                                                   \
     PARROT_SCENE_WORLD_QUERY_WITH_COMPONENT_NAME(PARROT_TYPE_STRING(type))
 
-typedef void (*ParrotSceneWorldComponentFunc)(ParrotSceneWorld *world, ParrotSceneWorldEntity entity, void *user_data);
-
 typedef struct {
     size_t size;
 
-    ParrotSceneWorldComponentFunc constructor;
-    ParrotSceneWorldComponentFunc destructor;
+    void (*constructor)(ParrotSceneWorldEntity entity, void *user_data);
+    void (*destructor)(ParrotSceneWorldEntity entity, void *user_data);
+    void (*update)(ParrotSceneWorldEntity entity, void *user_data, float delta);
     void *user_data;
 } ParrotSceneWorldComponentDescription;
 
@@ -89,7 +88,7 @@ PARROT_API ParrotSceneWorld *ParrotSceneWorld_new(void);
 PARROT_API void ParrotSceneWorld_delete(ParrotSceneWorld *self);
 PARROT_API void ParrotSceneWorld_vdelete(void *self);
 
-PARROT_API void ParrotSceneWorld_delete_queued(ParrotSceneWorld *self);
+PARROT_API void ParrotSceneWorld_update(ParrotSceneWorld *self, /* 0 = Delete queued only */ float delta);
 
 PARROT_API ParrotSceneWorldEntity ParrotSceneWorld_create_entity(ParrotSceneWorld *self);
 PARROT_API void ParrotSceneWorld_queue_delete_entity(ParrotSceneWorld *self, ParrotSceneWorldEntity entity);

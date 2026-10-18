@@ -195,7 +195,7 @@ static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should
 
     // ParrotUISystem_update(ui_system, root_handle);
 
-    ParrotSceneWorld_delete_queued(world);
+    ParrotSceneWorld_update(world, delta);
     return should_close;
 }
 

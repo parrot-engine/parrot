@@ -3,6 +3,7 @@
 #include "parrot/core/hash.h"
 #include "parrot/core/math.h"
 #include "parrot/core/scope.h"
+#include "parrot/core/util.h"
 #include "src/ds.h"
 #include <stddef.h>
 #include <stdio.h>
@@ -92,22 +93,16 @@ static void ParrotSceneWorldRegisteredComponent_min_size(ParrotSceneWorldRegiste
     MIN_ARR_SIZE_VALUE(*self->p_arr_flags, size, 0);
 }
 
-static void
-ParrotSceneWorld_ParrotMat_constructor(ParrotSceneWorld *world, ParrotSceneWorldEntity entity, void *user_data) {
-    (void)user_data;
-    *ParrotSceneWorld_get_component(world, entity, ParrotMat) = ParrotMat_identity();
+static void ParrotSceneWorld_ParrotMat_constructor(ParrotSceneWorldEntity entity, void *user_data) {
+    *ParrotSceneWorld_get_component(user_data, entity, ParrotMat) = ParrotMat_identity();
 }
 
-static void
-ParrotSceneWorld_ParrotTransform_constructor(ParrotSceneWorld *world, ParrotSceneWorldEntity entity, void *user_data) {
-    (void)user_data;
-    *ParrotSceneWorld_get_component(world, entity, ParrotTransform) = ParrotTransform_new();
+static void ParrotSceneWorld_ParrotTransform_constructor(ParrotSceneWorldEntity entity, void *user_data) {
+    *ParrotSceneWorld_get_component(user_data, entity, ParrotTransform) = ParrotTransform_new();
 }
 
-static void
-ParrotSceneWorld_ParrotColor_constructor(ParrotSceneWorld *world, ParrotSceneWorldEntity entity, void *user_data) {
-    (void)user_data;
-    *ParrotSceneWorld_get_component(world, entity, ParrotColor) = ParrotColor_WHITE;
+static void ParrotSceneWorld_ParrotColor_constructor(ParrotSceneWorldEntity entity, void *user_data) {
+    *ParrotSceneWorld_get_component(user_data, entity, ParrotColor) = ParrotColor_WHITE;
 }
 
 ParrotSceneWorld *ParrotSceneWorld_new(void) {
@@ -135,12 +130,14 @@ ParrotSceneWorld *ParrotSceneWorld_new(void) {
                                         (ParrotSceneWorldComponentDescription){
                                             .size = sizeof(ParrotMat),
                                             .constructor = ParrotSceneWorld_ParrotMat_constructor,
+                                            .user_data = self,
                                         });
     ParrotSceneWorld_register_component(self,
                                         "ParrotTransform",
                                         (ParrotSceneWorldComponentDescription){
                                             .size = sizeof(ParrotTransform),
                                             .constructor = ParrotSceneWorld_ParrotTransform_constructor,
+                                            .user_data = self,
                                         });
 
     ParrotSceneWorld_register_component(self,
@@ -148,6 +145,7 @@ ParrotSceneWorld *ParrotSceneWorld_new(void) {
                                         (ParrotSceneWorldComponentDescription){
                                             .size = sizeof(ParrotColor),
                                             .constructor = ParrotSceneWorld_ParrotColor_constructor,
+                                            .user_data = self,
                                         });
 
     return self;
@@ -163,7 +161,38 @@ void ParrotSceneWorld_vdelete(void *self) {
     ParrotSceneWorld_delete((ParrotSceneWorld *)self);
 }
 
-void ParrotSceneWorld_delete_queued(ParrotSceneWorld *self) {
+static void update_entity(ParrotSceneWorld *self, float delta, ParrotSceneWorldEntity entity) {
+    if (ParrotSceneWorld_does_entity_exist(self, entity)) {
+        for (size_t i = 0; i < ParrotArray_size(self->sh_registered_components); i++) {
+            ParrotSceneWorldRegisteredComponent *component = &self->sh_registered_components[i];
+
+            if (!((*component->p_arr_flags)[ENTITY_INDEX(entity)] & COMPONENT_FLAG_EXISTS)) {
+                continue;
+            }
+
+            if (component->description.update) {
+                component->description.update(entity, component->description.user_data, delta);
+            }
+        }
+    }
+
+    ParrotSceneWorldQuery query[] = {
+        PARROT_SCENE_WORLD_QUERY_WITH_PARENT(entity),
+        PARROT_SCENE_WORLD_QUERY_END(),
+    };
+
+    for (size_t i = 0; i < ParrotSceneWorld_query_result_count(self, query); i++) {
+        update_entity(self, delta, ParrotSceneWorld_query_result_at(self, query, i));
+    }
+}
+
+void ParrotSceneWorld_update(ParrotSceneWorld *self, float delta) {
+    PARROT_FAIL_NULL(self);
+
+    if (delta != 0) {
+        update_entity(self, delta, ParrotSceneWorldEntity_NULL);
+    }
+
     for (size_t i = 0; i < ParrotArray_size(self->sh_registered_components); i++) {
         ParrotSceneWorldRegisteredComponent *component = &self->sh_registered_components[i];
         for (size_t j = 0; j < ParrotArray_size(self->arr_entity_gens); j++) {
@@ -172,8 +201,8 @@ void ParrotSceneWorld_delete_queued(ParrotSceneWorld *self) {
             }
 
             if (component->description.destructor) {
-                component->description.destructor(
-                    self, MAKE_ENTITY(j, self->arr_entity_gens[j]), component->description.user_data);
+                component->description.destructor(MAKE_ENTITY(j, self->arr_entity_gens[j]),
+                                                  component->description.user_data);
             }
 
             (*component->p_arr_flags)[j] = 0;
@@ -361,7 +390,7 @@ void ParrotSceneWorld_add_component_name(ParrotSceneWorld *self, ParrotSceneWorl
     ParrotArray_free(*component->p_shm_queries);
 
     if (component->description.constructor) {
-        component->description.constructor(self, entity, component->description.user_data);
+        component->description.constructor(entity, component->description.user_data);
     }
 }
 
