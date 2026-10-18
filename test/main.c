@@ -64,7 +64,7 @@ static void init(ParrotMainLoopRunSettings *settings) {
 
     world = ParrotSceneWorld_new();
     ParrotScope_push(scope, ParrotSceneWorld_vdelete, world);
-    ParrotVideoSceneSystem_register_components(world);
+    ParrotVideoSceneSystem_register(world);
 
     /*ui_system = ParrotUISystem_new(world, ParrotVideo_get_root());
     ParrotScope_push(scope, ParrotUISystem_vdelete, ui_system);*/
@@ -147,7 +147,7 @@ static void init(ParrotMainLoopRunSettings *settings) {
         ui_window->title = "Test (sub) window";
     }*/
 
-    ParrotVideoSceneSystem_update(world, ParrotVideo_get_root());
+    ParrotSceneWorld_update(world, 1.0 / 60);
     root_handle = root_renderable->object_handle;
 }
 
@@ -200,7 +200,7 @@ static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should
 }
 
 static void render(ParrotMainLoopRunSettings *settings) {
-    ParrotVideoSceneSystem_update(world, ParrotVideo_get_root());
+    // ParrotVideoSceneSystem_update(world, ParrotVideo_get_root());
     ParrotVideo_render();
 }
 

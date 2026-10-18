@@ -1,16 +1,15 @@
 #ifndef __SRC_PARROT_INCLUDE_PARROT_VIDEO_SCENE_H_
 #define __SRC_PARROT_INCLUDE_PARROT_VIDEO_SCENE_H_
 
-#include "parrot/core/binary.h"
 #include "parrot/core/math.h"
 #include "parrot/core/reflect.h"
 #include "parrot/scene/world.h"
-#include "parrot/video/font.h"
 #include "parrot/video/video.h"
 #include <stdbool.h>
 
 typedef struct {
     ParrotVideoObjectHandle object_handle;
+    bool manual_parent;
 
     bool visible;
     ParrotColor tint;
@@ -20,6 +19,7 @@ static const ParrotReflectDescription ParrotVideoSceneRenderableComponent_descri
     PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneRenderableComponent),
 
     PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableComponent, ParrotVideoObjectHandle, object_handle, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableComponent, bool, manual_parent, ),
 
     PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableComponent, bool, visible, ),
     PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableComponent, ParrotColor, tint, ),
@@ -113,8 +113,7 @@ static const ParrotReflectDescription ParrotVideoSceneRectComponent_description[
     PARROT_REFLECT_END(),
 };
 
-void ParrotVideoSceneSystem_register_components(ParrotSceneWorld *world);
-void ParrotVideoSceneSystem_update(ParrotSceneWorld *world, ParrotVideoObjectHandle root_handle);
+void ParrotVideoSceneSystem_register(ParrotSceneWorld *world);
 
 static const ParrotReflectDescription Parrot_video_scene_collection[] = {
     PARROT_REFLECT_COLLECTION_HEADER(),
