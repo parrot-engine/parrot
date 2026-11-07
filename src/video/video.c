@@ -761,7 +761,10 @@ static void render_object(ParrotVideoObjectHandle handle,
                           ParrotMat view_matrix,
                           ParrotMat projection_matrix,
                           ParrotColor tint) {
-    ParrotVideoObject *object = ((ParrotVideoObjectPointer *)ParrotArray_findp(self->hm_pointers, handle.index))->value;
+    ParrotVideoObjectPointer *object_ptr = ParrotArray_findp(self->hm_pointers, handle.index);
+    PARROT_FAIL_NULL(object_ptr);
+
+    ParrotVideoObject *object = object_ptr->value;
 
     tint = ParrotColor_mul(tint, object->tint);
 
