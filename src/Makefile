@@ -43,8 +43,6 @@ $(eval $(call ADD_MODULE,scene))
 
 $(eval $(call ADD_MODULE,video))
 
-$(eval $(call ADD_MODULE,ui))
-
 $(eval $(call ADD_MODULE,drivers))
 $(eval $(call ADD_MODULE,platform))
 

@@ -3,11 +3,9 @@
 #include "parrot/drivers/gl_driver.h"
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
-#include "parrot/drivers/window_driver.keys.h"
 #include "parrot/module.h"
 #include "parrot/scene/world.h"
 #include "parrot/video/scene.h"
-#include "parrot/video/video.h"
 #include <stdio.h>
 
 #define SCREEN_WIDTH 1280
@@ -19,17 +17,26 @@ static ParrotScope *scope;
 
 static ParrotReflect *reflect;
 
-static ParrotSceneWorld *world;
+static ParrotScene *scene;
 
-// static ParrotUISystem *ui_system;
-
-static ParrotVideoObjectHandle root_handle;
-static ParrotVideoSceneWindowComponent *window;
-
-static ParrotTransform *object_transform;
-static ParrotTransform *camera_transform;
+static ParrotVideoSceneViewportActor *viewport;
 
 static float fps_update_timer = 0;
+
+static void TestObjectActor_update(void *selfx, float delta) {
+    ParrotVideoSceneRenderableActor2D *self = selfx;
+
+    ParrotTransform transform = ParrotScene_get_actor_transform(self);
+    transform.position.x += 50 * delta;
+    transform.rotation.z += delta;
+    ParrotScene_set_actor_transform(self, transform);
+
+    if (ParrotVideoSceneRenderableActor2D_profile.update) {
+        ParrotVideoSceneRenderableActor2D_profile.update(self, delta);
+    }
+}
+
+static ParrotSceneActorProfile TestObjectActor_profile = {};
 
 static void init(ParrotMainLoopRunSettings *settings) {
     scope = ParrotScope_new(NULL);
@@ -56,134 +63,46 @@ static void init(ParrotMainLoopRunSettings *settings) {
 #endif
 #endif
 
-    ParrotVideo_init(window_driver, video_driver);
-    ParrotScope_push(scope, ParrotVideo_vshutdown, NULL);
+    scene = ParrotScene_new();
+    ParrotScope_push(scope, ParrotScene_vdelete, scene);
 
-    /*ParrotVideoFont *font = ParrotVideoFont_new_default(ParrotVideoFontDefaultStyle_MODERN);
-    ParrotScope_push(scope, ParrotVideoFont_vdelete, font);*/
+    TestObjectActor_profile = ParrotVideoSceneRenderableActor2D_profile;
+    TestObjectActor_profile.update = TestObjectActor_update;
 
-    world = ParrotSceneWorld_new();
-    ParrotScope_push(scope, ParrotSceneWorld_vdelete, world);
-    ParrotVideoSceneSystem_register(world);
+    viewport = ParrotScene_actor_spawn(scene, &ParrotVideoSceneViewportActor_profile);
 
-    /*ui_system = ParrotUISystem_new(world, ParrotVideo_get_root());
-    ParrotScope_push(scope, ParrotUISystem_vdelete, ui_system);*/
+    viewport->driver = video_driver;
+    viewport->width = SCREEN_WIDTH;
+    viewport->height = SCREEN_HEIGHT;
 
-    ParrotSceneWorldEntity root = ParrotSceneWorld_create_entity(world);
-    ParrotVideoSceneRenderableComponent *root_renderable = NULL;
-    ParrotSceneWorld_add_component(world, root, ParrotVideoSceneWindowComponent);
-    ParrotSceneWorld_add_component(world, root, ParrotVideoSceneViewportComponent);
-    ParrotSceneWorld_add_component(world, root, ParrotVideoSceneRenderableComponent);
+    viewport->window.driver = window_driver;
+    viewport->window.title = "Test Window";
+    viewport->window.width = SCREEN_WIDTH;
+    viewport->window.height = SCREEN_HEIGHT;
+
+    ParrotVideoSceneCameraActor *camera = ParrotScene_actor_spawn(scene, &ParrotVideoSceneCameraActor_profile);
+    ParrotScene_set_actor_parent(camera, viewport);
     {
-        root_renderable = ParrotSceneWorld_get_component(world, root, ParrotVideoSceneRenderableComponent);
-
-        window = ParrotSceneWorld_get_component(world, root, ParrotVideoSceneWindowComponent);
-
-        window->title = "Test Window";
-        window->width = SCREEN_WIDTH;
-        window->height = SCREEN_HEIGHT;
+        ParrotTransform transform = ParrotScene_get_actor_transform(camera);
+        transform.position = (ParrotVec3){RECT_SIZE / 2.0, RECT_SIZE / 2.0, 0};
+        ParrotScene_set_actor_transform(camera, transform);
     }
 
+    ParrotVideoSceneRenderableActor2D *object = ParrotScene_actor_spawn(scene, &TestObjectActor_profile);
+    ParrotScene_set_actor_parent(object, viewport);
+    object->tint = ParrotColor_RED;
+    object->width = RECT_SIZE;
+    object->height = RECT_SIZE;
     {
-        ParrotVideoSceneViewportComponent *viewport =
-            ParrotSceneWorld_get_component(world, root, ParrotVideoSceneViewportComponent);
-
-        viewport->width = SCREEN_WIDTH;
-        viewport->height = SCREEN_HEIGHT;
+        ParrotTransform transform = ParrotScene_get_actor_transform(object);
+        transform.rotation = (ParrotVec3){0, 0, 45};
+        ParrotScene_set_actor_transform(object, transform);
     }
-
-    ParrotSceneWorldEntity camera = ParrotSceneWorld_create_entity(world);
-    ParrotSceneWorld_set_entity_parent(world, camera, root);
-    ParrotSceneWorld_add_component(world, camera, ParrotTransform);
-    ParrotSceneWorld_add_component(world, camera, ParrotVideoSceneRenderableComponent);
-    ParrotSceneWorld_add_component(world, camera, ParrotVideoSceneCameraComponent);
-    {
-        camera_transform = ParrotSceneWorld_get_component(world, camera, ParrotTransform);
-        camera_transform->position = (ParrotVec3){RECT_SIZE / 2.0, RECT_SIZE / 2.0, 0};
-    }
-
-    ParrotSceneWorldEntity object = ParrotSceneWorld_create_entity(world);
-    ParrotSceneWorld_set_entity_parent(world, object, root);
-    ParrotSceneWorld_add_component(world, object, ParrotTransform);
-    ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRenderableComponent);
-    ParrotSceneWorld_add_component(world, object, ParrotVideoSceneRectComponent);
-    {
-        object_transform = ParrotSceneWorld_get_component(world, object, ParrotTransform);
-        object_transform->rotation = (ParrotVec3){0, 0, 45};
-
-        /*FILE *file = fopen("/tmp/dump.bin", "wb+");
-        ParrotBuffer *buffer = ParrotBuffer_new_file(file);
-        Parrot_serialize_bytes(
-            buffer, reflect, ParrotReflect_resolve_type(reflect, "ParrotTransform"), object_transform, true);
-        ParrotBuffer_delete(buffer);
-        fclose(file);*/
-
-        ParrotVideoSceneRenderableComponent *renderable =
-            ParrotSceneWorld_get_component(world, object, ParrotVideoSceneRenderableComponent);
-        renderable->tint = ParrotColor_RED;
-
-        ParrotVideoSceneRectComponent *rect =
-            ParrotSceneWorld_get_component(world, object, ParrotVideoSceneRectComponent);
-
-        rect->width = RECT_SIZE;
-        rect->height = RECT_SIZE;
-    }
-
-    /*ParrotSceneWorldEntity window = ParrotSceneWorld_create_entity(world);
-    ParrotSceneWorld_set_entity_parent(world, window, root);
-    ParrotSceneWorld_add_component(world, window, ParrotTransform);
-    ParrotSceneWorld_add_component(world, window, ParrotUIComponent);
-    ParrotSceneWorld_add_component(world, window, ParrotUIWindowComponent);
-    {
-        ParrotTransform *transform = ParrotSceneWorld_get_component(world, window, ParrotTransform);
-        transform->position.z = 1;
-
-        ParrotUIComponent *ui = ParrotSceneWorld_get_component(world, window, ParrotUIComponent);
-        ui->font = font;
-        ui->min_width = 640;
-        ui->min_height = 480;
-
-        ParrotUIWindowComponent *ui_window = ParrotSceneWorld_get_component(world, window, ParrotUIWindowComponent);
-        ui_window->title = "Test (sub) window";
-    }*/
-
-    ParrotSceneWorld_update(world, 1.0 / 60);
-    root_handle = root_renderable->object_handle;
 }
 
 static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should_close) {
     if (!should_close) {
-        should_close = window->close_requested;
-    }
-
-    {
-        object_transform->position.x += delta * 50;
-        object_transform->rotation.z += delta;
-    }
-
-    {
-        ParrotVec2 direction = {
-            ParrotVideo_object_is_viewport_key_down(root_handle, ParrotWindowDriverEventKey_D) -
-                ParrotVideo_object_is_viewport_key_down(root_handle, ParrotWindowDriverEventKey_A),
-            ParrotVideo_object_is_viewport_key_down(root_handle, ParrotWindowDriverEventKey_S) -
-                ParrotVideo_object_is_viewport_key_down(root_handle, ParrotWindowDriverEventKey_W),
-        };
-
-        camera_transform->position =
-            ParrotVec3_add(camera_transform->position, ParrotVec3_upgrade(ParrotVec2_scale(direction, delta * 500)));
-    }
-
-    ParrotVideoObjectEvent event = {0};
-    while (ParrotVideo_poll_object_events(root_handle, &event)) {
-        if (event.type == ParrotVideoObjectEventType_WINDOW) {
-            ParrotWindowDriverEvent window_event = event.data.window;
-            if (window_event.type == ParrotWindowDriverEventType_KEY) {
-                if (window_event.data.key.key_down &&
-                    window_event.data.key.logical_key == ParrotWindowDriverEventKey_ESCAPE) {
-                    should_close = true;
-                }
-            }
-        }
+        should_close = viewport->window.close_requested;
     }
 
     if (fps_update_timer > 1.0) {
@@ -193,15 +112,13 @@ static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should
         fps_update_timer += delta;
     }
 
-    // ParrotUISystem_update(ui_system, root_handle);
-
-    ParrotSceneWorld_update(world, delta);
+    ParrotScene_update(scene, delta);
     return should_close;
 }
 
 static void render(ParrotMainLoopRunSettings *settings) {
-    // ParrotVideoSceneSystem_update(world, ParrotVideo_get_root());
-    ParrotVideo_render();
+    ParrotScene_send_actor_event(viewport, (ParrotSceneActorEvent)ParrotVideoSceneEvent_PRE_RENDER);
+    ParrotScene_send_actor_event(viewport, (ParrotSceneActorEvent)ParrotVideoSceneEvent_RENDER);
 }
 
 static void shutdown(ParrotMainLoopRunSettings *settings) {

@@ -3,29 +3,19 @@
 
 #include "parrot/core/math.h"
 #include "parrot/core/reflect.h"
+#include "parrot/drivers/video_driver.h"
+#include "parrot/drivers/window_driver.h"
 #include "parrot/scene/world.h"
-#include "parrot/video/video.h"
 #include <stdbool.h>
 
-typedef struct {
-    ParrotVideoObjectHandle object_handle;
-    bool manual_parent;
+typedef enum {
+    /// Send this event to a renderable before drawing it
+    ParrotVideoSceneEvent_PRE_RENDER = ParrotSceneActorEvent_USER_BEGIN,
+    /// Send this event to a renderable to draw it and it's children
+    ParrotVideoSceneEvent_RENDER,
 
-    bool visible;
-    ParrotColor tint;
-} ParrotVideoSceneRenderableComponent;
-
-static const ParrotReflectDescription ParrotVideoSceneRenderableComponent_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneRenderableComponent),
-
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableComponent, ParrotVideoObjectHandle, object_handle, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableComponent, bool, manual_parent, ),
-
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableComponent, bool, visible, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableComponent, ParrotColor, tint, ),
-
-    PARROT_REFLECT_END(),
-};
+    ParrotVideoSceneEvent_USER_BEGIN = ParrotSceneActorEvent_USER_BEGIN + 0x1000,
+} ParrotVideoSceneEvent;
 
 typedef struct {
     const char *title;
@@ -35,34 +25,45 @@ typedef struct {
     bool resize;
 
     bool close_requested;
-} ParrotVideoSceneWindowComponent;
 
-static const ParrotReflectDescription ParrotVideoSceneWindowComponent_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneWindowComponent),
+    /// Creates a window using the driver if not NULL at TREE_ENTER event.
+    ParrotWindowDriver *driver;
+    ParrotWindowDriverWindow *window;
+} ParrotVideoSceneViewportWindow;
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneWindowComponent, const char *, title, ),
+static const ParrotReflectDescription ParrotVideoSceneViewportWindow_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneViewportWindow),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneWindowComponent, int, width, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneWindowComponent, int, height, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneWindowComponent, bool, resize, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneViewportWindow, const char *, title, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneViewportWindow, bool, close_requested, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneViewportWindow, bool, resize, ),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneWindowComponent, bool, close_requested, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneViewportWindow, ParrotVideoDriver *, driver, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneViewportWindow, ParrotWindowDriverWindow *, window, ),
 
     PARROT_REFLECT_END(),
 };
 
-typedef ParrotVideoSceneWindowComponent ParrotVideoSceneVirtualWindowComponent;
-
 typedef struct {
     int width;
     int height;
-} ParrotVideoSceneViewportComponent;
 
-static const ParrotReflectDescription ParrotVideoSceneViewportComponent_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneViewportComponent),
+    ParrotVideoDriver *driver;
+    ParrotVideoDriverViewport *viewport;
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneViewportComponent, int, width, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneViewportComponent, int, height, ),
+    ParrotVideoSceneViewportWindow window;
+} ParrotVideoSceneViewportActor;
+
+PARROT_API extern const ParrotSceneActorProfile ParrotVideoSceneViewportActor_profile;
+
+static const ParrotReflectDescription ParrotVideoSceneViewportActor_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneViewportActor),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneViewportActor, int, width, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneViewportActor, int, height, ),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneViewportActor, ParrotWindowDriverWindow *, window, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneViewportActor, ParrotVideoSceneViewportWindow, window, ),
 
     PARROT_REFLECT_END(),
 };
@@ -72,57 +73,64 @@ typedef struct {
 
     bool use_clear_color;
     ParrotColor clear_color;
-} ParrotVideoSceneCameraComponent;
+} ParrotVideoSceneCameraActor;
 
-static const ParrotReflectDescription ParrotVideoSceneCameraComponent_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneCameraComponent),
+PARROT_API extern const ParrotSceneActorProfile ParrotVideoSceneCameraActor_profile;
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, bool, corner_aligned, ),
+static const ParrotReflectDescription ParrotVideoSceneCameraActor_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneCameraActor),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, bool, use_clear_color, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, ParrotColor, clear_color, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraActor, bool, corner_aligned, ),
+
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraActor, bool, use_clear_color, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraActor, ParrotColor, clear_color, ),
 
     PARROT_REFLECT_END(),
 };
 
 typedef struct {
-    ParrotReal width;
+    ParrotColor tint;
 
-    ParrotReal height;
+    /**
+     * Normal: Used as rectangle width.
+     * Textured: Used as region width or 0 for the texture width.
+     */
+    int width;
+    /**
+     * Normal: Used as rectangle height.
+     * Textured: Used as region height or 0 for the texture height.
+     */
+    int height;
 
-    ParrotVideoTexture *texture;
-    int texture_region_x, texture_region_y;
-    int texture_region_width, texture_region_height;
-    bool texture_use_region;
+    // ParrotVideoTexture *texture;
+    int texture_x, texture_y;
     bool texture_nearest_filter;
-} ParrotVideoSceneRectComponent;
+} ParrotVideoSceneRenderableActor2D;
 
-static const ParrotReflectDescription ParrotVideoSceneRectComponent_description[] = {
-    PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneRectComponent),
+PARROT_API extern const ParrotSceneActorProfile ParrotVideoSceneRenderableActor2D_profile;
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRectComponent, ParrotReal, width, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRectComponent, ParrotReal, height, ),
+static const ParrotReflectDescription ParrotVideoSceneRenderableActor2D_description[] = {
+    PARROT_REFLECT_TYPE_HEADER(ParrotVideoSceneRenderableActor2D),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRectComponent, bool, texture_nearest_filter, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRectComponent, int, texture_region_x, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRectComponent, int, texture_region_y, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRectComponent, int, texture_region_width, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRectComponent, int, texture_region_height, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRectComponent, bool, texture_use_region, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableActor2D, ParrotReal, width, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableActor2D, ParrotReal, height, ),
+
+    /*PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableActor2D, bool, texture_nearest_filter, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableActor2D, int, texture_x, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableActor2D, int, texture_y, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableActor2D, bool, texture_use_region, ),*/
 
     PARROT_REFLECT_END(),
 };
 
-void ParrotVideoSceneSystem_register(ParrotSceneWorld *world);
-
 static const ParrotReflectDescription Parrot_video_scene_collection[] = {
     PARROT_REFLECT_COLLECTION_HEADER(),
 
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVideoSceneRenderableComponent_description),
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVideoSceneWindowComponent_description),
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVideoSceneViewportComponent_description),
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVideoSceneCameraComponent_description),
-    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVideoSceneRectComponent_description),
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVideoSceneViewportWindow_description),
+
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVideoSceneViewportActor_description),
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVideoSceneCameraActor_description),
+    PARROT_REFLECT_COLLECTION_DESCRIPTION(ParrotVideoSceneRenderableActor2D_description),
 
     PARROT_REFLECT_END(),
 };
