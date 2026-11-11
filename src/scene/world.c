@@ -233,7 +233,7 @@ ParrotSceneActorHandle ParrotScene_get_actor_handle(void *actor) {
     };
 }
 
-void *ParrotScene_get_actor_from_handle(ParrotScene *self, ParrotSceneActorHandle handle) {
+void *ParrotScene_get_actor_from_handle_or_null(ParrotScene *self, ParrotSceneActorHandle handle) {
     PARROT_FAIL_NULL(self);
 
     PARROT_RET_COND_V(handle.index >= ParrotArray_size(self->arr_actors), NULL);
@@ -308,7 +308,7 @@ void *ParrotScene_get_actor_parent(void *actor) {
     return header->parent ? PARROT_META_USER(sizeof(ParrotSceneActorHeader), header->parent) : NULL;
 }
 
-void *ParrotScene_get_actor_child(ParrotScene *self, void *actor) {
+void *ParrotScene_get_actor_children_or_null(ParrotScene *self, void *actor) {
     PARROT_RET_COND_V(!actor, self->root_actors);
 
     ParrotSceneActorHeader *header = PARROT_META(sizeof(ParrotSceneActorHeader), actor);
@@ -325,7 +325,7 @@ void ParrotScene_set_actor_active(void *actor, bool active) {
     ParrotScene_send_actor_event(actor, active ? ParrotSceneActorEvent_ENABLED : ParrotSceneActorEvent_DISABLED);
 }
 
-void *ParrotScene_get_next_actor(void *actor) {
+void *ParrotScene_get_next_actor_or_null(void *actor) {
     PARROT_FAIL_NULL(actor);
 
     ParrotSceneActorHeader *header = PARROT_META(sizeof(ParrotSceneActorHeader), actor);

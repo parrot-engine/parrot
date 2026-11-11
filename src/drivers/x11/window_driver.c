@@ -718,7 +718,7 @@ static ParrotWindowDriverEventKey x_keysym_to_driver_key(KeySym keysym) {
     }
 }
 
-ParrotWindowDriver *Parrot_x11_window_driver_new(void) {
+ParrotWindowDriver *Parrot_x11_window_driver_new_or_null(void) {
     Driver *self = PARROT_ALLOC(Driver);
 
     self->scope = ParrotScope_new(NULL);

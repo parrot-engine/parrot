@@ -46,8 +46,8 @@ static _ParrotVideoSceneViewportActor *find_viewport_parent_or_null(void *actor)
 static void propagate_event(ParrotScene *scene, ParrotSceneActorEvent event, void *actor) {
     const ParrotSceneActorProfile *profile = ParrotScene_get_actor_profile(actor);
 
-    void *children = ParrotScene_get_actor_child(scene, actor);
-    for (void *child = children; child; child = ParrotScene_get_next_actor(child)) {
+    void *children = ParrotScene_get_actor_children_or_null(scene, actor);
+    for (void *child = children; child; child = ParrotScene_get_next_actor_or_null(child)) {
         propagate_event(scene, event, child);
     }
 
@@ -66,8 +66,8 @@ static void handle_renderable_event(void *actor, ParrotSceneActorEvent event) {
     switch ((int)event) {
     case ParrotVideoSceneEvent_PRE_RENDER:
     case ParrotVideoSceneEvent_RENDER: {
-        void *children = ParrotScene_get_actor_child(scene, actor);
-        for (void *child = children; child; child = ParrotScene_get_next_actor(child)) {
+        void *children = ParrotScene_get_actor_children_or_null(scene, actor);
+        for (void *child = children; child; child = ParrotScene_get_next_actor_or_null(child)) {
             propagate_event(scene, event, child);
         }
     } break;

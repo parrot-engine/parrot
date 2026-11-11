@@ -71,17 +71,14 @@ PARROT_API ParrotScene *ParrotScene_get_actor_scene(void *actor);
 PARROT_API const ParrotSceneActorProfile *ParrotScene_get_actor_profile(void *actor);
 
 PARROT_API ParrotSceneActorHandle ParrotScene_get_actor_handle(void *actor);
-/// Returns NULL if invalid handle
-PARROT_API void *ParrotScene_get_actor_from_handle(ParrotScene *self, ParrotSceneActorHandle handle);
+PARROT_API void *ParrotScene_get_actor_from_handle_or_null(ParrotScene *self, ParrotSceneActorHandle handle);
 
 PARROT_API void ParrotScene_send_actor_event(void *actor, ParrotSceneActorEvent event);
 
 PARROT_API void ParrotScene_set_actor_parent(void *actor, /* NULL = root */ void *parent_actor);
 PARROT_API void *ParrotScene_get_actor_parent(void *actor);
-/// Returns First child or NULL if no children
-PARROT_API void *ParrotScene_get_actor_child(ParrotScene *self, /* NULL = root */ void *actor);
-/// Returns NULL if end of current level
-PARROT_API void *ParrotScene_get_next_actor(void *actor);
+PARROT_API void *ParrotScene_get_actor_children_or_null(ParrotScene *self, /* NULL = root */ void *actor);
+PARROT_API void *ParrotScene_get_next_actor_or_null(void *actor);
 
 PARROT_API void ParrotScene_set_actor_active(void *actor, bool active);
 PARROT_API bool ParrotScene_is_actor_active(void *actor);

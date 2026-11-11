@@ -90,8 +90,7 @@ struct ParrotWindowDriver {
     ParrotColorFormat (*get_native_image_format)(ParrotWindowDriverWindow *window);
 };
 
-/// Returns NULL if error
-PARROT_API ParrotWindowDriver *Parrot_x11_window_driver_new(void);
+PARROT_API ParrotWindowDriver *Parrot_x11_window_driver_new_or_null(void);
 PARROT_API void Parrot_x11_window_driver_delete(ParrotWindowDriver *self);
 PARROT_API void Parrot_x11_window_driver_vdelete(void *self);
 

@@ -47,10 +47,10 @@ static void init(ParrotMainLoopRunSettings *settings) {
 
 #ifdef PARROT_PLATFORM_HAS_OS
 #ifdef PARROT_PLATFORM_LINUX
-    ParrotWindowDriver *window_driver = Parrot_x11_window_driver_new();
+    ParrotWindowDriver *window_driver = Parrot_x11_window_driver_new_or_null();
     ParrotScope_push(scope, Parrot_x11_window_driver_vdelete, window_driver);
 
-    ParrotGLDriver *gl_driver = Parrot_x11_gl_driver_new();
+    ParrotGLDriver *gl_driver = Parrot_x11_gl_driver_new_or_null();
     ParrotScope_push(scope, Parrot_x11_gl_driver_vdelete, gl_driver);
 #endif
     ParrotVideoDriver *video_driver = Parrot_gl11_video_driver_new(gl_driver);

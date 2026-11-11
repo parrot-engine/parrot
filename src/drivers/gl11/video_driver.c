@@ -50,7 +50,7 @@ static ParrotVideoDriverViewport *driver_create_viewport(ParrotVideoDriver *base
     self->framebuffer = calloc(width * height, sizeof(uint32_t));
     ParrotScope_push_free(self->scope, self->framebuffer);
 
-    self->gl_context = self->driver->gl_driver->create_context(self->driver->gl_driver, 1, 1, width, height);
+    self->gl_context = self->driver->gl_driver->create_context_or_null(self->driver->gl_driver, 1, 1, width, height);
     ParrotScope_push(self->scope, self->driver->gl_driver->vdelete_context, self->gl_context);
 
     glEnable(GL_BLEND);

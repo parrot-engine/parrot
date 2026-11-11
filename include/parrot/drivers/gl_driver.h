@@ -9,15 +9,13 @@ typedef struct ParrotGLDriverContext ParrotGLDriverContext;
 typedef struct ParrotGLDriver ParrotGLDriver;
 
 struct ParrotGLDriver {
-    /// Returns NULL if cannot create context
-    ParrotGLDriverContext *(*create_context)(ParrotGLDriver *self, int major, int minor, int width, int height);
+    ParrotGLDriverContext *(*create_context_or_null)(ParrotGLDriver *self, int major, int minor, int width, int height);
     void (*delete_context)(ParrotGLDriverContext *context);
     void (*vdelete_context)(void *context);
     void (*use_context)(ParrotGLDriverContext *context);
 };
 
-/// Returns NULL if error
-PARROT_API ParrotGLDriver *Parrot_x11_gl_driver_new(void);
+PARROT_API ParrotGLDriver *Parrot_x11_gl_driver_new_or_null(void);
 PARROT_API void Parrot_x11_gl_driver_delete(ParrotGLDriver *self);
 PARROT_API void Parrot_x11_gl_driver_vdelete(void *self);
 

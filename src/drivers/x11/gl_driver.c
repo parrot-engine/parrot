@@ -126,13 +126,13 @@ static void scope_XCloseDisplay_wrapper(void *ctx) {
     XCloseDisplay(ctx);
 }
 
-ParrotGLDriver *Parrot_x11_gl_driver_new(void) {
+ParrotGLDriver *Parrot_x11_gl_driver_new_or_null(void) {
     Driver *self = PARROT_ALLOC(Driver);
 
     self->scope = ParrotScope_new(NULL);
     ParrotScope_push_free(self->scope, self);
 
-    self->base.create_context = driver_create_context;
+    self->base.create_context_or_null = driver_create_context;
     self->base.delete_context = driver_delete_context;
     self->base.vdelete_context = driver_vdelete_context;
     self->base.use_context = driver_use_context;
