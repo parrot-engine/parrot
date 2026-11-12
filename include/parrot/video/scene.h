@@ -5,7 +5,7 @@
 #include "parrot/core/reflect.h"
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
-#include "parrot/scene/world.h"
+#include "parrot/scene/scene.h"
 #include <stdbool.h>
 
 typedef enum {

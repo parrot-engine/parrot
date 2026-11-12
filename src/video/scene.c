@@ -2,7 +2,7 @@
 #include "parrot/core/math.h"
 #include "parrot/core/scope.h"
 #include "parrot/core/util.h"
-#include "parrot/scene/world.h"
+#include "parrot/scene/scene.h"
 #include "stb_image.h"
 
 typedef struct {

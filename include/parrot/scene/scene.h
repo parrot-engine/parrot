@@ -1,5 +1,5 @@
-#ifndef __SRC_PARROT_ECS_INCLUDE_PARROT_ECS_WORLD_H_
-#define __SRC_PARROT_ECS_INCLUDE_PARROT_ECS_WORLD_H_
+#ifndef PARROT_PARROT_INCLUDE_PARROT_SCENE_SCENE_H_
+#define PARROT_PARROT_INCLUDE_PARROT_SCENE_SCENE_H_
 
 #include "parrot/core/math.h"
 #include "parrot/core/util.h"
@@ -88,4 +88,4 @@ PARROT_API ParrotTransform ParrotScene_get_actor_transform(void *actor);
 PARROT_API ParrotMat ParrotScene_get_global_actor_matrix(void *actor);
 PARROT_API ParrotMat ParrotScene_get_actor_matrix(void *actor);
 
-#endif // __SRC_PARROT_ECS_INCLUDE_PARROT_ECS_WORLD_H_
+#endif // PARROT_PARROT_INCLUDE_PARROT_SCENE_SCENE_H_

@@ -4,7 +4,7 @@
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
 #include "parrot/module.h"
-#include "parrot/scene/world.h"
+#include "parrot/scene/scene.h"
 #include "parrot/video/scene.h"
 #include <stdio.h>
 
