@@ -24,6 +24,10 @@ void _Parrot_n64_os_interrupt_handler(ParrotN64OSInterruptFrame *frame) {
         }
     }
 
+    if (_Parrot_n64_os_interrupt_count > 1) {
+        return;
+    }
+
     if (_Parrot_n64_os_scheduler_task) {
         ParrotScheduler_end_task(_Parrot_n64_os_scheduler_task);
 
@@ -40,7 +44,7 @@ void _Parrot_n64_os_interrupt_handler(ParrotN64OSInterruptFrame *frame) {
 
     PARROT_RET_COND(!_Parrot_n64_os_scheduler);
 
-    ParrotN64OSTask *task = ParrotScheduler_next(_Parrot_n64_os_scheduler, ParrotN64OSTask);
+    ParrotN64OSTask *task = ParrotScheduler_next_or_null(_Parrot_n64_os_scheduler, ParrotN64OSTask);
     if (task) {
         frame->pc = task->pc;
         for (size_t i = 0; i < 31; i++) {

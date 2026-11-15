@@ -1,3 +1,4 @@
+#include "parrot/core/util.h"
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -152,8 +153,7 @@ void srand(unsigned int seed) {
 }
 
 void abort(void) {
-    for (;;)
-        ;
+    Parrot_crash_handler("Aborted");
 }
 
 char *getenv(const char *name) {

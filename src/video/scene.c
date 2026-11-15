@@ -190,6 +190,8 @@ static void ParrotVideoSceneRenderableWindowComponent_ready(void *selfx, ParrotS
     ParrotVideoSceneRenderableWindowComponent *self = selfx;
     (void)params;
 
+    PARROT_FAIL_NULL(self->driver);
+
     self->window = self->driver->create_window(self->driver, self->width, self->height);
 }
 
@@ -226,6 +228,8 @@ static void ParrotVideoSceneRenderableWindowComponent_destroy(void *selfx, Parro
     ParrotVideoSceneRenderableWindowComponent *self = selfx;
     (void)params;
 
+    PARROT_FAIL_NULL(self->driver);
+
     self->driver->delete_window(self->window);
 }
 
@@ -234,6 +238,8 @@ static void ParrotVideoSceneRenderableWindowComponent_render(ParrotScope *scope)
     ParrotVideoSceneRenderableWindowComponent *self = ctx->self;
 
     self->close_requested = false;
+
+    PARROT_FAIL_NULL(self->driver);
 
     ParrotWindowDriverEvent event;
     while (self->driver->poll_events(self->window, &event)) {
@@ -261,6 +267,8 @@ static void ParrotVideoSceneRenderableWindowComponent_post_render(ParrotScope *s
     BasicEntityRenderContext *ctx = ParrotScope_get_ctx(scope, BasicEntityRenderContext *);
     ParrotVideoSceneRenderableWindowComponent *self = ctx->self;
 
+    PARROT_FAIL_NULL(self->driver);
+
     ParrotVideoSceneRenderableViewportComponent *viewport = ParrotScene_get_component_or_null(
         ctx->params.scene, ctx->params.entity, ParrotVideoSceneRenderableViewportComponent);
     if (viewport) {
@@ -275,6 +283,8 @@ static void ParrotVideoSceneRenderableViewportComponent_pre_render(ParrotScope *
 static void ParrotVideoSceneRenderableViewportComponent_ready(void *selfx, ParrotSceneFuncParams params) {
     ParrotVideoSceneRenderableViewportComponent *self = selfx;
     (void)params;
+
+    PARROT_FAIL_NULL(self->driver);
 
     self->viewport = self->driver->create_viewport(self->driver, self->width, self->height);
 }
@@ -302,12 +312,16 @@ static void ParrotVideoSceneRenderableViewportComponent_destroy(void *selfx, Par
     ParrotVideoSceneRenderableViewportComponent *self = selfx;
     (void)params;
 
+    PARROT_FAIL_NULL(self->driver);
+
     self->driver->delete_viewport(self->viewport);
 }
 
 static void ParrotVideoSceneRenderableViewportComponent_pre_render(ParrotScope *scope) {
     BasicEntityRenderContext *ctx = ParrotScope_get_ctx(scope, BasicEntityRenderContext *);
     ParrotVideoSceneRenderableViewportComponent *self = ctx->self;
+
+    PARROT_FAIL_NULL(self->driver);
 
     self->last_camera_entity = ParrotVideoSceneCameraComponent_find_or_null(ctx->params.scene, ctx->params.entity);
     self->last_camera =

@@ -9,14 +9,22 @@
 #include <stdint.h>
 #include <stdio.h>
 
-static bool rom_read(ParrotScope *scope, size_t offset, uint8_t *out) {
+static bool rom_read(ParrotScope *scope, size_t offset, size_t size, uint8_t *out) {
     (void)scope;
 
     // For some reason on the N64, you can't read from ROM in 8-bit chunks
 
-    uint32_t shift = (3 - (offset % sizeof(uint32_t))) * 8;
-    uint32_t data = *(volatile uint32_t *)(0xB0000000 + PARROT_ALIGN_DOWN(offset, sizeof(uint32_t)));
-    *out = (data >> shift) & 0xFF;
+    for (size_t i = 0; i < size;) {
+        size_t cur_offset = offset + i;
+        uint32_t data = *(volatile uint32_t *)(0xB0000000 + PARROT_ALIGN_DOWN(cur_offset, sizeof(uint32_t)));
+
+        uint32_t byte_in_word = cur_offset % sizeof(uint32_t);
+        for (; byte_in_word < sizeof(uint32_t) && i < size; byte_in_word++, i++) {
+            uint32_t shift = (3 - byte_in_word) * 8;
+            out[i] = (data >> shift) & 0xFF;
+        }
+    }
+
     return true;
 }
 
@@ -74,6 +82,22 @@ static uint16_t e_phnum = 0;
 #define PI_WR_LEN (*(volatile uint32_t *)0xA460000C)
 #define PI_STATUS (*(volatile uint32_t *)0xA4600010)
 
+static bool is_program_header_valid(ProgramHeader header) {
+    if (header.p_paddr < 0x1000) {
+        return false;
+    }
+
+    if (header.p_paddr % 0x1000 != 0) {
+        return false;
+    }
+
+    if (header.p_paddr >= 0x80000000) {
+        return false;
+    }
+
+    return true;
+}
+
 static void handle_rom_page_fault(void *address) {
     PARROT_RET_COND(Parrot_n64_os_get_physical_address_raw(address));
 
@@ -88,6 +112,10 @@ static void handle_rom_page_fault(void *address) {
     for (size_t i = 0; i < e_phnum; i++) {
         ProgramHeader header = parse_program_header(buffer);
 
+        if (!is_program_header_valid(header)) {
+            continue;
+        }
+
         if ((uintptr_t)address < header.p_paddr) {
             continue;
         }
@@ -97,29 +125,20 @@ static void handle_rom_page_fault(void *address) {
         }
 
         size_t elf_segment_offset = (uintptr_t)page_address - header.p_paddr;
+
         void *page = Parrot_n64_os_alloc_continous_pages(1);
+        PARROT_FAIL_NULL_MSG(page, "Demand paging is out of memory");
+
         memset(page, 0, 4096);
 
         if (header.p_filesz > elf_segment_offset) {
             size_t remaining_size = PARROT_MIN(header.p_filesz - elf_segment_offset, 4096);
 
             ParrotBuffer_rseek(buffer, rom_elf_offset + header.p_offset + elf_segment_offset);
-            if (ParrotBuffer_rtell(buffer) % 2 == 0) {
-                while (PI_STATUS & /* DMA busy */ 1)
-                    ;
 
-                Parrot_n64_writeback_invalidiate_data_cache(page, 4096);
-
-                PI_DRAM_ADDR = (uintptr_t)Parrot_n64_os_get_physical_uncached_address(page) & 0xFFFFFF;
-                PI_CART_ADDR = 0x10000000 + ParrotBuffer_rtell(buffer);
-                PI_WR_LEN = remaining_size - 1;
-
-                while (PI_STATUS & /* DMA busy */ 1)
-                    ;
-            } else {
-                ParrotBuffer_read(buffer, ParrotBufferEndian_HOST, page, remaining_size);
-                Parrot_n64_writeback_invalidiate_data_cache(page, 4096);
-            }
+            // OPTIMIZE: DMA
+            ParrotBuffer_read(buffer, ParrotBufferEndian_HOST, page, remaining_size);
+            Parrot_n64_writeback_invalidiate_data_cache(page, 4096);
         }
 
         ParrotOSPageTableFlags flags = 0;
@@ -189,15 +208,7 @@ void _Parrot_n64_os_parse_rom(void) {
     for (size_t i = 0; i < e_phnum; i++) {
         ProgramHeader header = parse_program_header(buffer);
 
-        if (header.p_paddr < 0x1000) {
-            continue;
-        }
-
-        if (header.p_paddr % 0x1000 != 0) {
-            continue;
-        }
-
-        if (header.p_paddr >= 0x80000000) {
+        if (!is_program_header_valid(header)) {
             continue;
         }
 

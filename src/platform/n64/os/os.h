@@ -44,6 +44,8 @@ extern ParrotOSPageFaultHandler **_Parrot_n64_os_page_table_handlers;
 extern ParrotScheduler *_Parrot_n64_os_scheduler;
 extern ParrotN64OSTask *_Parrot_n64_os_scheduler_task;
 
+extern ParrotN64OSInterruptFrame *_Parrot_os_crash_frame;
+
 extern uint32_t _Parrot_n64_os_interrupt_count;
 extern uint32_t _Parrot_n64_os_upper_count;
 

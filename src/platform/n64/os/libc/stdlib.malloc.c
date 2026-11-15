@@ -40,7 +40,7 @@ void free(void *ptr) {
 
     PARROT_RET_COND(!ptr);
 
-    AllocBlock *block = PARROT_META(AllocBlock, ptr);
+    AllocBlock *block = PARROT_META(sizeof(AllocBlock), ptr);
     PARROT_FAIL_COND_FMT(block->free, "Double free at %p", ptr);
     block->free = true;
 
@@ -51,7 +51,7 @@ void free(void *ptr) {
     while (block->next && block->next->free && block->next->segment == block->segment) {
         AllocBlock *new_next_block = block->next->next;
 
-        block->size += PARROT_META_SIZE(AllocBlock, block->next->size);
+        block->size += PARROT_META_SIZE(sizeof(AllocBlock), block->next->size);
 
         if (new_next_block) {
             new_next_block->prev = block;
@@ -74,14 +74,14 @@ void *malloc(size_t size) {
         block = block->next;
 
         if (!block) {
-            size_t page_count = PARROT_ALIGN_UP(size + PARROT_META_SIZE(AllocBlock, 0), 4096) / 4096;
+            size_t page_count = PARROT_ALIGN_UP(size + PARROT_META_SIZE(sizeof(AllocBlock), 0), 4096) / 4096;
             size_t alloc_size = page_count * 4096;
 
             AllocBlock *new_block = Parrot_n64_os_alloc_pages(page_count, ParrotOSPageTableFlags_WRITE);
             PARROT_RET_COND_V(!new_block, NULL);
             memset(new_block, 0, sizeof(*new_block));
 
-            new_block->size = alloc_size - PARROT_META_SIZE(AllocBlock, 0);
+            new_block->size = alloc_size - PARROT_META_SIZE(sizeof(AllocBlock), 0);
             new_block->free = true;
             new_block->segment = heap_segment++;
 
@@ -95,13 +95,13 @@ void *malloc(size_t size) {
 
     if (block->size > size) {
         size_t remaining_size = block->size - size;
-        if (remaining_size > PARROT_META_SIZE(AllocBlock, 0)) {
+        if (remaining_size > PARROT_META_SIZE(sizeof(AllocBlock), 0)) {
             block->size = size;
 
-            AllocBlock *new_block = (AllocBlock *)((uint8_t *)block + PARROT_META_SIZE(AllocBlock, block->size));
+            AllocBlock *new_block = (AllocBlock *)((uint8_t *)block + PARROT_META_SIZE(sizeof(AllocBlock), block->size));
             memset(new_block, 0, sizeof(*new_block));
 
-            new_block->size = remaining_size - PARROT_META_SIZE(AllocBlock, 0);
+            new_block->size = remaining_size - PARROT_META_SIZE(sizeof(AllocBlock), 0);
             new_block->free = true;
 
             new_block->prev = block;
@@ -117,7 +117,7 @@ void *malloc(size_t size) {
 
     block->free = false;
     Parrot_os_yield();
-    return PARROT_META_USER(AllocBlock, block);
+    return PARROT_META_USER(sizeof(AllocBlock), block);
 }
 
 void *realloc(void *ptr, size_t size) {
@@ -126,7 +126,7 @@ void *realloc(void *ptr, size_t size) {
     void *new_ptr = malloc(size);
 
     if (ptr && new_ptr) {
-        AllocBlock *ptr_block = PARROT_META(AllocBlock, ptr);
+        AllocBlock *ptr_block = PARROT_META(sizeof(AllocBlock), ptr);
 
         size_t ptr_size = ptr_block->size;
         size_t copy_size = ptr_size > size ? size : ptr_size;
@@ -139,14 +139,14 @@ void *realloc(void *ptr, size_t size) {
     return new_ptr;
 }
 
-void _Parrot_n64_os_heap_init(void) {
+void _Parrot_n64_os_init_heap(void) {
     PARROT_FAIL_COND_MSG(heap_begin, "Attempt to initialize already initialized heap");
 
     size_t page_count = 4;
     heap_begin = Parrot_n64_os_alloc_pages(page_count, ParrotOSPageTableFlags_WRITE);
     memset(heap_begin, 0, sizeof(AllocBlock));
 
-    heap_begin->size = page_count * 4096 - PARROT_META_SIZE(AllocBlock, 0);
+    heap_begin->size = page_count * 4096 - PARROT_META_SIZE(sizeof(AllocBlock), 0);
     heap_begin->free = true;
     heap_begin->segment = heap_segment++;
 }

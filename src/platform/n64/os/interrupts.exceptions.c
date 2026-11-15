@@ -1,4 +1,5 @@
 #include "parrot/core/math.h"
+#include "parrot/core/util.h"
 #include "parrot/platform/n64/os.h"
 #include "src/platform/n64/os/os.h"
 #include <stdbool.h>
@@ -17,7 +18,6 @@ typedef enum {
 
 static bool handle_page_exception(ParrotN64OSInterruptFrame *frame) {
     if (frame->badvaddr < 0x1000) {
-        printf("Parrot: Refusing to resolve page exceptions with NULL pages\n");
         return false;
     }
 
@@ -81,37 +81,7 @@ static bool handle_page_exception(ParrotN64OSInterruptFrame *frame) {
     return true;
 }
 
-static void try_print_translated_address(uint32_t address) {
-    if (address >= 0x80000000) {
-        return;
-    }
-
-    void *translated = Parrot_n64_os_get_physical_address((void *)(uintptr_t)address);
-
-    if (translated) {
-        printf(" (Physical: 0x%08X)", translated);
-    }
-}
-
 bool _Parrot_n64_os_exception_handler(ParrotN64OSInterruptFrame *frame, uint32_t exception) {
-    static volatile ExceptionReadStage read_stage = ExceptionReadStage_NONE;
-    static volatile uint32_t read_stage_exception = 0;
-
-    switch (read_stage) {
-    case ExceptionReadStage_READING: {
-        frame->pc += 4;
-        read_stage = ExceptionReadStage_FAIL;
-        read_stage_exception = exception;
-        return false;
-    }
-    case ExceptionReadStage_HANDLING: {
-        for (;;)
-            ;
-    }
-    default:
-        break;
-    }
-
     switch (exception) {
     case 0x02:
     case 0x03: {
@@ -145,8 +115,6 @@ bool _Parrot_n64_os_exception_handler(ParrotN64OSInterruptFrame *frame, uint32_t
     default:
         break;
     }
-
-    read_stage = ExceptionReadStage_HANDLING;
 
     static const char *messages[] = {
         "Interrupt",
@@ -183,87 +151,8 @@ bool _Parrot_n64_os_exception_handler(ParrotN64OSInterruptFrame *frame, uint32_t
         "Unknown (0x1F)",
     };
 
-    printf("\n");
-    printf("Parrot Exception Handler\n");
-    printf("##########################################################################################\n");
-    printf("Exception: %s\n", messages[exception]);
-
-    if (_Parrot_n64_os_interrupt_count - 1 > 0) {
-        printf("HINT: This exception was raised while handling an interrupt\n");
-    }
-
-    if (!_Parrot_n64_os_scheduler_task) {
-        printf("HINT: This exception was raised while not running any task\n");
-    }
-
-    if (frame->badvaddr < 0x1000) {
-        printf("HINT: This exception likely came from %s\n",
-               frame->pc != frame->badvaddr ? "dereferencing a NULL pointer" : "calling a NULL function pointer");
-    }
-
-    printf("\n");
-
-    {
-        printf("PC: 0x%08x", frame->pc);
-        try_print_translated_address(frame->pc);
-        putchar('\n');
-    }
-    printf("Cause: 0x%08x\n", frame->cause);
-    {
-        printf("BadVAddr: 0x%08x", frame->badvaddr);
-        try_print_translated_address(frame->badvaddr);
-        putchar('\n');
-    }
-    printf("\n");
-
-    const char *register_names[] = {
-        "at", "v0", "v1", "a0", "a1", "a2", "a3", "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "s0",
-        "s1", "s2", "s3", "s4", "s5", "s6", "s7", "t8", "t9", "k0", "k1", "gp", "sp", "fp", "ra",
-    };
-
-    for (size_t i = 0; i < 31; i += 2) {
-        for (size_t j = i; j < PARROT_MIN(i + 2, 31); j++) {
-            printf("$%s: 0x%08x%08x ", register_names[j], frame->regs[j] >> 32, frame->regs[j] & 0xFFFFFFFF);
-        }
-        printf("\n");
-    }
-    printf("\n");
-
-    volatile uint32_t instruction_stream[INSTRUCTIONS_AROUND * 2 + 1];
-    uint32_t instruction_stream_exception[INSTRUCTIONS_AROUND * 2 + 1] = {0};
-
-    uint32_t pc_start = frame->pc - INSTRUCTIONS_AROUND * 4;
-    volatile uint32_t *instructions_start = (volatile uint32_t *)(uintptr_t)pc_start;
-    for (size_t i = 0; i < INSTRUCTIONS_AROUND * 2 + 1; i++) {
-        read_stage = ExceptionReadStage_READING;
-        read_stage_exception = 0;
-        {
-            instruction_stream[i] = instructions_start[i];
-            instruction_stream_exception[i] = read_stage_exception;
-        }
-        read_stage = ExceptionReadStage_HANDLING;
-    }
-
-    printf("Instruction Stream:\n");
-    printf("\n");
-    for (size_t i = 0; i < INSTRUCTIONS_AROUND * 2 + 1; i++) {
-        char highlight = ' ';
-
-        if (i == INSTRUCTIONS_AROUND) {
-            highlight = '>';
-        }
-
-        printf(" %c 0x%08x: 0x", highlight, (uint32_t)(pc_start + i * sizeof(uint32_t)));
-        if (instruction_stream_exception[i] == 0) {
-            printf("%08X", instruction_stream[i]);
-        } else {
-            printf("???????? (Got %s)", messages[instruction_stream_exception[i]]);
-        }
-        printf("\n");
-    }
-
-    printf("\n");
-    printf("##########################################################################################\n");
+    _Parrot_os_crash_frame = frame;
+    Parrot_crash_handler("%s", messages[exception]);
 
     for (;;)
         ;
