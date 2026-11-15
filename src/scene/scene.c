@@ -1,5 +1,6 @@
 #include "parrot/scene/scene.h"
 #include "parrot/core/array.h"
+#include "parrot/core/hash.h"
 #include "parrot/core/math.h"
 #include "parrot/core/reflect.h"
 #include "parrot/core/scope.h"
@@ -38,6 +39,15 @@ typedef struct {
     uint8_t **p_arr_flags;
 } ParrotSceneRegisteredComponent;
 
+typedef struct {
+    ParrotScope *scope;
+
+    size_t *arr_entity_indices;
+
+    uint64_t component_gen;
+    uint64_t tree_gen;
+} ParrotSceneCachedQuery;
+
 struct ParrotScene {
     ParrotScope *scope;
 
@@ -50,6 +60,11 @@ struct ParrotScene {
 
     uint32_t *arr_free_indices;
     uint32_t next_new_index;
+
+    ParrotSceneCachedQuery **hm_query_cache;
+
+    uint64_t tree_gen;
+    uint64_t component_gen;
 };
 
 static void ParrotSceneRegisteredComponent_min_size(ParrotSceneRegisteredComponent *self, size_t size) {
@@ -78,6 +93,11 @@ ParrotScene *ParrotScene_new(void) {
 
     ParrotScope_push_arrfree(self->scope, self->arr_free_indices);
     self->next_new_index = 1;
+
+    ParrotScope_push_arrfree(self->scope, self->hm_query_cache);
+
+    self->tree_gen = 1;
+    self->component_gen = 1;
 
     ParrotScene_register_component(self, ParrotScene_ParrotMat_profile);
     ParrotScene_register_component(self, ParrotScene_ParrotTransform_profile);
@@ -182,13 +202,13 @@ static void update_entity(ParrotScene *self, UpdateStage stage, ParrotSceneEntit
     }
 
 propogate: {
+    ParrotSceneEntity *arr_children = NULL;
+    ParrotScope_push_arrfree(scope, arr_children);
+
     ParrotSceneQuery child_query[] = {
         PARROT_SCENE_QUERY_WITH_PARENT(entity),
         PARROT_SCENE_QUERY_END(),
     };
-
-    ParrotSceneEntity *arr_children = NULL;
-    ParrotScope_push_arrfree(scope, arr_children);
 
     ParrotScene_query(self, child_query, &arr_children);
 
@@ -260,6 +280,8 @@ bool ParrotScene_is_entity_deletion_queued(ParrotScene *self, ParrotSceneEntity 
 ParrotSceneEntity ParrotScene_create_entity(ParrotScene *self) {
     PARROT_FAIL_NULL(self);
 
+    self->tree_gen++;
+
     uint32_t index = self->next_new_index;
     if (ParrotArray_size(self->arr_free_indices) > 0) {
         index = self->arr_free_indices[ParrotArray_size(self->arr_free_indices) - 1];
@@ -286,6 +308,8 @@ ParrotSceneEntity ParrotScene_create_entity(ParrotScene *self) {
 
 void ParrotScene_queue_delete_entity(ParrotScene *self, ParrotSceneEntity entity) {
     PARROT_RET_COND(!ParrotScene_does_entity_exist(self, entity));
+
+    self->tree_gen++;
 
     ParrotScope *scope = ParrotScope_new(NULL);
 
@@ -330,6 +354,7 @@ void ParrotScene_set_entity_parent(ParrotScene *self,
 
     // TODO: Cycle detection
 
+    self->tree_gen++;
     self->arr_entity_parents[ENTITY_INDEX(child)] = new_parent;
 }
 
@@ -364,6 +389,8 @@ void ParrotScene_auto_register_components(ParrotScene *self, ParrotReflect *refl
 void ParrotScene_register_component(ParrotScene *self, ParrotSceneComponentProfile profile) {
     PARROT_FAIL_COND(ParrotScene_is_component_registered(self, profile.type));
 
+    self->component_gen++;
+
     ParrotSceneRegisteredComponent component = {0};
 
     component.scope = ParrotScope_new(self->scope);
@@ -384,6 +411,8 @@ void ParrotScene_register_component(ParrotScene *self, ParrotSceneComponentProfi
 void ParrotScene_unregister_component(ParrotScene *self, const char *type) {
     PARROT_FAIL_COND(!ParrotScene_is_component_registered(self, type));
 
+    self->component_gen++;
+
     ptrdiff_t component_index = ParrotArray_finds_or_neg(self->sh_registered_components, type);
     PARROT_FAIL_COND(component_index < 0);
     ParrotSceneRegisteredComponent *component = &self->sh_registered_components[component_index];
@@ -402,6 +431,8 @@ bool ParrotScene_is_component_registered(ParrotScene *self, const char *type) {
 void *ParrotScene_add_component_or_nullx(ParrotScene *self, ParrotSceneEntity entity, const char *type) {
     PARROT_FAIL_COND(!ParrotScene_is_component_registered(self, type));
     PARROT_RET_COND_V(!ParrotScene_does_entity_exist(self, entity), NULL);
+
+    self->component_gen++;
 
     ParrotSceneRegisteredComponent *component = ParrotArray_findsp_or_null(self->sh_registered_components, type);
     PARROT_FAIL_NULL(component);
@@ -452,6 +483,8 @@ void ParrotScene_queue_delete_componentx(ParrotScene *self, ParrotSceneEntity en
     PARROT_RET_COND(!ParrotScene_is_component_registered(self, type));
     PARROT_RET_COND(!ParrotScene_does_entity_exist(self, entity));
 
+    self->component_gen++;
+
     ParrotSceneRegisteredComponent *component = ParrotArray_findsp_or_null(self->sh_registered_components, type);
     PARROT_FAIL_NULL(component);
 
@@ -459,10 +492,50 @@ void ParrotScene_queue_delete_componentx(ParrotScene *self, ParrotSceneEntity en
 }
 
 void ParrotScene_query(ParrotScene *self, const ParrotSceneQuery *query, ParrotSceneEntity **p_arr_results) {
-    ParrotSizeSet *shm_entity_indices = NULL;
+    ParrotCRC32 query_crc = 0;
+    for (const ParrotSceneQuery *filter = query; filter->type != ParrotSceneQueryType_END; filter++) {
+        query_crc = Parrot_crc32_combine(query_crc, filter, sizeof(ParrotSceneQuery));
+
+        switch (filter->type) {
+        case ParrotSceneQueryType_COMPONENT: {
+            query_crc =
+                Parrot_crc32_combine(query_crc, filter->data.component.type, strlen(filter->data.component.type));
+        } break;
+        default:
+            break;
+        }
+    }
+
+    ptrdiff_t cached_query_index = ParrotArray_find_or_neg(self->hm_query_cache, query_crc);
+    ParrotSceneCachedQuery *cached_query = NULL;
+
+    if (cached_query_index >= 0) {
+        cached_query = self->hm_query_cache[cached_query_index];
+
+        bool discard_conditions[] = {
+            cached_query->component_gen > 0 && cached_query->component_gen != self->component_gen,
+            cached_query->tree_gen > 0 && cached_query->tree_gen != self->tree_gen,
+        };
+
+        size_t i;
+        for (i = 0; i < PARROT_ARRAY_LEN(discard_conditions) && !discard_conditions[i]; i++)
+            ;
+
+        if (i >= PARROT_ARRAY_LEN(discard_conditions)) {
+            goto place_results;
+        }
+    }
+
+    cached_query = PARROT_ALLOC(ParrotSceneCachedQuery);
+
+    cached_query->scope = ParrotScope_new(self->scope);
+    ParrotScope_push_free(cached_query->scope, cached_query);
+
+    ParrotScope_push_arrfree(cached_query->scope, cached_query->arr_entity_indices);
+
     for (size_t i = 0; i < ParrotArray_size(self->arr_entity_flags); i++) {
         if (self->arr_entity_flags[i] & LIFE_FLAG_EXISTS) {
-            ParrotArray_put(shm_entity_indices, (ParrotSizeSet){i});
+            ParrotArray_push(cached_query->arr_entity_indices, i);
         }
     }
 
@@ -474,32 +547,43 @@ void ParrotScene_query(ParrotScene *self, const ParrotSceneQuery *query, ParrotS
             invert = filter->data.invert;
             break;
         case ParrotSceneQueryType_PARENT: {
-            for (size_t i = 0; i < ParrotArray_size(self->arr_entity_gens); i++) {
-                if ((self->arr_entity_parents[i] == filter->data.parent.entity) == invert) {
-                    ParrotArray_delk(shm_entity_indices, i);
+            cached_query->tree_gen = self->tree_gen;
+            for (size_t i = 0; i < ParrotArray_size(cached_query->arr_entity_indices); i++) {
+                size_t index = cached_query->arr_entity_indices[i];
+                if ((self->arr_entity_parents[index] == filter->data.parent.entity) == invert) {
+                    ParrotArray_del(cached_query->arr_entity_indices, i);
+                    i--;
                 }
             }
         } break;
         case ParrotSceneQueryType_COMPONENT: {
+            cached_query->component_gen = self->component_gen;
             ParrotSceneRegisteredComponent *component =
                 ParrotArray_findsp_or_null(self->sh_registered_components, filter->data.component.type);
 
-            for (size_t i = 0; i < ParrotArray_size(self->arr_entity_gens); i++) {
-                if ((component && ((*component->p_arr_flags)[i] & LIFE_FLAG_EXISTS)) == invert) {
-                    ParrotArray_delk(shm_entity_indices, i);
+            for (size_t i = 0; i < ParrotArray_size(cached_query->arr_entity_indices); i++) {
+                size_t index = cached_query->arr_entity_indices[i];
+                if ((component && ((*component->p_arr_flags)[index] & LIFE_FLAG_EXISTS)) == invert) {
+                    ParrotArray_del(cached_query->arr_entity_indices, i);
+                    i--;
                 }
             }
         } break;
-        case ParrotSceneQueryType_END: {
-        } break;
+        case ParrotSceneQueryType_END:
+            break;
         }
     }
 
-    for (size_t i = 0; i < ParrotArray_size(shm_entity_indices); i++) {
-        size_t index = shm_entity_indices[i].key;
+    if (cached_query_index >= 0) {
+        ParrotScope_delete(self->hm_query_cache[cached_query_index]->scope);
+    }
+    ParrotArray_put_key(self->hm_query_cache, cached_query, &query_crc, sizeof(query_crc));
+
+place_results:
+    for (size_t i = 0; i < ParrotArray_size(cached_query->arr_entity_indices); i++) {
+        size_t index = cached_query->arr_entity_indices[i];
         ParrotArray_push(*p_arr_results, MAKE_ENTITY(index, self->arr_entity_gens[index]));
     }
-    ParrotArray_free(shm_entity_indices);
 }
 
 static void ParrotScene_ParrotMat_init(void *selfx, ParrotSceneFuncParams params) {
