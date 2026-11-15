@@ -25,14 +25,14 @@ typedef struct {
 PARROT_API extern const ParrotSceneComponentProfile ParrotVideoSceneRenderableComponent_profile;
 
 static const ParrotReflectDescription ParrotVideoSceneRenderableComponent_description[] = {
-    PARROT_REFLECT_TYPE_HEADER_TAG(
+    PARROT_REFLECT_TYPE_HEADER(
         ParrotVideoSceneRenderableComponent,
         ((ParrotReflectDescriptionTag[]){
             {PARROT_TYPE_STRING(ParrotSceneComponentProfile), &ParrotVideoSceneRenderableComponent_profile},
             {NULL, NULL},
         })),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableComponent, bool, visible, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableComponent, bool, visible, , NULL),
 
     PARROT_REFLECT_END(),
 };
@@ -56,20 +56,20 @@ typedef struct {
 PARROT_API extern const ParrotSceneComponentProfile ParrotVideoSceneCameraComponent_profile;
 
 static const ParrotReflectDescription ParrotVideoSceneCameraComponent_description[] = {
-    PARROT_REFLECT_TYPE_HEADER_TAG(
+    PARROT_REFLECT_TYPE_HEADER(
         ParrotVideoSceneCameraComponent,
         ((ParrotReflectDescriptionTag[]){
             {PARROT_TYPE_STRING(ParrotSceneComponentProfile), &ParrotVideoSceneCameraComponent_profile},
             {NULL, NULL},
         })),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, bool, corner_aligned, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, bool, corner_aligned, , NULL),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, bool, use_clear_color, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, ParrotColor, clear_color, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, bool, use_clear_color, , NULL),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, ParrotColor, clear_color, , NULL),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, ParrotMat, last_view_matrix, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, ParrotMat, last_projection_matrix, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, ParrotMat, last_view_matrix, , NULL),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneCameraComponent, ParrotMat, last_projection_matrix, , NULL),
 
     PARROT_REFLECT_END(),
 };
@@ -92,19 +92,19 @@ typedef struct {
 PARROT_API extern const ParrotSceneComponentProfile ParrotVideoSceneRenderableWindowComponent_profile;
 
 static const ParrotReflectDescription ParrotVideoSceneRenderableWindowComponent_description[] = {
-    PARROT_REFLECT_TYPE_HEADER_TAG(
+    PARROT_REFLECT_TYPE_HEADER(
         ParrotVideoSceneRenderableWindowComponent,
         ((ParrotReflectDescriptionTag[]){
             {PARROT_TYPE_STRING(ParrotSceneComponentProfile), &ParrotVideoSceneRenderableWindowComponent_profile},
             {NULL, NULL},
         })),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableWindowComponent, const char *, title, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableWindowComponent, bool, close_requested, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableWindowComponent, bool, resize, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableWindowComponent, const char *, title, , NULL),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableWindowComponent, bool, close_requested, , NULL),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableWindowComponent, bool, resize, , NULL),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableWindowComponent, ParrotVideoDriver *, driver, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableWindowComponent, ParrotWindowDriverWindow *, window, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableWindowComponent, ParrotVideoDriver *, driver, , NULL),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableWindowComponent, ParrotWindowDriverWindow *, window, , NULL),
 
     PARROT_REFLECT_END(),
 };
@@ -123,22 +123,24 @@ typedef struct {
 PARROT_API extern const ParrotSceneComponentProfile ParrotVideoSceneRenderableViewportComponent_profile;
 
 static const ParrotReflectDescription ParrotVideoSceneRenderableViewportComponent_description[] = {
-    PARROT_REFLECT_TYPE_HEADER_TAG(
+    PARROT_REFLECT_TYPE_HEADER(
         ParrotVideoSceneRenderableViewportComponent,
         ((ParrotReflectDescriptionTag[]){
             {PARROT_TYPE_STRING(ParrotSceneComponentProfile), &ParrotVideoSceneRenderableViewportComponent_profile},
             {NULL, NULL},
         })),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableViewportComponent, int, width, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableViewportComponent, int, height, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableViewportComponent, int, width, , NULL),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableViewportComponent, int, height, , NULL),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableViewportComponent, ParrotVideoDriver *, driver, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableViewportComponent, ParrotVideoDriverViewport *, viewport, ),
-
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableViewportComponent, ParrotSceneEntity, last_camera_entity, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderableViewportComponent, ParrotVideoDriver *, driver, , NULL),
     PARROT_REFLECT_TYPE_FIELD(
-        ParrotVideoSceneRenderableViewportComponent, ParrotVideoSceneCameraComponent *, last_camera, ),
+        ParrotVideoSceneRenderableViewportComponent, ParrotVideoDriverViewport *, viewport, , NULL),
+
+    PARROT_REFLECT_TYPE_FIELD(
+        ParrotVideoSceneRenderableViewportComponent, ParrotSceneEntity, last_camera_entity, , NULL),
+    PARROT_REFLECT_TYPE_FIELD(
+        ParrotVideoSceneRenderableViewportComponent, ParrotVideoSceneCameraComponent *, last_camera, , NULL),
 
     PARROT_REFLECT_END(),
 };
@@ -168,19 +170,19 @@ typedef struct {
 PARROT_API extern const ParrotSceneComponentProfile ParrotVideoSceneRenderable2DComponent_profile;
 
 static const ParrotReflectDescription ParrotVideoSceneRenderable2DComponent_description[] = {
-    PARROT_REFLECT_TYPE_HEADER_TAG(
+    PARROT_REFLECT_TYPE_HEADER(
         ParrotVideoSceneRenderable2DComponent,
         ((ParrotReflectDescriptionTag[]){
             {PARROT_TYPE_STRING(ParrotSceneComponentProfile), &ParrotVideoSceneRenderable2DComponent_profile},
             {NULL, NULL},
         })),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderable2DComponent, ParrotReal, width, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderable2DComponent, ParrotReal, height, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderable2DComponent, ParrotReal, width, , NULL),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderable2DComponent, ParrotReal, height, , NULL),
 
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderable2DComponent, int, texture_x, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderable2DComponent, int, texture_y, ),
-    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderable2DComponent, bool, texture_nearest_filter, ),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderable2DComponent, int, texture_x, , NULL),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderable2DComponent, int, texture_y, , NULL),
+    PARROT_REFLECT_TYPE_FIELD(ParrotVideoSceneRenderable2DComponent, bool, texture_nearest_filter, , NULL),
 
     PARROT_REFLECT_END(),
 };

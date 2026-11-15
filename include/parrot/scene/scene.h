@@ -119,6 +119,7 @@ PARROT_API ParrotSceneEntity ParrotScene_get_entity_parent_or_null(ParrotScene *
                                        .size = sizeof(type),                                                            \
                                    })
 
+/// Checks for a ParrotSceneComponentProfile tag on each type with a value as the pointer to the profile
 PARROT_API void ParrotScene_auto_register_components(ParrotScene *self, ParrotReflect *reflect);
 PARROT_API void ParrotScene_register_component(ParrotScene *self, ParrotSceneComponentProfile profile);
 PARROT_API void ParrotScene_unregister_component(ParrotScene *self, const char *type);
