@@ -1,5 +1,7 @@
 #include "parrot/config.h"
 #include "parrot/core/main_loop.h"
+#include "parrot/core/math.h"
+#include "parrot/core/util.h"
 #include "parrot/drivers/gl_driver.h"
 #include "parrot/drivers/video_driver.h"
 #include "parrot/drivers/window_driver.h"
@@ -19,24 +21,33 @@ static ParrotReflect *reflect;
 
 static ParrotScene *scene;
 
-static ParrotVideoSceneViewportActor *viewport;
+static ParrotSceneEntity root;
+
+static ParrotVideoSceneRenderableWindowComponent *window;
 
 static float fps_update_timer = 0;
 
-static void TestObjectActor_update(void *selfx, float delta) {
-    ParrotVideoSceneRenderableActor2D *self = selfx;
+typedef struct {
+    ParrotVec3 direction;
+    ParrotVec3 rotation;
+} MovementComponent;
 
-    ParrotTransform transform = ParrotScene_get_actor_transform(self);
-    transform.position.x += 50 * delta;
-    transform.rotation.z += delta;
-    ParrotScene_set_actor_transform(self, transform);
+static void MovementComponent_update(void *selfx, ParrotSceneFuncParams params, float delta) {
+    MovementComponent *self = selfx;
 
-    if (ParrotVideoSceneRenderableActor2D_profile.update) {
-        ParrotVideoSceneRenderableActor2D_profile.update(self, delta);
-    }
+    ParrotTransform *transform = ParrotScene_get_component_or_null(params.scene, params.entity, ParrotTransform);
+    PARROT_RET_COND(!transform);
+
+    transform->position = ParrotVec3_add(transform->position, ParrotVec3_scale(self->direction, delta));
+    transform->rotation = ParrotVec3_add(transform->rotation, ParrotVec3_scale(self->rotation, delta));
 }
 
-static ParrotSceneActorProfile TestObjectActor_profile = {};
+static ParrotSceneComponentProfile MovementComponent_profile = {
+    .size = sizeof(MovementComponent),
+    .type = PARROT_TYPE_STRING(MovementComponent),
+
+    .update = MovementComponent_update,
+};
 
 static void init(ParrotMainLoopRunSettings *settings) {
     scope = ParrotScope_new(NULL);
@@ -66,43 +77,57 @@ static void init(ParrotMainLoopRunSettings *settings) {
     scene = ParrotScene_new();
     ParrotScope_push(scope, ParrotScene_vdelete, scene);
 
-    TestObjectActor_profile = ParrotVideoSceneRenderableActor2D_profile;
-    TestObjectActor_profile.update = TestObjectActor_update;
+    ParrotScene_auto_register_components(scene, reflect);
+    ParrotScene_register_component(scene, MovementComponent_profile);
 
-    viewport = ParrotScene_actor_spawn(scene, &ParrotVideoSceneViewportActor_profile);
-
-    viewport->driver = video_driver;
-    viewport->width = SCREEN_WIDTH;
-    viewport->height = SCREEN_HEIGHT;
-
-    viewport->window.driver = window_driver;
-    viewport->window.title = "Test Window";
-    viewport->window.width = SCREEN_WIDTH;
-    viewport->window.height = SCREEN_HEIGHT;
-
-    ParrotVideoSceneCameraActor *camera = ParrotScene_actor_spawn(scene, &ParrotVideoSceneCameraActor_profile);
-    ParrotScene_set_actor_parent(camera, viewport);
+    root = ParrotScene_create_entity(scene);
+    ParrotScene_add_component_or_null(scene, root, ParrotVideoSceneRenderableComponent);
     {
-        ParrotTransform transform = ParrotScene_get_actor_transform(camera);
-        transform.position = (ParrotVec3){RECT_SIZE / 2.0, RECT_SIZE / 2.0, 0};
-        ParrotScene_set_actor_transform(camera, transform);
+        window = ParrotScene_add_component_or_null(scene, root, ParrotVideoSceneRenderableWindowComponent);
+        window->driver = window_driver;
+        window->title = "Test Window";
+        window->width = SCREEN_WIDTH;
+        window->height = SCREEN_HEIGHT;
+
+        ParrotVideoSceneRenderableViewportComponent *viewport =
+            ParrotScene_add_component_or_null(scene, root, ParrotVideoSceneRenderableViewportComponent);
+        viewport->driver = video_driver;
+        viewport->width = SCREEN_WIDTH;
+        viewport->height = SCREEN_HEIGHT;
     }
 
-    ParrotVideoSceneRenderableActor2D *object = ParrotScene_actor_spawn(scene, &TestObjectActor_profile);
-    ParrotScene_set_actor_parent(object, viewport);
-    object->tint = ParrotColor_RED;
-    object->width = RECT_SIZE;
-    object->height = RECT_SIZE;
+    ParrotSceneEntity camera_entity = ParrotScene_create_entity(scene);
+    ParrotScene_set_entity_parent(scene, camera_entity, root);
+    ParrotScene_add_component_or_null(scene, camera_entity, ParrotVideoSceneRenderableComponent);
     {
-        ParrotTransform transform = ParrotScene_get_actor_transform(object);
-        transform.rotation = (ParrotVec3){0, 0, 45};
-        ParrotScene_set_actor_transform(object, transform);
+        ParrotTransform *transform = ParrotScene_add_component_or_null(scene, camera_entity, ParrotTransform);
+        transform->position = (ParrotVec3){RECT_SIZE / 2.0, RECT_SIZE / 2.0, 0};
+
+        ParrotScene_add_component_or_null(scene, camera_entity, ParrotVideoSceneCameraComponent);
+    }
+
+    ParrotSceneEntity object = ParrotScene_create_entity(scene);
+    ParrotScene_set_entity_parent(scene, object, root);
+    ParrotScene_add_component_or_null(scene, object, ParrotVideoSceneRenderableComponent);
+    {
+        MovementComponent *movement = ParrotScene_add_component_or_null(scene, object, MovementComponent);
+        movement->direction = (ParrotVec3){50, 0, 0};
+        movement->rotation = (ParrotVec3){0, 0, 1};
+
+        ParrotTransform *transform = ParrotScene_add_component_or_null(scene, object, ParrotTransform);
+        transform->rotation = (ParrotVec3){0, 0, 45};
+
+        ParrotVideoSceneRenderable2DComponent *renderable =
+            ParrotScene_add_component_or_null(scene, object, ParrotVideoSceneRenderable2DComponent);
+        renderable->tint = ParrotColor_RED;
+        renderable->width = RECT_SIZE;
+        renderable->height = RECT_SIZE;
     }
 }
 
 static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should_close) {
     if (!should_close) {
-        should_close = viewport->window.close_requested;
+        should_close = window->close_requested;
     }
 
     if (fps_update_timer > 1.0) {
@@ -117,8 +142,7 @@ static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should
 }
 
 static void render(ParrotMainLoopRunSettings *settings) {
-    ParrotScene_send_actor_event(viewport, (ParrotSceneActorEvent)ParrotVideoSceneEvent_PRE_RENDER);
-    ParrotScene_send_actor_event(viewport, (ParrotSceneActorEvent)ParrotVideoSceneEvent_RENDER);
+    ParrotVideoSceneRenderableComponent_render(scene, root);
 }
 
 static void shutdown(ParrotMainLoopRunSettings *settings) {

@@ -1,91 +1,148 @@
 #ifndef PARROT_PARROT_INCLUDE_PARROT_SCENE_SCENE_H_
 #define PARROT_PARROT_INCLUDE_PARROT_SCENE_SCENE_H_
 
-#include "parrot/core/math.h"
+#include "parrot/core/reflect.h"
 #include "parrot/core/util.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
+#define ParrotSceneEntity_NULL ((ParrotSceneEntity)0)
+
+typedef uint64_t ParrotSceneEntity;
 typedef struct ParrotScene ParrotScene;
 
 typedef enum {
-    ParrotSceneActorEvent_TREE_ENTER = 0,
-    ParrotSceneActorEvent_TREE_ENTERED,
-    ParrotSceneActorEvent_TREE_EXIT,
+    ParrotSceneQueryType_END = 0,
 
-    ParrotSceneActorEvent_READY,
+    ParrotSceneQueryType_SET_INVERT,
 
-    ParrotSceneActorEvent_REPARENT,
-    ParrotSceneActorEvent_REPARENTED,
-
-    ParrotSceneActorEvent_ENABLED,
-    ParrotSceneActorEvent_DISABLED,
-
-    ParrotSceneActorEvent_TRANSFORM_CHANGE,
-    ParrotSceneActorEvent_TRANSFORM_CHANGED,
-
-    ParrotSceneActorEvent_USER_BEGIN = 0x8000,
-    /// For making sure the enum is large enough
-    ParrotSceneActorEvent_USER_END = 0xFFFF,
-} ParrotSceneActorEvent;
+    ParrotSceneQueryType_PARENT,
+    ParrotSceneQueryType_COMPONENT,
+} ParrotSceneQueryType;
 
 typedef struct {
-    size_t index;
-    size_t generation;
-} ParrotSceneActorHandle;
+    ParrotSceneQueryType type;
+    union {
+        bool invert;
+
+        struct {
+            ParrotSceneEntity entity;
+        } parent;
+
+        struct {
+            const char *type;
+        } component;
+    } data;
+} ParrotSceneQuery;
+
+#define PARROT_SCENE_QUERY_END()                                                                                        \
+    ((ParrotSceneQuery){                                                                                                \
+        .type = ParrotSceneQueryType_END,                                                                               \
+    })
+
+#define PARROT_SCENE_QUERY_SET_INVERT(p_invert)                                                                         \
+    ((ParrotSceneQuery){                                                                                                \
+        .type = ParrotSceneQueryType_SET_INVERT,                                                                        \
+        .data =                                                                                                         \
+            {                                                                                                           \
+                .invert = p_invert,                                                                                     \
+            },                                                                                                          \
+    })
+
+#define PARROT_SCENE_QUERY_WITH_PARENT(p_entity)                                                                        \
+    ((ParrotSceneQuery){                                                                                                \
+        .type = ParrotSceneQueryType_PARENT,                                                                            \
+        .data =                                                                                                         \
+            {                                                                                                           \
+                .parent =                                                                                               \
+                    {                                                                                                   \
+                        .entity = p_entity,                                                                             \
+                    },                                                                                                  \
+            },                                                                                                          \
+    })
+
+#define PARROT_SCENE_QUERY_WITH_COMPONENT_type(p_type)                                                                  \
+    ((ParrotSceneQuery){                                                                                                \
+        .type = ParrotSceneQueryType_COMPONENT,                                                                         \
+        .data =                                                                                                         \
+            {                                                                                                           \
+                .component =                                                                                            \
+                    {                                                                                                   \
+                        .type = p_type,                                                                                 \
+                    },                                                                                                  \
+            },                                                                                                          \
+    })
+#define PARROT_SCENE_QUERY_WITH_COMPONENT(type) PARROT_SCENE_QUERY_WITH_COMPONENT_type(PARROT_TYPE_STRING(type))
+
+typedef struct {
+    ParrotScene *scene;
+    ParrotSceneEntity entity;
+} ParrotSceneFuncParams;
 
 typedef struct {
     size_t size;
-    /**
-     * Pointer to NULL-terminated list of strings where the current type is defined at the top. Mostly used by other
-     * objects.
-     */
-    const char **type;
-    void *user;
+    const char *type;
 
-    /**
-     * Do not use public properties in this function. Use the ready event instead for these purposes.
-     *
-     * NULL = no handler
-     */
-    void (*init)(void *self);
-    /// NULL = no handler
-    void (*event)(void *self, ParrotSceneActorEvent event);
-    /// NULL = no handler
-    void (*update)(void *self, float delta);
-    /// NULL = no handler
-    void (*destroy)(void *self);
-} ParrotSceneActorProfile;
+    void (*init)(void *self, ParrotSceneFuncParams params);
+    void (*destroy)(void *self, ParrotSceneFuncParams params);
+
+    void (*ready)(void *self, ParrotSceneFuncParams params);
+
+    void (*early_update)(void *self, ParrotSceneFuncParams params, float delta);
+    void (*update)(void *self, ParrotSceneFuncParams params, float delta);
+    void (*late_update)(void *self, ParrotSceneFuncParams params, float delta);
+} ParrotSceneComponentProfile;
 
 PARROT_API ParrotScene *ParrotScene_new(void);
 PARROT_API void ParrotScene_delete(ParrotScene *self);
 PARROT_API void ParrotScene_vdelete(void *self);
 
 PARROT_API void ParrotScene_update(ParrotScene *self, float delta);
+PARROT_API void ParrotScene_delete_queued(ParrotScene *self);
 
-PARROT_API void *ParrotScene_actor_spawn(ParrotScene *self, const ParrotSceneActorProfile *profile);
-PARROT_API void ParrotScene_actor_kill(void *actor);
+PARROT_API ParrotSceneEntity ParrotScene_create_entity(ParrotScene *self);
+PARROT_API void ParrotScene_queue_delete_entity(ParrotScene *self, ParrotSceneEntity entity);
+PARROT_API bool ParrotScene_is_entity_deletion_queued(ParrotScene *self, ParrotSceneEntity entity);
 
-PARROT_API ParrotScene *ParrotScene_get_actor_scene(void *actor);
-PARROT_API const ParrotSceneActorProfile *ParrotScene_get_actor_profile(void *actor);
+PARROT_API bool ParrotScene_does_entity_exist(ParrotScene *self, ParrotSceneEntity entity);
 
-PARROT_API ParrotSceneActorHandle ParrotScene_get_actor_handle(void *actor);
-PARROT_API void *ParrotScene_get_actor_from_handle_or_null(ParrotScene *self, ParrotSceneActorHandle handle);
+PARROT_API void ParrotScene_set_entity_parent(ParrotScene *self,
+                                              ParrotSceneEntity child,
+                                              /* Nullable */ ParrotSceneEntity new_parent);
+PARROT_API ParrotSceneEntity ParrotScene_get_entity_parent_or_null(ParrotScene *self, ParrotSceneEntity entity);
 
-PARROT_API void ParrotScene_send_actor_event(void *actor, ParrotSceneActorEvent event);
+#define ParrotScene_simple_register_component(self, type)                                                               \
+    ParrotScene_register_component(self,                                                                                \
+                                   PARROT_TYPE_STRING(type),                                                            \
+                                   (ParrotSceneComponentProfile){                                                       \
+                                       .size = sizeof(type),                                                            \
+                                   })
 
-PARROT_API void ParrotScene_set_actor_parent(void *actor, /* NULL = root */ void *parent_actor);
-PARROT_API void *ParrotScene_get_actor_parent(void *actor);
-PARROT_API void *ParrotScene_get_actor_children_or_null(ParrotScene *self, /* NULL = root */ void *actor);
-PARROT_API void *ParrotScene_get_next_actor_or_null(void *actor);
+PARROT_API void ParrotScene_auto_register_components(ParrotScene *self, ParrotReflect *reflect);
+PARROT_API void ParrotScene_register_component(ParrotScene *self, ParrotSceneComponentProfile profile);
+PARROT_API void ParrotScene_unregister_component(ParrotScene *self, const char *type);
+PARROT_API bool ParrotScene_is_component_registered(ParrotScene *self, const char *type);
 
-PARROT_API void ParrotScene_set_actor_active(void *actor, bool active);
-PARROT_API bool ParrotScene_is_actor_active(void *actor);
+#define ParrotScene_add_component_or_null(self, entity, type)                                                           \
+    ((type *)ParrotScene_add_component_or_nullx(self, entity, #type))
+#define ParrotScene_get_component_or_null(self, entity, type)                                                           \
+    ((type *)ParrotScene_get_component_or_nullx(self, entity, #type))
+#define ParrotScene_is_component_deletion_queued(self, entity, type)                                                    \
+    ParrotScene_is_component_deletion_queuedx(self, entity, PARROT_TYPE_STRING(type))
+#define ParrotScene_queue_delete_component(self, entity, type)                                                          \
+    ParrotScene_queue_delete_componentx(self, entity, PARROT_TYPE_STRING(type))
 
-PARROT_API void ParrotScene_set_actor_transform(void *actor, ParrotTransform transform);
-PARROT_API ParrotTransform ParrotScene_get_actor_transform(void *actor);
-PARROT_API ParrotMat ParrotScene_get_global_actor_matrix(void *actor);
-PARROT_API ParrotMat ParrotScene_get_actor_matrix(void *actor);
+PARROT_API void *ParrotScene_add_component_or_nullx(ParrotScene *self, ParrotSceneEntity entity, const char *type);
+PARROT_API void *ParrotScene_get_component_or_nullx(ParrotScene *self, ParrotSceneEntity entity, const char *type);
+PARROT_API bool ParrotScene_is_component_deletion_queuedx(ParrotScene *self, ParrotSceneEntity entity, const char *type);
+PARROT_API void ParrotScene_queue_delete_componentx(ParrotScene *self, ParrotSceneEntity entity, const char *type);
+
+PARROT_API void ParrotScene_query(ParrotScene *self, const ParrotSceneQuery *query, ParrotSceneEntity **p_arr_results);
+
+/// Auto-registered at scene creation
+PARROT_API extern const ParrotSceneComponentProfile ParrotScene_ParrotMat_profile;
+/// Auto-registered at scene creation
+PARROT_API extern const ParrotSceneComponentProfile ParrotScene_ParrotTransform_profile;
 
 #endif // PARROT_PARROT_INCLUDE_PARROT_SCENE_SCENE_H_
