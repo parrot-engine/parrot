@@ -58,8 +58,8 @@ $(CONFIG_HEADER):
 	echo "#define PARROT_PACK_BEGIN() $(PACK_BEGIN)" >> $(CONFIG_HEADER)
 	echo "#define PARROT_PACK_END() $(PACK_END)" >> $(CONFIG_HEADER)
 
-ifeq ($(PLATFORM_HAS_OS),1)
-	echo "#define PARROT_PLATFORM_HAS_OS" >> $(CONFIG_HEADER)
+ifeq ($(PLATFORM_HAS_LIBC),1)
+	echo "#define PARROT_PLATFORM_HAS_LIBC" >> $(CONFIG_HEADER)
 endif
 
 ifeq ($(PLATFORM_UNIX),1)

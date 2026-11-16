@@ -1,7 +1,6 @@
+#include "nanoprintf.h"
+#include "parrot/core/libc/yield.h"
 #include "parrot/core/os.h"
-#include "parrot/core/util.h"
-#include "parrot/platform/n64/util.h"
-#include "src/platform/n64/os/nanoprintf.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,44 +8,44 @@
 
 int remove(const char *filename) {
     (void)filename;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return -1;
 }
 
 int rename(const char *old, const char *new) {
     (void)old;
     (void)new;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return -1;
 }
 
 FILE *tmpfile(void) {
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return NULL;
 }
 
 char *tmpnam(char *s) {
     (void)s;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return NULL;
 }
 
 int fclose(FILE *stream) {
     (void)stream;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return EOF;
 }
 
 int fflush(FILE *stream) {
     (void)stream;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return EOF;
 }
 
 FILE *fopen(const char *filename, const char *mode) {
     (void)filename;
     (void)mode;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return NULL;
 }
 
@@ -54,14 +53,14 @@ FILE *freopen(const char *filename, const char *mode, FILE *restrict stream) {
     (void)filename;
     (void)mode;
     (void)stream;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return NULL;
 }
 
 void setbuf(FILE *stream, char *buf) {
     (void)stream;
     (void)buf;
-    Parrot_os_yield();
+    Parrot_libc_yield();
 }
 
 int setvbuf(FILE *stream, char *buf, int mode, size_t size) {
@@ -69,7 +68,7 @@ int setvbuf(FILE *stream, char *buf, int mode, size_t size) {
     (void)buf;
     (void)mode;
     (void)size;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return -1;
 }
 
@@ -84,7 +83,7 @@ int fprintf(FILE *restrict stream, const char *restrict format, ...) {
 int fscanf(FILE *stream, const char *format, ...) {
     (void)stream;
     (void)format;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return EOF;
 }
 
@@ -98,7 +97,7 @@ int printf(const char *format, ...) {
 
 int scanf(const char *format, ...) {
     (void)format;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return EOF;
 }
 
@@ -137,7 +136,7 @@ int vfscanf(FILE *stream, const char *format, va_list arg) {
     (void)stream;
     (void)format;
     (void)arg;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return EOF;
 }
 
@@ -163,7 +162,7 @@ void vsprintf_putc(int c, void *ctx) {
 int vsprintf(char *s, const char *format, va_list arg) {
     char *ptr = s;
     int ret = npf_vpprintf(vsprintf_putc, &ptr, format, arg);
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return ret;
 }
 
@@ -171,13 +170,13 @@ int vsscanf(const char *s, const char *format, va_list arg) {
     (void)s;
     (void)format;
     (void)arg;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return EOF;
 }
 
 int fgetc(FILE *stream) {
     (void)stream;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return EOF;
 }
 
@@ -185,22 +184,16 @@ char *fgets(char *restrict s, int n, FILE *restrict stream) {
     (void)s;
     (void)n;
     (void)stream;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return NULL;
 }
 
 int fputc(int c, FILE *stream) {
-    PARROT_RET_COND_V(stream != stdout && stream != stderr, 0);
+    (void)c;
+    (void)stream;
 
-    void *isviewer_base_address = (void *)0xB3FF0000;
-    char *isviewer_buffer = (char *)((uint8_t *)isviewer_base_address + 0x20);
-    uint32_t *isviewer_write = (uint32_t *)((uint8_t *)isviewer_base_address + 0x14);
-
-    PARROT_N64_IO_WRITE(isviewer_buffer[0], c);
-    PARROT_N64_IO_WRITE(*isviewer_write, 1);
-
-    Parrot_os_yield();
-    return sizeof(char);
+    Parrot_libc_yield();
+    return 0;
 }
 
 int fputs(const char *s, FILE *stream) {
@@ -209,18 +202,18 @@ int fputs(const char *s, FILE *stream) {
 
 int getc(FILE *stream) {
     (void)stream;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return EOF;
 }
 
 int getchar(void) {
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return EOF;
 }
 
 char *gets(char *s) {
     (void)s;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return NULL;
 }
 
@@ -239,7 +232,7 @@ int puts(const char *s) {
 int ungetc(int c, FILE *stream) {
     (void)c;
     (void)stream;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return EOF;
 }
 
@@ -248,32 +241,24 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
     (void)size;
     (void)nmemb;
     (void)stream;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return 0;
 }
 
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
-    PARROT_RET_COND_V(stream != stdout && stream != stderr, 0);
+    (void)ptr;
+    (void)size;
+    (void)nmemb;
+    (void)stream;
 
-    void *isviewer_base_address = (void *)0xB3FF0000;
-    uint8_t *isviewer_buffer = (uint8_t *)isviewer_base_address + 0x20;
-    uint32_t *isviewer_write = (uint32_t *)((uint8_t *)isviewer_base_address + 0x14);
-
-    const uint8_t *data = (const uint8_t *)ptr;
-
-    for (size_t i = 0; i < size * nmemb; i++) {
-        isviewer_buffer[0] = data[i];
-        *isviewer_write = 1;
-    }
-
-    Parrot_os_yield();
-    return size * nmemb;
+    Parrot_libc_yield();
+    return 0;
 }
 
 int fgetpos(FILE *stream, fpos_t *pos) {
     (void)stream;
     (void)pos;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return -1;
 }
 
@@ -281,48 +266,48 @@ int fseek(FILE *stream, long offset, int whence) {
     (void)stream;
     (void)offset;
     (void)whence;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return -1;
 }
 
 int fsetpos(FILE *stream, const fpos_t *pos) {
     (void)stream;
     (void)pos;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return -1;
 }
 
 long int ftell(FILE *stream) {
     (void)stream;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return -1L;
 }
 
 void rewind(FILE *stream) {
     (void)stream;
-    Parrot_os_yield();
+    Parrot_libc_yield();
 }
 
 void clearerr(FILE *stream) {
     (void)stream;
-    Parrot_os_yield();
+    Parrot_libc_yield();
 }
 
 int feof(FILE *stream) {
     (void)stream;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return 1;
 }
 
 int ferror(FILE *stream) {
     (void)stream;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return 1;
 }
 
 void perror(const char *s) {
     (void)s;
-    Parrot_os_yield();
+    Parrot_libc_yield();
 }
 
 #undef stdin

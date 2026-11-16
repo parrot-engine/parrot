@@ -61,22 +61,15 @@ static void init(ParrotMainLoopRunSettings *settings) {
     ParrotReflect_register(ctx->reflect, Parrot_collection);
     ParrotScope_push(ctx->scope, ParrotReflect_vdelete, ctx->reflect);
 
-#ifdef PARROT_PLATFORM_HAS_OS
 #ifdef PARROT_PLATFORM_LINUX
     ParrotWindowDriver *window_driver = Parrot_x11_window_driver_new_or_null();
     ParrotScope_push(ctx->scope, Parrot_x11_window_driver_vdelete, window_driver);
 
     ParrotGLDriver *gl_driver = Parrot_x11_gl_driver_new_or_null();
     ParrotScope_push(ctx->scope, Parrot_x11_gl_driver_vdelete, gl_driver);
-#endif
+
     ParrotVideoDriver *video_driver = Parrot_gl11_video_driver_new(gl_driver);
     ParrotScope_push(ctx->scope, Parrot_gl11_video_driver_vdelete, video_driver);
-#else
-#ifdef PARROT_PLATFORM_N64
-    ParrotWindowDriver *window_driver = NULL;
-    ParrotGLDriver *gl_driver = NULL;
-    ParrotVideoDriver *video_driver = NULL;
-#endif
 #endif
 
     ctx->scene = ParrotScene_new();
@@ -88,7 +81,6 @@ static void init(ParrotMainLoopRunSettings *settings) {
     ctx->root = ParrotScene_create_entity(ctx->scene);
     ParrotScene_add_component_or_null(ctx->scene, ctx->root, ParrotVideoSceneRenderableComponent);
     {
-#ifndef PARROT_PLATFORM_N64
         ctx->window =
             ParrotScene_add_component_or_null(ctx->scene, ctx->root, ParrotVideoSceneRenderableWindowComponent);
         ctx->window->driver = window_driver;
@@ -101,7 +93,6 @@ static void init(ParrotMainLoopRunSettings *settings) {
         viewport->driver = video_driver;
         viewport->width = SCREEN_WIDTH;
         viewport->height = SCREEN_HEIGHT;
-#endif
     }
 
     ParrotSceneEntity camera_entity = ParrotScene_create_entity(ctx->scene);
@@ -136,14 +127,8 @@ static void init(ParrotMainLoopRunSettings *settings) {
 static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should_close) {
     RunCtx *ctx = settings->user_data;
 
-#ifdef PARROT_PLATFORM_N64
-    printf("Update frame\n");
-#endif
-
     if (!should_close) {
-#ifndef PARROT_PLATFORM_N64
         should_close = ctx->window->close_requested;
-#endif
     }
 
     if (ctx->fps_update_timer > 1.0) {
@@ -160,9 +145,7 @@ static bool update(ParrotMainLoopRunSettings *settings, float delta, bool should
 static void render(ParrotMainLoopRunSettings *settings) {
     RunCtx *ctx = settings->user_data;
 
-#ifndef PARROT_PLATFORM_N64
     ParrotVideoSceneRenderableComponent_render(ctx->scene, ctx->root);
-#endif
 }
 
 static void shutdown(ParrotMainLoopRunSettings *settings) {

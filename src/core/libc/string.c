@@ -1,3 +1,4 @@
+#include "parrot/core/util.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>

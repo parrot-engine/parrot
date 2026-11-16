@@ -304,15 +304,11 @@ float cbrtf(float x) {
 }
 
 double fabs(double x) {
-    double result;
-    __asm__("abs.d %0, %1" : "=f"(result) : "f"(x));
-    return result;
+    return x < 0 ? -x : x;
 }
 
 float fabsf(float x) {
-    float result;
-    __asm__("abs.s %0, %1" : "=f"(result) : "f"(x));
-    return result;
+    return x < 0 ? -x : x;
 }
 
 double hypot(double x, double y) {
@@ -336,15 +332,73 @@ float powf(float x, float y) {
 }
 
 double sqrt(double x) {
-    double result;
-    __asm__("sqrt.d %0, %1" : "=f"(result) : "f"(x));
-    return result;
+    int exp;
+    double m, g, gnew;
+
+    if (x < 0.0) {
+#ifdef NAN
+        return NAN;
+#else
+        return 0.0;
+#endif
+    }
+
+    if (x == 0.0) {
+        return 0.0;
+    }
+
+    m = frexp(x, &exp);
+    if (exp & 1) {
+        m *= 2.0;
+        exp -= 1;
+    }
+
+    g = 0.5 * (1.0 + m);
+
+    for (int i = 0; i < 8; i++) {
+        gnew = 0.5 * (g + m / g);
+        if (gnew == g) {
+            break;
+        }
+        g = gnew;
+    }
+
+    return ldexp(g, exp / 2);
 }
 
 float sqrtf(float x) {
-    float result;
-    __asm__("sqrt.s %0, %1" : "=f"(result) : "f"(x));
-    return result;
+    int exp;
+    float m, g, gnew;
+
+    if (x < 0.0f) {
+#ifdef NAN
+        return (float)NAN;
+#else
+        return 0.0f;
+#endif
+    }
+
+    if (x == 0.0f) {
+        return 0.0f;
+    }
+
+    m = frexpf(x, &exp);
+    if (exp & 1) {
+        m *= 2.0f;
+        exp -= 1;
+    }
+
+    g = 0.5f * (1.0f + m);
+
+    for (int i = 0; i < 6; i++) {
+        gnew = 0.5f * (g + m / g);
+        if (gnew == g) {
+            break;
+        }
+        g = gnew;
+    }
+
+    return ldexpf(g, exp / 2);
 }
 
 double erf(double x) {

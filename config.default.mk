@@ -30,8 +30,8 @@ export DOUBLE_PRECISION ?= 0
 # Default is platform dependent but if the platform specifies no default, it will be treated as false.
 export AVOID_MEMORY ?= $(DEFAULT)
 
-# [bool] Makes the engine provide an OS on N64
-export N64_PROVIDE_OS ?= 1
+# [bool] Makes the engine provide a libc
+export PROVIDE_LIBC ?= $(DEFAULT)
 
 # [path] The build directory name (relative to the root build directory) to build into. By default, the value is derived from the
 # other options.
@@ -91,6 +91,14 @@ endif
 
 ifeq ($(AVOID_MEMORY),$(DEFAULT))
 export AVOID_MEMORY = 0
+endif
+
+ifeq ($(PROVIDE_LIBC),$(DEFAULT))
+ifeq ($(PLATFORM_HAS_LIBC),0)
+export PROVIDE_LIBC = 1
+else
+export PROVIDE_LIBC = 0
+endif
 endif
 
 ifeq ($(BUILD_DIR_NAME),$(DEFAULT))

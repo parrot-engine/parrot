@@ -1,4 +1,3 @@
-#include "src/platform/n64/os/os.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -20,5 +19,7 @@ void exit(int status) {
         exit_funcs[i]();
     }
 
-    PARROT_FAIL_FMT("exit(%d)", status);
+    (void)status;
+
+    abort();
 }

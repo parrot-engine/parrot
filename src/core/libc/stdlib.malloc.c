@@ -1,7 +1,5 @@
-#include "src/platform/n64/os/libc/stdlib.malloc.h"
-#include "parrot/core/os.h"
+#include "parrot/core/libc/yield.h"
 #include "parrot/core/util.h"
-#include "parrot/platform/n64/os.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -25,13 +23,20 @@ typedef struct AllocBlock {
 static AllocBlock *heap_begin = NULL;
 static uint64_t heap_segment = 0;
 
+#define PAGE_SIZE (4096)
+
+static void *alloc_rw_pages(size_t page_count) {
+    (void)page_count;
+    return NULL;
+}
+
 void *calloc(size_t nmemb, size_t size) {
     PARROT_CHECK_HEAP();
 
     void *ptr = malloc(nmemb * size);
     PARROT_RET_COND_V(!ptr, NULL);
 
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return memset(ptr, 0, nmemb * size);
 }
 
@@ -59,7 +64,7 @@ void free(void *ptr) {
         block->next = new_next_block;
     }
 
-    Parrot_os_yield();
+    Parrot_libc_yield();
 }
 
 void *malloc(size_t size) {
@@ -74,10 +79,10 @@ void *malloc(size_t size) {
         block = block->next;
 
         if (!block) {
-            size_t page_count = PARROT_ALIGN_UP(size + PARROT_META_SIZE(sizeof(AllocBlock), 0), 4096) / 4096;
+            size_t page_count = (size + PARROT_META_SIZE(sizeof(AllocBlock), 0) + PAGE_SIZE - 1) / PAGE_SIZE;
             size_t alloc_size = page_count * 4096;
 
-            AllocBlock *new_block = Parrot_n64_os_alloc_pages(page_count, ParrotOSPageTableFlags_WRITE);
+            AllocBlock *new_block = alloc_rw_pages(page_count);
             PARROT_RET_COND_V(!new_block, NULL);
             memset(new_block, 0, sizeof(*new_block));
 
@@ -116,7 +121,7 @@ void *malloc(size_t size) {
     }
 
     block->free = false;
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return PARROT_META_USER(sizeof(AllocBlock), block);
 }
 
@@ -135,18 +140,18 @@ void *realloc(void *ptr, size_t size) {
         free(ptr);
     }
 
-    Parrot_os_yield();
+    Parrot_libc_yield();
     return new_ptr;
 }
 
-void _Parrot_n64_os_init_heap(void) {
+void Parrot_libc_init_heap(void) {
     PARROT_FAIL_COND_MSG(heap_begin, "Attempt to initialize already initialized heap");
 
     size_t page_count = 4;
-    heap_begin = Parrot_n64_os_alloc_pages(page_count, ParrotOSPageTableFlags_WRITE);
+    heap_begin = alloc_rw_pages(page_count);
     memset(heap_begin, 0, sizeof(AllocBlock));
 
-    heap_begin->size = page_count * 4096 - PARROT_META_SIZE(sizeof(AllocBlock), 0);
+    heap_begin->size = page_count * PAGE_SIZE - PARROT_META_SIZE(sizeof(AllocBlock), 0);
     heap_begin->free = true;
     heap_begin->segment = heap_segment++;
 }

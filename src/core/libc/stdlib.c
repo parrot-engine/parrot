@@ -1,5 +1,6 @@
 #include "parrot/core/util.h"
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 int Parrot_rng_seed = 1;
@@ -153,7 +154,9 @@ void srand(unsigned int seed) {
 }
 
 void abort(void) {
-    Parrot_crash_handler("Aborted");
+    fprintf(stderr, "Abort\n");
+    for (;;)
+        ;
 }
 
 char *getenv(const char *name) {

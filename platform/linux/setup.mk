@@ -3,7 +3,7 @@ export AR=$(ARCH)-linux-gnu-gcc-ar
 export OBJCOPY=$(ARCH)-linux-gnu-gcc-objcopy
 export STRIP=strip
 
-export PLATFORM_HAS_OS ?= 1
+export PLATFORM_HAS_LIBC ?= 1
 export PLATFORM_UNIX ?= 1
 
 export LDLIBS += -lX11 -lXext -lGL
