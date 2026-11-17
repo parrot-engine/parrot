@@ -1,4 +1,4 @@
-#include "parrot/core/util.h"
+#include "parrot/config.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -154,7 +154,8 @@ void srand(unsigned int seed) {
 }
 
 void abort(void) {
-    fprintf(stderr, "Abort\n");
+    fprintf(stderr, "[Abort]\n");
+
     for (;;)
         ;
 }

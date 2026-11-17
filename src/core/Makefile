@@ -7,8 +7,6 @@ endif
 
 all: $(OBJS)
 
-include $(ROOT_DIR)/make/os-section.mk
-
 $(BUILD_DIR)/src/%.c.o: %.c
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c -o $@ $<

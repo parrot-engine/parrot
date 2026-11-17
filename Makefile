@@ -29,6 +29,10 @@ export LDFLAGS += $(EXTRA_LDFLAGS) $(EXTRA_CLDFLAGS)
 export CFLAGS += -I$(INCLUDE_DIR) -I$(CORE_INCLUDE_DIR) -I$(BUILD_INCLUDE_DIR)
 export CFLAGS += -I$(ROOT_DIR)/platform/$(PLATFORM)/include
 
+ifeq ($(PROVIDE_LIBC),1)
+export CFLAGS += -I$(ROOT_DIR)/src/core/libc/include
+endif
+
 export OUTPUT_NAME=libparrot
 export LIB_OUTPUT_STATIC=$(BUILD_DIR)/$(OUTPUT_NAME).a
 

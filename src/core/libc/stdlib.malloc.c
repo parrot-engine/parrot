@@ -1,3 +1,4 @@
+#include "parrot/config.h"
 #include "parrot/core/libc/yield.h"
 #include "parrot/core/util.h"
 #include <stdbool.h>
@@ -7,8 +8,6 @@
 #include <string.h>
 
 #define PARROT_CHECK_HEAP() PARROT_FAIL_NULL_MSG(heap_begin, "Attempt to use uninitialized heap")
-
-extern uint8_t Parrot_heap_start_addr;
 
 typedef struct AllocBlock {
     struct AllocBlock *prev;
@@ -25,10 +24,12 @@ static uint64_t heap_segment = 0;
 
 #define PAGE_SIZE (4096)
 
+#ifdef PAGE_SIZE
 static void *alloc_rw_pages(size_t page_count) {
     (void)page_count;
     return NULL;
 }
+#endif
 
 void *calloc(size_t nmemb, size_t size) {
     PARROT_CHECK_HEAP();
@@ -79,6 +80,7 @@ void *malloc(size_t size) {
         block = block->next;
 
         if (!block) {
+#ifdef PAGE_SIZE
             size_t page_count = (size + PARROT_META_SIZE(sizeof(AllocBlock), 0) + PAGE_SIZE - 1) / PAGE_SIZE;
             size_t alloc_size = page_count * 4096;
 
@@ -95,6 +97,10 @@ void *malloc(size_t size) {
             new_block->next = NULL;
 
             block = new_block;
+#else
+            (void)prev_block;
+            return NULL;
+#endif
         }
     }
 
@@ -147,11 +153,16 @@ void *realloc(void *ptr, size_t size) {
 void Parrot_libc_init_heap(void) {
     PARROT_FAIL_COND_MSG(heap_begin, "Attempt to initialize already initialized heap");
 
-    size_t page_count = 4;
-    heap_begin = alloc_rw_pages(page_count);
+#ifdef PAGE_SIZE
+    size_t heap_size = PAGE_SIZE;
+    heap_begin = alloc_rw_pages(1);
+#endif
+
+    PARROT_FAIL_NULL_MSG(heap_begin, "Failed to initialize heap");
+
     memset(heap_begin, 0, sizeof(AllocBlock));
 
-    heap_begin->size = page_count * PAGE_SIZE - PARROT_META_SIZE(sizeof(AllocBlock), 0);
+    heap_begin->size = heap_size - PARROT_META_SIZE(sizeof(AllocBlock), 0);
     heap_begin->free = true;
     heap_begin->segment = heap_segment++;
 }

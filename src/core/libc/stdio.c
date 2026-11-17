@@ -1,8 +1,8 @@
 #include "nanoprintf.h"
+#include "parrot/config.h"
+#include "parrot/core/binary.h"
 #include "parrot/core/libc/yield.h"
-#include "parrot/core/os.h"
 #include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -189,11 +189,7 @@ char *fgets(char *restrict s, int n, FILE *restrict stream) {
 }
 
 int fputc(int c, FILE *stream) {
-    (void)c;
-    (void)stream;
-
-    Parrot_libc_yield();
-    return 0;
+    return fwrite(&c, 1, sizeof(char), stream);
 }
 
 int fputs(const char *s, FILE *stream) {
@@ -237,22 +233,27 @@ int ungetc(int c, FILE *stream) {
 }
 
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+    // Implementation point
+
     (void)ptr;
     (void)size;
     (void)nmemb;
     (void)stream;
+
     Parrot_libc_yield();
-    return 0;
+    return -1;
 }
 
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
+    // Implementation point
+
     (void)ptr;
     (void)size;
     (void)nmemb;
     (void)stream;
 
     Parrot_libc_yield();
-    return 0;
+    return -1;
 }
 
 int fgetpos(FILE *stream, fpos_t *pos) {

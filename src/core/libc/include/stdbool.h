@@ -1,0 +1,9 @@
+#ifndef PARROT_PARROT_SRC_CORE_LIBC_INCLUDE_STDBOOL_H_
+#define PARROT_PARROT_SRC_CORE_LIBC_INCLUDE_STDBOOL_H_
+
+typedef _Bool bool;
+
+#define true 1
+#define false 0
+
+#endif // PARROT_PARROT_SRC_CORE_LIBC_INCLUDE_STDBOOL_H_
