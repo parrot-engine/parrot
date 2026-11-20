@@ -12,11 +12,11 @@ INCLUDE_DIR = "include"
 
 BUILD_DIR = "build"
 
-def default(value: T, default: T, default_condition=lambda x: x is None) -> T:
-    if default_condition(default):
-        return default
+def default(value, default: T) -> T:
+    if isinstance(value, type(default)):
+        return value
 
-    return value
+    return default
 
 def host_arch():
     machine = platform.machine().lower()

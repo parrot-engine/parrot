@@ -1,7 +1,7 @@
 #include "nanoprintf.h"
 #include "parrot/config.h"
 #include "parrot/core/binary.h"
-#include "parrot/core/libc/yield.h"
+#include "parrot/libc/yield.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>

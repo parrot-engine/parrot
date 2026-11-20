@@ -16,6 +16,8 @@ class BuildContext:
         self.platform = platforms[build_config.platform]
 
         self.toolchain = self.platform.toolchain_factory(build_config)
+
+        self.toolchain.cflags.strict = util.default(self.config.strict, self.config.debug)
         self.toolchain.cflags.include.append(os.path.realpath(util.INCLUDE_DIR))
         self.toolchain.cflags.include.append(os.path.realpath(os.path.join(util.CORE_DIR, "include")))
         self.toolchain.cflags.include.append(os.path.realpath("."))

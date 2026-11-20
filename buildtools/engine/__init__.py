@@ -56,6 +56,12 @@ def build_lib(ctx: BuildContext):
     objs: list[str] = []
 
     srcs.extend(glob.glob(os.path.join(util.CORE_DIR, "src/**/*.c"), recursive=True))
+
+    if util.default(ctx.config.provide_libc, not ctx.platform.has_libc):
+        srcs.extend(glob.glob(os.path.join(util.SRC_DIR, "libc/src/**/*.c"), recursive=True))
+        
+        ctx.toolchain.cflags.include.append(os.path.realpath(os.path.join(util.SRC_DIR, "libc/include")))
+        ctx.toolchain.ldflags.libc = False
     
     srcs.extend(glob.glob(os.path.join(util.SRC_DIR, "scene/**/*.c"), recursive=True))
 
