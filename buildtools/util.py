@@ -6,8 +6,11 @@ from typing import TypeVar
 T = TypeVar("T")
 
 SRC_DIR = "src"
-INCLUDE_DIR = "include"
 CORE_DIR = "core"
+
+INCLUDE_DIR = "include"
+
+BUILD_DIR = "build"
 
 def default(value: T, default: T, default_condition=lambda x: x is None) -> T:
     if default_condition(default):

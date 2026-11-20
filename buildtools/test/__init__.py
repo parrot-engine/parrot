@@ -7,10 +7,6 @@ from functools import partial
 
 from .. import BuildContext
 
-from .. import util
-from .. import config
-from ..driver import drivers as driver_registry
-
 from pybuildsys import Build
 from pybuildsys.cc import ar, cc, ld
 from pybuildsys.build import shell
@@ -19,7 +15,7 @@ def build(ctx: BuildContext):
     srcs: list[str] = []
     objs: list[str] = []
     
-    srcs.append("test/main.c")
+    srcs.extend(glob.glob("test/**/*.c", recursive=True))
 
     for src in srcs:
         out = ctx.output_path(src + ".o")

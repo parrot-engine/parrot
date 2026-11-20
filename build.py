@@ -1,3 +1,5 @@
+import shutil
+
 import argparse
 import json
 
@@ -26,6 +28,11 @@ def builder(ctx: buildtools.BuildContext, args: argparse.Namespace):
 
 def main():
     parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="command")
+    subparsers.required = False
+
+    clean_command = subparsers.add_parser("clean")
+    clean_command.add_argument("--all", action="store_true")
     
     parser.add_argument("--config", required=False)
 
@@ -41,7 +48,11 @@ def main():
 
     ctx = buildtools.BuildContext(build_config)
 
-    pybuildsys.execute(builder(ctx, args))
+    match args.command:
+        case "clean":
+            shutil.rmtree(buildtools.util.BUILD_DIR if args.all else ctx.build_dir())
+        case _:
+            pybuildsys.execute(builder(ctx, args))
 
 if __name__ == "__main__":
     main()

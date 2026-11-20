@@ -39,7 +39,7 @@ class BuildContext:
         return name
 
     def build_dir(self) -> str:
-        return os.path.join("build", self.build_name())
+        return os.path.join(util.BUILD_DIR, self.build_name())
 
     def output_path(self, file: str) -> str:
         base = self.build_dir()
