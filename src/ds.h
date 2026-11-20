@@ -1,5 +1,5 @@
-#ifndef __SRC_PARROT_SRC_DS_H_
-#define __SRC_PARROT_SRC_DS_H_
+#ifndef PARROT_PARROT_SRC_DS_H_
+#define PARROT_PARROT_SRC_DS_H_
 
 #include "parrot/core/hash.h"
 #include <stddef.h>
@@ -16,4 +16,4 @@ typedef struct {
     ParrotCRC32 key;
 } ParrotCRC32Set;
 
-#endif // __SRC_PARROT_SRC_DS_H_
+#endif // PARROT_PARROT_SRC_DS_H_
