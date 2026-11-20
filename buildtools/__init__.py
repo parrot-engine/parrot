@@ -51,5 +51,10 @@ class BuildContext:
     def lib_output_path(self) -> str:
         return os.path.join(self.build_dir(), "libparrot.a")
 
-    def test_output_path(self) -> str:
-        return self.output_path("test/test")
+    def test_output_path(self, ext: str | None = None) -> str:
+        path = self.output_path("test/test")
+
+        if ext:
+            path += f".{ext}"
+
+        return path

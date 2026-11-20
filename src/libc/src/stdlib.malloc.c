@@ -1,6 +1,6 @@
 #include "parrot/config.h"
-#include "parrot/core/libc/yield.h"
 #include "parrot/core/util.h"
+#include "parrot/libc/yield.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

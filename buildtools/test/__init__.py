@@ -28,7 +28,11 @@ def build(ctx: BuildContext):
                 .on_finish(lambda: objs.append(out))
         )
 
-    yield (
-        Build().depends_on(lambda: len(objs) >= len(srcs))
-            .on_finish(lambda: ld(ctx.toolchain, ctx.test_output_path(), *objs))
-    )
+    yield Build().depends_on(lambda: len(objs) >= len(srcs)).on_finish_builder(link(ctx, objs))
+
+def link(ctx: BuildContext, objs: list[str]):
+    intermmediate_platforms = {
+    }
+
+    path = ctx.test_output_path(ext=intermmediate_platforms.get(ctx.config.platform, None))
+    yield ld(ctx.toolchain, path, *objs)

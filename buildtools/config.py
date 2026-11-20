@@ -23,7 +23,7 @@ class BuildConfig:
     build_dir_name: None | str = None
     compile_db: bool = False
 
-    provide_libc: None | bool = False
+    provide_libc: None | bool = None
 
     double_precision: bool = False
 
