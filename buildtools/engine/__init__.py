@@ -54,6 +54,7 @@ def config_target(ctx: BuildContext, path: str) -> Build:
 def build_lib(ctx: BuildContext):
     srcs: list[str] = []
     objs: list[str] = []
+    built_objs: list[str] = []
 
     srcs.extend(ctx.platform.sources)
     append_drivers(ctx, srcs, ctx.config.drivers)
@@ -81,12 +82,14 @@ def build_lib(ctx: BuildContext):
         yield (
             cc(ctx.toolchain, out, src)
                 .depends_on(partial(os.path.isdir, out_dir))
-                .on_finish(lambda out=out: objs.append(out))
+                .on_finish(lambda out=out: built_objs.append(out))
         )
 
+        objs.append(out)
+
     yield (
-        Build().depends_on(lambda: len(objs) >= len(srcs))
-            .on_finish(lambda: ar(ctx.toolchain, ctx.lib_output_path(), *objs))
+        ar(ctx.toolchain, ctx.lib_output_path(), *objs)
+            .depends_on(lambda: len(built_objs) >= len(srcs))
     )
 
 def build_config(ctx: BuildContext):
@@ -99,6 +102,7 @@ def build_config(ctx: BuildContext):
     yield (
         config_target(ctx, os.path.join(build_include_root, "config.h"))
             .depends_on(partial(os.path.isdir, build_include_root))
+            .and_condition(lambda: not os.path.exists(os.path.join(build_include_root, "config.h")))
     )
 
 def build(ctx: BuildContext):

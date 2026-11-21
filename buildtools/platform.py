@@ -22,11 +22,7 @@ class Platform:
 
 platforms: dict[str, Platform] = {
     "linux": Platform(
-        toolchain_factory=lambda config: Toolchain(
-            cc=f"{config.arch}-linux-gnu-gcc",
-            cxx=f"{config.arch}-linux-gnu-g++",
-            ld=f"{config.arch}-linux-gnu-gcc"
-        ),
+        toolchain_factory=lambda config: Toolchain().with_c_prefix(f"{config.arch}-linux-gnu-"),
 
         sources=[
             *glob.glob(os.path.join(util.SRC_DIR, "platform/linux/**/*.c"), recursive=True),

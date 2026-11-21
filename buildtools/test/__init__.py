@@ -5,16 +5,19 @@ import copy
 
 from functools import partial
 
+from buildtools import util
+
 from .. import BuildContext
 
-from pybuildsys import Build
-from pybuildsys.cc import ar, cc, ld
+from pybuildsys import Build, conditions
+from pybuildsys.cc import ar, cc, ld, objcopy
 from pybuildsys.build import shell
 
 def build(ctx: BuildContext):
     srcs: list[str] = []
     objs: list[str] = []
-    
+    built_objs: list[str] = []
+
     srcs.extend(glob.glob("test/**/*.c", recursive=True))
 
     for src in srcs:
@@ -25,14 +28,23 @@ def build(ctx: BuildContext):
         yield (
             cc(ctx.toolchain, out, src)
                 .depends_on(partial(os.path.isdir, out_dir))
-                .on_finish(lambda: objs.append(out))
+                .on_finish(lambda out=out: built_objs.append(out))
         )
 
-    yield Build().depends_on(lambda: len(objs) >= len(srcs)).on_finish_builder(link(ctx, objs))
+        objs.append(out)
+
+    yield (
+        Build().depends_on(lambda: len(built_objs) >= len(srcs))
+            .on_finish_builder(link(ctx, objs))
+    )
 
 def link(ctx: BuildContext, objs: list[str]):
-    intermmediate_platforms = {
+    INTERMMEDIATE_PLATFORMS = {
     }
 
-    path = ctx.test_output_path(ext=intermmediate_platforms.get(ctx.config.platform, None))
-    yield ld(ctx.toolchain, path, *objs)
+    LINKER_SCRIPT = os.path.realpath(os.path.join(util.SRC_DIR, "platform/dos/linker.ld"))
+
+    path = ctx.test_output_path(ext=INTERMMEDIATE_PLATFORMS.get(ctx.config.platform, None))
+    link = ld(ctx.toolchain, path, *objs)
+
+    yield link
