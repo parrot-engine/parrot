@@ -1,0 +1,25 @@
+ifeq ($(CONFIG_PROVIDE_LIBC),$(DEFAULT))
+ifeq ($(CONFIG_PLATFORM_HAS_LIBC),0)
+export CONFIG_PROVIDE_LIBC = 1
+else
+export CONFIG_PROVIDE_LIBC = 0
+endif
+endif
+
+ifeq ($(CONFIG_BUILD_DIR_NAME),$(DEFAULT))
+export CONFIG_BUILD_DIR_NAME=$(CONFIG_PLATFORM)
+ifneq ($(CONFIG_ARCH),)
+export CONFIG_BUILD_DIR_NAME := $(CONFIG_BUILD_DIR_NAME)-$(CONFIG_ARCH)
+endif
+ifeq ($(CONFIG_DEBUG),1)
+export CONFIG_BUILD_DIR_NAME := $(CONFIG_BUILD_DIR_NAME)+debug
+endif
+ifeq ($(CONFIG_OPTIMIZE),1)
+export CONFIG_BUILD_DIR_NAME := $(CONFIG_BUILD_DIR_NAME)+optimized
+endif
+ifeq ($(CONFIG_DEBUG_INFO),1)
+export CONFIG_BUILD_DIR_NAME := $(CONFIG_BUILD_DIR_NAME)+dbginfo
+endif
+endif
+
+override CONFIG_DRIVERS := $(filter-out default,$(CONFIG_DRIVERS))
