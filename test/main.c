@@ -47,7 +47,7 @@ static ParrotSceneComponentProfile MovementComponent_profile = {
     .size = sizeof(MovementComponent),
     .type = PARROT_TYPE_STRING(MovementComponent),
 
-    .update = MovementComponent_update,
+    .update_or_null = MovementComponent_update,
 };
 
 static void init(ParrotMainLoopRunSettings *settings) {

@@ -430,40 +430,40 @@ const ParrotSceneComponentProfile ParrotVideoSceneCameraComponent_profile = {
     .size = sizeof(ParrotVideoSceneCameraComponent),
     .type = PARROT_TYPE_STRING(ParrotVideoSceneCameraComponent),
 
-    .init = ParrotVideoSceneCameraComponent_init,
-    .update = ParrotVideoSceneCameraComponent_update,
+    .init_or_null = ParrotVideoSceneCameraComponent_init,
+    .update_or_null = ParrotVideoSceneCameraComponent_update,
 };
 
 const ParrotSceneComponentProfile ParrotVideoSceneRenderableComponent_profile = {
     .size = sizeof(_ParrotVideoSceneRenderableComponent),
     .type = PARROT_TYPE_STRING(ParrotVideoSceneRenderableComponent),
 
-    .init = ParrotVideoSceneRenderableComponent_init,
-    .destroy = ParrotVideoSceneRenderableComponent_destroy,
+    .init_or_null = ParrotVideoSceneRenderableComponent_init,
+    .destroy_or_null = ParrotVideoSceneRenderableComponent_destroy,
 };
 
 const ParrotSceneComponentProfile ParrotVideoSceneRenderableWindowComponent_profile = {
     .size = sizeof(ParrotVideoSceneRenderableWindowComponent),
     .type = PARROT_TYPE_STRING(ParrotVideoSceneRenderableWindowComponent),
 
-    .ready = ParrotVideoSceneRenderableWindowComponent_ready,
-    .update = ParrotVideoSceneRenderableWindowComponent_update,
-    .destroy = ParrotVideoSceneRenderableWindowComponent_destroy,
+    .ready_or_null = ParrotVideoSceneRenderableWindowComponent_ready,
+    .update_or_null = ParrotVideoSceneRenderableWindowComponent_update,
+    .destroy_or_null = ParrotVideoSceneRenderableWindowComponent_destroy,
 };
 
 const ParrotSceneComponentProfile ParrotVideoSceneRenderableViewportComponent_profile = {
     .size = sizeof(ParrotVideoSceneRenderableViewportComponent),
     .type = PARROT_TYPE_STRING(ParrotVideoSceneRenderableViewportComponent),
 
-    .ready = ParrotVideoSceneRenderableViewportComponent_ready,
-    .update = ParrotVideoSceneRenderableViewportComponent_update,
-    .destroy = ParrotVideoSceneRenderableViewportComponent_destroy,
+    .ready_or_null = ParrotVideoSceneRenderableViewportComponent_ready,
+    .update_or_null = ParrotVideoSceneRenderableViewportComponent_update,
+    .destroy_or_null = ParrotVideoSceneRenderableViewportComponent_destroy,
 };
 
 const ParrotSceneComponentProfile ParrotVideoSceneRenderable2DComponent_profile = {
     .size = sizeof(ParrotVideoSceneRenderable2DComponent),
     .type = PARROT_TYPE_STRING(ParrotVideoSceneRenderable2DComponent),
 
-    .init = ParrotVideoSceneRenderable2DComponent_init,
-    .update = ParrotVideoSceneRenderable2DComponent_update,
+    .init_or_null = ParrotVideoSceneRenderable2DComponent_init,
+    .update_or_null = ParrotVideoSceneRenderable2DComponent_update,
 };

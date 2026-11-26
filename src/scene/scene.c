@@ -119,12 +119,12 @@ void ParrotScene_delete(ParrotScene *self) {
             void *data = &(*component->p_arr_data_blocks)[j / COMPONENT_DATA_BLOCK_SIZE]
                                                          [(j % COMPONENT_DATA_BLOCK_SIZE) * component->profile.size];
 
-            if (component->profile.destroy) {
-                component->profile.destroy(data,
-                                           (ParrotSceneFuncParams){
-                                               .scene = self,
-                                               .entity = MAKE_ENTITY(j, self->arr_entity_gens[j]),
-                                           });
+            if (component->profile.destroy_or_null) {
+                component->profile.destroy_or_null(data,
+                                                   (ParrotSceneFuncParams){
+                                                       .scene = self,
+                                                       .entity = MAKE_ENTITY(j, self->arr_entity_gens[j]),
+                                                   });
             }
         }
     }
@@ -177,23 +177,23 @@ static void update_entity(ParrotScene *self, UpdateStage stage, ParrotSceneEntit
             }
 
             flags |= LIFE_FLAG_READY;
-            if (component->profile.ready) {
-                component->profile.ready(data, params);
+            if (component->profile.ready_or_null) {
+                component->profile.ready_or_null(data, params);
             }
         } break;
         case UpdateStage_EARLY: {
-            if (component->profile.early_update) {
-                component->profile.early_update(data, params, delta);
+            if (component->profile.early_update_or_null) {
+                component->profile.early_update_or_null(data, params, delta);
             }
         } break;
         case UpdateStage_UPDATE: {
-            if (component->profile.update) {
-                component->profile.update(data, params, delta);
+            if (component->profile.update_or_null) {
+                component->profile.update_or_null(data, params, delta);
             }
         } break;
         case UpdateStage_LATE: {
-            if (component->profile.late_update) {
-                component->profile.late_update(data, params, delta);
+            if (component->profile.late_update_or_null) {
+                component->profile.late_update_or_null(data, params, delta);
             }
         } break;
         }
@@ -257,12 +257,12 @@ void ParrotScene_delete_queued(ParrotScene *self) {
             void *data = &(*component->p_arr_data_blocks)[j / COMPONENT_DATA_BLOCK_SIZE]
                                                          [(j % COMPONENT_DATA_BLOCK_SIZE) * component->profile.size];
 
-            if (component->profile.destroy) {
-                component->profile.destroy(data,
-                                           (ParrotSceneFuncParams){
-                                               .scene = self,
-                                               .entity = MAKE_ENTITY(j, self->arr_entity_gens[j]),
-                                           });
+            if (component->profile.destroy_or_null) {
+                component->profile.destroy_or_null(data,
+                                                   (ParrotSceneFuncParams){
+                                                       .scene = self,
+                                                       .entity = MAKE_ENTITY(j, self->arr_entity_gens[j]),
+                                                   });
             }
 
             (*component->p_arr_flags)[j] = 0;
@@ -444,12 +444,12 @@ void *ParrotScene_add_component_or_nullx(ParrotScene *self, ParrotSceneEntity en
 
     (*component->p_arr_flags)[ENTITY_INDEX(entity)] = LIFE_FLAG_EXISTS;
 
-    if (component->profile.init) {
-        component->profile.init(data,
-                                (ParrotSceneFuncParams){
-                                    .scene = self,
-                                    .entity = entity,
-                                });
+    if (component->profile.init_or_null) {
+        component->profile.init_or_null(data,
+                                        (ParrotSceneFuncParams){
+                                            .scene = self,
+                                            .entity = entity,
+                                        });
     }
 
     return data;
@@ -597,7 +597,7 @@ const ParrotSceneComponentProfile ParrotScene_ParrotMat_profile = {
     .size = sizeof(ParrotMat),
     .type = PARROT_TYPE_STRING(ParrotMat),
 
-    .init = ParrotScene_ParrotMat_init,
+    .init_or_null = ParrotScene_ParrotMat_init,
 };
 
 static void ParrotScene_ParrotTransform_init(void *selfx, ParrotSceneFuncParams params) {
@@ -611,5 +611,5 @@ const ParrotSceneComponentProfile ParrotScene_ParrotTransform_profile = {
     .size = sizeof(ParrotTransform),
     .type = PARROT_TYPE_STRING(ParrotTransform),
 
-    .init = ParrotScene_ParrotTransform_init,
+    .init_or_null = ParrotScene_ParrotTransform_init,
 };

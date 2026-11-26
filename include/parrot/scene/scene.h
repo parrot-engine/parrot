@@ -84,14 +84,14 @@ typedef struct {
     size_t size;
     const char *type;
 
-    void (*init)(void *self, ParrotSceneFuncParams params);
-    void (*destroy)(void *self, ParrotSceneFuncParams params);
+    void (*init_or_null)(void *self, ParrotSceneFuncParams params);
+    void (*destroy_or_null)(void *self, ParrotSceneFuncParams params);
 
-    void (*ready)(void *self, ParrotSceneFuncParams params);
+    void (*ready_or_null)(void *self, ParrotSceneFuncParams params);
 
-    void (*early_update)(void *self, ParrotSceneFuncParams params, float delta);
-    void (*update)(void *self, ParrotSceneFuncParams params, float delta);
-    void (*late_update)(void *self, ParrotSceneFuncParams params, float delta);
+    void (*early_update_or_null)(void *self, ParrotSceneFuncParams params, float delta);
+    void (*update_or_null)(void *self, ParrotSceneFuncParams params, float delta);
+    void (*late_update_or_null)(void *self, ParrotSceneFuncParams params, float delta);
 } ParrotSceneComponentProfile;
 
 PARROT_API ParrotScene *ParrotScene_new(void);
