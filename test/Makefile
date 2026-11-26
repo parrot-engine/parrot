@@ -12,8 +12,7 @@ CFLAGS += -g -std=c99
 .PHONY: all
 all: $(OUTPUT)
 
-.PHONY: $(OUTPUT)
-$(OUTPUT): $(OBJS)
+$(OUTPUT): $(OBJS) $(OUTPUT_STATIC)
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(OUTPUT_STATIC) $(LDLIBS)
 
 $(BUILD_DIR)/src/%.o: %

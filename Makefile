@@ -13,9 +13,12 @@ endif
 
 include config.mk
 
-export CORE_DIR=$(ROOT_DIR)/core
-export BUILD_DIR=$(ROOT_DIR)/build/$(CONFIG_BUILD_DIR_NAME)
-export TOOLS_DIR=$(ROOT_DIR)/tools
+export CORE_DIR=core
+export TOOLS_DIR=tools
+
+export SRC_DIR=src
+export INCLUDE_DIR=include
+export BUILD_DIR=build/$(CONFIG_BUILD_DIR_NAME)
 
 export BUILD_INCLUDE_DIR=$(BUILD_DIR)/include
 
@@ -23,9 +26,9 @@ export CFLAGS += $(CONFIG_EXTRA_CFLAGS) $(CONFIG_EXTRA_CLDFLAGS)
 export ASFLAGS += $(CONFIG_EXTRA_ASFLAGS)
 export LDFLAGS += $(CONFIG_EXTRA_LDFLAGS) $(CONFIG_EXTRA_CLDFLAGS)
 
-export CFLAGS += -I$(ROOT_DIR)/include
-export CFLAGS += -I$(CORE_DIR)/include
-export CFLAGS += -I$(BUILD_INCLUDE_DIR)
+export CFLAGS += -I$(abspath $(INCLUDE_DIR))
+export CFLAGS += -I$(abspath $(CORE_DIR)/include)
+export CFLAGS += -I$(abspath $(BUILD_INCLUDE_DIR))
 
 ifeq ($(CONFIG_PROVIDE_LIBC),1)
 export CFLAGS += -I$(ROOT_DIR)/include/parrot/libc
@@ -50,23 +53,15 @@ endif
 
 include defaults.mk
 
-export OUTPUT_STATIC=$(BUILD_DIR)/libparrot
-export CORE_OUTPUT_STATIC=$(BUILD_DIR)/libparrotcore
+export OUTPUT_STATIC=$(abspath $(BUILD_DIR)/libparrot)
 
 export OUTPUT_STATIC := $(OUTPUT_STATIC).a
-export CORE_OUTPUT_STATIC := $(CORE_OUTPUT_STATIC).a
 
 .PHONY: all
 all: $(OUTPUT_STATIC)
 
-$(OUTPUT_STATIC): src
-
-.PHONY: src
-src:
-	$(MAKE) -C src "CONFIG_DRIVERS=$(CONFIG_DRIVERS)"
-
 .PHONY: test
-test: src
+test: $(OUTPUT_STATIC)
 	$(MAKE) -C test BUILD_DIR=$(BUILD_DIR)/test
 
 .PHONY: clean
@@ -77,5 +72,52 @@ clean:
 clean-all:
 	rm -r $(ROOT_BUILD_DIR)
 
+########################################################################################################################
+
+_CFLAGS=$(CFLAGS) -MMD -std=c99 -Wall -Wextra -I$(ROOT_DIR)
+
+ifeq ($(CONFIG_STRICT),1)
+_CFLAGS += -pedantic-errors -Werror
+endif
+
+ifeq ($(CONFIG_DEBUG_INFO),1)
+_CFLAGS += -g
+export ASFLAGS += -g
+endif
+
+ifeq ($(CONFIG_OPTIMIZE),1)
+_CFLAGS += $(PLATFORM_OPTIMIZER)
+endif
+
+_CONFIG_HEADER=$(BUILD_INCLUDE_DIR)/parrot/config.h
+
+_SRC_DIRS=$(SRC_DIR)/scene $(SRC_DIR)/video
+
+ifeq ($(CONFIG_PROVIDE_LIBC),1)
+_SRC_DIRS += $(SRC_DIR)/libc
+endif
+
+_SRC_DIRS += $(patsubst %, $(SRC_DIR)/drivers/%, $(CONFIG_DRIVERS))
+
+_SRCS=$(shell find $(_SRC_DIRS) $(CORE_DIR)/src -type f -name "*.c")
+_OBJS=$(patsubst %, $(BUILD_DIR)/%.o, $(_SRCS))
+
+.PHONY: all
+all: $(OUTPUT_STATIC)
+
+$(OUTPUT_STATIC): $(_OBJS)
+	echo $(_SRCS)
+	$(AR) rcs $@ $(_OBJS)
+
+$(BUILD_DIR)/%.o: % $(_CONFIG_HEADER)
+	mkdir -p $(dir $@)
+	$(CC) $(_CFLAGS) -c -o $@ $<
+
+$(_CONFIG_HEADER):
+	mkdir -p $(dir $@)
+	$(PY) $(TOOLS_DIR)/generate_config.py $@
+
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
+
+-include $(patsubst %, %.d, $(SRCS))
